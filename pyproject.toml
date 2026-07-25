@@ -1,0 +1,12 @@
+[project]
+name = "repo-jur"
+version = "0.1.0"
+requires-python = ">=3.12"
+dependencies = [
+    "google-genai>=2.14.0",
+    "markitdown-ocr>=0.1.0",
+    "markitdown[all]>=0.1.5",
+    "pillow>=12.3.0",
+    "pymupdf>=1.28.0",
+    "python-dotenv>=1.2.2",
+]
