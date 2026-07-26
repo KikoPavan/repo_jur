@@ -19,7 +19,7 @@
 ## 3. Roteamento de páginas
 
 - [x] 3.1 Implementar inspeção da qualidade do texto nativo usando blocos PyMuPDF e métricas de caracteres.
-- [ ] 3.2 Implementar inspeção de conteúdo rasterizado usando quantidade de imagens, proporção de área e sinais de imagem de página inteira.
+- [x] 3.2 Implementar inspeção de conteúdo rasterizado usando quantidade de imagens, proporção de área e sinais de imagem de página inteira.
 - [ ] 3.3 Implementar roteamento para `texto_nativo`, `ocr_integral`, `hibrido`, `vazia` ou `erro`.
 - [ ] 3.4 Centralizar limites de roteamento na configuração e validar seus intervalos.
 - [ ] 3.5 Adicionar testes unitários para páginas nativas curtas, escaneadas, mistas, vazias, com logotipos e assinaturas.
