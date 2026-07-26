@@ -52,6 +52,20 @@ def open_pdf(path: str | Path) -> fitz.Document:
     return doc
 
 
+def isolate_pages(doc: fitz.Document, dest_dir: str | Path) -> list[Path]:
+    dest = Path(dest_dir)
+    dest.mkdir(parents=True, exist_ok=True)
+    paths: list[Path] = []
+    for i in range(doc.page_count):
+        page_path = dest / f"page_{i + 1:04d}.pdf"
+        novo_doc = fitz.open()
+        novo_doc.insert_pdf(doc, from_page=i, to_page=i)
+        novo_doc.save(page_path)
+        novo_doc.close()
+        paths.append(page_path)
+    return paths
+
+
 def inspect_source(path: str | Path) -> FonteInfo:
     doc = open_pdf(path)
     path_obj = Path(path)
