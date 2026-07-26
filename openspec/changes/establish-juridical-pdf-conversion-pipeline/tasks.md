@@ -10,7 +10,7 @@
 
 ## 2. Inspeção da entrada e isolamento de páginas
 
-- [ ] 2.1 Implementar validação do caminho PDF, abertura segura, detecção de criptografia e contagem de páginas.
+- [x] 2.1 Implementar validação do caminho PDF, abertura segura, detecção de criptografia e contagem de páginas.
 - [ ] 2.2 Registrar tamanho e SHA-256 do arquivo de origem antes do processamento.
 - [ ] 2.3 Implementar criação de PDFs isolados de uma página no diretório temporário específico da execução.
 - [ ] 2.4 Garantir tratamento somente leitura da origem e limpeza dos temporários em sucesso e falha.
