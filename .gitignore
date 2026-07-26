@@ -11,6 +11,17 @@ __pycache__/
 # Variáveis e credenciais
 .env
 .env.*
+!.env.example
+
+# Diretórios operacionais
+input/*
+output/*
+logs/*
+var/tmp/*
+!input/.gitkeep
+!output/.gitkeep
+!logs/.gitkeep
+!var/tmp/.gitkeep
 
 # Sistema e editor
 .DS_Store
