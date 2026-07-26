@@ -4,6 +4,7 @@ from dataclasses import dataclass
 
 import fitz
 
+from .config import RoutingConfig
 from .models import Metodo
 
 
@@ -51,20 +52,20 @@ def inspect_raster_content(page: fitz.Page) -> RasterSignal:
 
 def route_page(
     page: fitz.Page,
-    *,
-    native_min_text_chars: int = 50,
-    full_page_image_min_ratio: float = 0.70,
-    significant_image_min_ratio: float = 0.15,
+    config: RoutingConfig | None = None,
 ) -> Metodo:
+    if config is None:
+        config = RoutingConfig()
+
     native = inspect_native_text(page)
     raster = inspect_raster_content(page)
 
-    has_native = native.char_count >= native_min_text_chars
+    has_native = native.char_count >= config.native_min_text_chars
     has_full_page_image = (
-        raster.largest_image_area_ratio >= full_page_image_min_ratio
+        raster.largest_image_area_ratio >= config.full_page_image_min_ratio
     )
     has_significant_raster = (
-        raster.total_image_area_ratio >= significant_image_min_ratio
+        raster.total_image_area_ratio >= config.significant_image_min_ratio
     )
     has_raster_signal = has_full_page_image or has_significant_raster
 
