@@ -7,6 +7,10 @@ import pytest
 
 from pipeline_juridico import hashing
 from pipeline_juridico.inspector import (
+    PdfEmptyError,
+    PdfEncryptedError,
+    PdfInvalidError,
+    PdfNotFoundError,
     inspect_source,
     isolated_page_workspace,
     isolate_pages,
@@ -112,6 +116,62 @@ def test_isolated_page_workspace_keep_temp(tmp_path) -> None:
     temp_root = tmp_path / "temp_root"
     with isolated_page_workspace(str(pdf_path), temp_root, keep_temp=True) as pages:
         parent_dir = pages[0].parent
-        assert parent_dir.exists()
-
     assert parent_dir.exists()
+
+
+def test_open_pdf_missing_file_raises(tmp_path) -> None:
+    caminho = tmp_path / "nao_existe.pdf"
+    with pytest.raises(PdfNotFoundError) as exc_info:
+        open_pdf(caminho)
+    assert str(caminho) in str(exc_info.value)
+
+
+def test_open_pdf_invalid_path_raises(tmp_path) -> None:
+    with pytest.raises(PdfInvalidError) as exc_info:
+        open_pdf(tmp_path)
+    assert str(tmp_path) in str(exc_info.value)
+
+
+def test_open_pdf_corrupted_file_raises(tmp_path) -> None:
+    caminho = tmp_path / "corrupto.pdf"
+    caminho.write_bytes(b"%PDF-1.4 not a real pdf body")
+    with pytest.raises(PdfInvalidError) as exc_info:
+        open_pdf(caminho)
+    assert str(caminho) in str(exc_info.value)
+
+
+def test_open_pdf_encrypted_file_raises(tmp_path) -> None:
+    caminho = tmp_path / "criptografado.pdf"
+    doc = fitz.open()
+    doc.new_page()
+    doc.save(caminho, encryption=fitz.PDF_ENCRYPT_AES_256, user_pw="secret", owner_pw="secret")
+    doc.close()
+    with pytest.raises(PdfEncryptedError) as exc_info:
+        open_pdf(caminho)
+    assert str(caminho) in str(exc_info.value)
+
+
+def test_open_pdf_zero_pages_raises(tmp_path) -> None:
+    caminho = tmp_path / "zero_paginas.pdf"
+    caminho.write_text(
+        "%PDF-1.4\n"
+        "1 0 obj\n"
+        "<< /Type /Catalog /Pages 2 0 R >>\n"
+        "endobj\n"
+        "2 0 obj\n"
+        "<< /Type /Pages /Kids [] /Count 0 >>\n"
+        "endobj\n"
+        "xref\n"
+        "0 3\n"
+        "0000000000 65535 f \n"
+        "0000000009 00000 n \n"
+        "0000000058 00000 n \n"
+        "trailer\n"
+        "<< /Size 3 /Root 1 0 R >>\n"
+        "startxref\n"
+        "114\n"
+        "%%EOF\n"
+    )
+    with pytest.raises(PdfEmptyError) as exc_info:
+        open_pdf(caminho)
+    assert str(caminho) in str(exc_info.value)

@@ -14,7 +14,7 @@
 - [x] 2.2 Registrar tamanho e SHA-256 do arquivo de origem antes do processamento.
 - [x] 2.3 Implementar criação de PDFs isolados de uma página no diretório temporário específico da execução.
 - [x] 2.4 Garantir tratamento somente leitura da origem e limpeza dos temporários em sucesso e falha.
-- [ ] 2.5 Adicionar testes para entradas ausentes, inválidas, corrompidas, criptografadas e sem páginas utilizáveis.
+- [x] 2.5 Adicionar testes para entradas ausentes, inválidas, corrompidas, criptografadas e sem páginas utilizáveis.
 
 ## 3. Roteamento de páginas
 
