@@ -3,6 +3,8 @@ from pathlib import Path
 from markitdown import MarkItDown
 from openai import OpenAI
 
+from .models import Metodo
+
 
 OCR_NO_TEXT_MARKER = "[No text could be extracted from this page]"
 OCR_PAGE_ERROR_MARKER = "[Error processing page"
@@ -41,6 +43,24 @@ def scan_ocr_warnings(markdown: str) -> list[str]:
         for marker in markers
         if marker in markdown
     ]
+
+
+def verify_ocr_evidence(
+    markdown: str,
+    method: Metodo,
+) -> tuple[Metodo, list[str]]:
+    if method not in (Metodo.ocr_integral, Metodo.hibrido):
+        return method, []
+
+    warnings = scan_ocr_warnings(markdown or "")
+    if markdown is None or not markdown.strip():
+        warnings.append(
+            "Nenhuma evidência de texto de OCR foi obtida para esta página."
+        )
+
+    if warnings:
+        return Metodo.erro, warnings
+    return method, []
 
 
 def create_native_engine() -> MarkItDown:
