@@ -2,10 +2,11 @@
 
 ## Topologia Multi-Agente
 
-- **Orquestrador — Claude Code:** lê `tasks.md` e `LOOPS.md`, seleciona a próxima subtarefa, prepara a instrução de execução e solicita aprovação humana quando necessário. Não implementa código.
-- **Implementador — OpenCode:** cria os testes e implementa somente o código necessário para a subtarefa atual.
-- **Verificador — Codex:** revisa as alterações, executa os testes e valida o OpenSpec. Não implementa código nem corrige diretamente os arquivos.
+- **Orquestrador — Claude Code:** lê `tasks.md` e `LOOPS.md`, seleciona a próxima subtarefa, prepara a instrução de execução, e é o **verificador final**: revisa o diff produzido pelo Codex, executa os testes novamente e valida o OpenSpec antes de aprovar. Não implementa código.
+- **Implementador — Codex:** cria os testes e implementa somente o código necessário para a subtarefa atual, dentro do escopo definido pelo orquestrador. Não marca tarefas como concluídas nem decide aprovação — isso é exclusivo do orquestrador.
 - **Gemini API:** serviço utilizado pelo pipeline para OCR e processamento multimodal. Não participa como agente do fluxo de desenvolvimento.
+
+> Histórico: o OpenCode foi o implementador original e o Codex era o verificador. O OpenCode foi removido do fluxo em 2026-07-26 por instabilidade recorrente (travamentos sem progresso em chamadas headless), e o Codex passou a acumular o papel de implementador. Como o mesmo agente não deve implementar e aprovar sozinho, o Claude (orquestrador) assumiu a verificação final.
 
 Nenhum agente executa `git push`, arquiva mudanças ou realiza OCR real sem aprovação humana.
 
@@ -38,11 +39,11 @@ uv add <pacote>            # adicionar dependência
 1. Claude identifica a mudança ativa com `openspec list`.
 2. Claude lê `LOOPS.md` e `openspec/changes/<change-id>/tasks.md`.
 3. Claude seleciona somente a primeira subtarefa não concluída.
-4. OpenCode cria ou atualiza os testes necessários para a subtarefa.
-5. OpenCode implementa somente o código necessário para fazer os testes passarem.
-6. OpenCode executa os testes relacionados e informa os arquivos alterados.
-7. Codex revisa as alterações, executa os testes e valida o OpenSpec.
-8. Somente após aprovação do Codex, Claude marca a subtarefa como concluída.
+4. Codex cria ou atualiza os testes necessários para a subtarefa.
+5. Codex implementa somente o código necessário para fazer os testes passarem.
+6. Codex executa os testes relacionados e informa os arquivos alterados.
+7. Claude revisa o diff, executa os testes novamente e valida o OpenSpec.
+8. Somente após essa verificação, Claude marca a subtarefa como concluída e commita localmente (sem push).
 9. O ciclo reinicia na próxima subtarefa.
 
 Após duas tentativas sem progresso na mesma subtarefa, interromper a execução, não marcar a tarefa e registrar o erro, os comandos executados e os resultados obtidos.
@@ -77,6 +78,7 @@ Métodos permitidos: `texto_nativo`, `ocr_integral`, `hibrido`, `vazia` e `erro`
 - Limpeza Markdown: idempotente, conservadora (não remover cabeçalhos/rodapés/números/assinaturas)
 - Prompt de OCR em arquivo versionado (`prompts/ocr_literal_ptbr.txt`)
 - `--allow-partial` é o único modo que permite publicar páginas contendo `[[TEXTO ILEGÍVEL]]`
-- OpenCode deve seguir a sequência teste → implementação → execução dos testes
-- OpenCode não pode marcar tarefas como concluídas
-- OpenCode não pode alterar requisitos, design ou escopo para fazer testes passarem
+- Codex deve seguir a sequência teste → implementação → execução dos testes
+- Codex não pode marcar tarefas como concluídas
+- Codex não pode alterar requisitos, design ou escopo para fazer testes passarem
+- Codex não deve editar `AGENTS.md`, `CLAUDE.md` ou `LOOPS.md` — isso é escopo exclusivo do orquestrador
