@@ -35,7 +35,7 @@
 
 ## 5. Composição e limpeza do Markdown
 
-- [ ] 5.1 Implementar o marcador exato `[[Pág. N]]` e o contrato do comentário de método.
+- [x] 5.1 Implementar o marcador exato `[[Pág. N]]` e o contrato do comentário de método.
 - [ ] 5.2 Compor blocos na ordem numérica original sem vazamento de contexto entre páginas.
 - [ ] 5.3 Implementar limpeza conservadora e idempotente para finais de linha, espaços finais, linhas vazias e quebra final.
 - [ ] 5.4 Preservar tabelas Markdown, delimitadores OCR, citações legais, datas, números processuais e assinaturas nos testes de limpeza.
