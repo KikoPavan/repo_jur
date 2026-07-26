@@ -31,7 +31,7 @@
 - [x] 4.3 Falhar na configuração quando OCR for necessário e cliente, chave ou modelo estiver indisponível.
 - [x] 4.4 Capturar avisos do OCR e sanitizar mensagens de erro.
 - [x] 4.5 Verificar evidência OCR não vazia para cada página `ocr_integral` e `hibrido`.
-- [ ] 4.6 Adicionar testes simulados para OCR bem-sucedido, falha emitida apenas como aviso, resposta vazia, timeout e modelo indisponível.
+- [x] 4.6 Adicionar testes simulados para OCR bem-sucedido, falha emitida apenas como aviso, resposta vazia, timeout e modelo indisponível.
 
 ## 5. Composição e limpeza do Markdown
 

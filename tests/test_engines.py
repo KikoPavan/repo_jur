@@ -1,3 +1,6 @@
+from types import SimpleNamespace
+
+import fitz
 import pytest
 from markitdown import MarkItDown
 
@@ -10,6 +13,92 @@ from pipeline_juridico.engines import (
     verify_ocr_evidence,
 )
 from pipeline_juridico.models import Metodo
+
+
+class _SuccessfulOcrClient:
+    class _Completions:
+        def create(self, **kwargs):
+            return SimpleNamespace(
+                choices=[
+                    SimpleNamespace(
+                        message=SimpleNamespace(
+                            content=(
+                                "Texto extraído com sucesso pelo OCR simulado."
+                            )
+                        )
+                    )
+                ]
+            )
+
+    def __init__(self):
+        self.chat = SimpleNamespace(completions=self._Completions())
+
+
+class _FailureWarningOcrClient:
+    class _Completions:
+        def create(self, **kwargs):
+            raise RuntimeError("falha simulada da API")
+
+    def __init__(self):
+        self.chat = SimpleNamespace(completions=self._Completions())
+
+
+class _EmptyResponseOcrClient:
+    class _Completions:
+        def create(self, **kwargs):
+            return SimpleNamespace(
+                choices=[
+                    SimpleNamespace(
+                        message=SimpleNamespace(content="")
+                    )
+                ]
+            )
+
+    def __init__(self):
+        self.chat = SimpleNamespace(completions=self._Completions())
+
+
+class _TimeoutOcrClient:
+    class _Completions:
+        def create(self, **kwargs):
+            raise TimeoutError("tempo esgotado")
+
+    def __init__(self):
+        self.chat = SimpleNamespace(completions=self._Completions())
+
+
+class _ModelUnavailableOcrClient:
+    class _Completions:
+        def create(self, **kwargs):
+            raise RuntimeError("model not found")
+
+    def __init__(self):
+        self.chat = SimpleNamespace(completions=self._Completions())
+
+
+@pytest.fixture
+def scanned_pdf_for_ocr(tmp_path):
+    source = tmp_path / "pagina_digitalizada.pdf"
+    document = fitz.open()
+    page = document.new_page()
+    pixmap = fitz.Pixmap(fitz.csRGB, fitz.IRect(0, 0, 100, 100))
+    pixmap.set_rect(pixmap.irect, (255, 0, 0))
+    page.insert_image(page.rect, pixmap=pixmap)
+    document.save(source)
+    document.close()
+
+    # Aciona o fallback de página inteira do plugin sem invalidar o PDF no PyMuPDF.
+    source.write_bytes(source.read_bytes()[:-20])
+    return source
+
+
+def _ocr_engine_with(client):
+    return MarkItDown(
+        enable_plugins=True,
+        llm_client=client,
+        llm_model="fake-model",
+        llm_prompt="Transcreva literalmente o texto da imagem.",
+    )
 
 
 def test_create_native_engine_converts_plain_text(tmp_path):
@@ -159,3 +248,56 @@ def test_verify_ocr_evidence_promotes_to_erro_on_failure_marker():
     assert method is Metodo.erro
     assert warnings
     assert all(raw_marker not in warning for warning in warnings)
+
+
+def test_ocr_engine_simulated_success(scanned_pdf_for_ocr):
+    engine = _ocr_engine_with(_SuccessfulOcrClient())
+
+    markdown = engine.convert(scanned_pdf_for_ocr).text_content
+
+    assert "Texto extraído com sucesso pelo OCR simulado." in markdown
+    assert scan_ocr_warnings(markdown) == []
+
+
+def test_ocr_engine_simulated_failure_warning_only(scanned_pdf_for_ocr):
+    engine = _ocr_engine_with(_FailureWarningOcrClient())
+
+    # A raiz difere, mas falhas são OCR vazio/marcador por design do plugin.
+    markdown = engine.convert(scanned_pdf_for_ocr).text_content
+    warnings = scan_ocr_warnings(markdown)
+
+    assert warnings
+    assert all("falha simulada da API" not in warning for warning in warnings)
+
+
+def test_ocr_engine_simulated_empty_response(scanned_pdf_for_ocr):
+    engine = _ocr_engine_with(_EmptyResponseOcrClient())
+
+    # A raiz difere, mas falhas são OCR vazio/marcador por design do plugin.
+    markdown = engine.convert(scanned_pdf_for_ocr).text_content
+    method, warnings = verify_ocr_evidence(markdown, Metodo.ocr_integral)
+
+    assert method is Metodo.erro
+    assert warnings
+
+
+def test_ocr_engine_simulated_timeout(scanned_pdf_for_ocr):
+    engine = _ocr_engine_with(_TimeoutOcrClient())
+
+    # A raiz difere, mas falhas são OCR vazio/marcador por design do plugin.
+    markdown = engine.convert(scanned_pdf_for_ocr).text_content
+    method, warnings = verify_ocr_evidence(markdown, Metodo.ocr_integral)
+
+    assert method is Metodo.erro
+    assert warnings
+
+
+def test_ocr_engine_simulated_model_unavailable(scanned_pdf_for_ocr):
+    engine = _ocr_engine_with(_ModelUnavailableOcrClient())
+
+    # A raiz difere, mas falhas são OCR vazio/marcador por design do plugin.
+    markdown = engine.convert(scanned_pdf_for_ocr).text_content
+    method, warnings = verify_ocr_evidence(markdown, Metodo.ocr_integral)
+
+    assert method is Metodo.erro
+    assert warnings
