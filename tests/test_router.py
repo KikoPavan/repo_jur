@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import fitz
 
+from pipeline_juridico.config import RoutingConfig
 from pipeline_juridico.models import Metodo
 from pipeline_juridico.router import (
     inspect_native_text,
@@ -115,4 +116,67 @@ def test_route_page_hybrid() -> None:
     page.insert_image(page.rect, pixmap=pix)
 
     assert route_page(page) == Metodo.hibrido
+    doc.close()
+
+
+def test_route_page_short_native_text_is_vazia() -> None:
+    doc = fitz.open()
+    page = doc.new_page()
+    page.insert_text((50, 50), "Ok.")
+
+    assert route_page(page) == Metodo.vazia
+    doc.close()
+
+
+def test_route_page_native_text_at_exact_threshold() -> None:
+    doc = fitz.open()
+    page = doc.new_page()
+    page.insert_text((50, 50), "AAAAAAAAAA")
+    config = RoutingConfig(native_min_text_chars=10)
+
+    assert route_page(page, config) == Metodo.texto_nativo
+    doc.close()
+
+
+def test_route_page_scanned_document_is_ocr_integral() -> None:
+    """Uma página totalmente escaneada deve ser encaminhada ao OCR integral."""
+    doc = fitz.open()
+    page = doc.new_page()
+    pix = fitz.Pixmap(fitz.csRGB, fitz.IRect(0, 0, 100, 100))
+    pix.set_rect(pix.irect, (255, 0, 0))
+    page.insert_image(page.rect, pixmap=pix)
+
+    assert route_page(page) == Metodo.ocr_integral
+    doc.close()
+
+
+def test_route_page_with_logo_stays_texto_nativo() -> None:
+    doc = fitz.open()
+    page = doc.new_page()
+    page.insert_text(
+        (50, 100),
+        "Este parágrafo jurídico contém texto nativo substancial e plenamente "
+        "utilizável, acompanhado apenas pelo pequeno logotipo institucional.",
+    )
+    pix = fitz.Pixmap(fitz.csRGB, fitz.IRect(0, 0, 100, 100))
+    pix.set_rect(pix.irect, (255, 0, 0))
+    page.insert_image(fitz.Rect(10, 10, 60, 60), pixmap=pix)
+
+    assert route_page(page) == Metodo.texto_nativo
+    doc.close()
+
+
+def test_route_page_with_signature_stays_texto_nativo() -> None:
+    doc = fitz.open()
+    page = doc.new_page()
+    page.insert_text(
+        (50, 100),
+        "Este parágrafo jurídico contém texto nativo substancial e plenamente "
+        "utilizável, acompanhado apenas por uma assinatura no rodapé.",
+    )
+    pix = fitz.Pixmap(fitz.csRGB, fitz.IRect(0, 0, 100, 100))
+    pix.set_rect(pix.irect, (255, 0, 0))
+    page.insert_image(fitz.Rect(50, 780, 200, 810), pixmap=pix)
+
+    assert route_page(page) == Metodo.texto_nativo
     doc.close()
