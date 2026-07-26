@@ -6,7 +6,7 @@
 - [x] 1.2 Configurar o pacote `src/pipeline_juridico/` e o comando de console `converter-juridico`.
 - [x] 1.3 Criar diretórios operacionais, arquivos `.gitkeep`, `.gitignore`, `.env.example`, README e changelog.
 - [x] 1.4 Adicionar modelos tipados para status da execução, método da página, resultado da página e esquema do relatório.
-- [ ] 1.5 Adicionar descoberta das versões das dependências e utilitários SHA-256.
+- [x] 1.5 Adicionar descoberta das versões das dependências e utilitários SHA-256.
 
 ## 2. Inspeção da entrada e isolamento de páginas
 
