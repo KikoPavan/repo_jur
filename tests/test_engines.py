@@ -6,6 +6,7 @@ from pipeline_juridico.engines import (
     create_native_engine,
     create_ocr_engine,
     load_ocr_prompt,
+    scan_ocr_warnings,
 )
 
 
@@ -73,3 +74,47 @@ def test_create_ocr_engine_raises_when_both_missing():
     assert "GEMINI_API_KEY ausente" in message
     assert "modelo (GEMINI_MODEL) ausente" in message
     assert "None" not in message
+
+
+def test_scan_ocr_warnings_detects_no_text_marker():
+    markdown = (
+        "algum texto \n\n"
+        "*[No text could be extracted from this page]*\n\n"
+        " mais texto"
+    )
+
+    warnings = scan_ocr_warnings(markdown)
+
+    assert warnings
+    assert all("No text could be extracted" not in warning for warning in warnings)
+
+
+def test_scan_ocr_warnings_detects_page_error_marker_and_sanitizes():
+    markdown = (
+        "*[Error processing page 3: "
+        "FileNotFoundError: /home/user/secreto/documento.pdf]*"
+    )
+
+    warnings = scan_ocr_warnings(markdown)
+
+    assert warnings
+    assert all(
+        "/home/user/secreto/documento.pdf" not in warning for warning in warnings
+    )
+    assert all("FileNotFoundError" not in warning for warning in warnings)
+
+
+def test_scan_ocr_warnings_detects_fatal_marker():
+    markdown = "*[Error: Could not process scanned PDF]*"
+
+    warnings = scan_ocr_warnings(markdown)
+
+    assert warnings
+
+
+def test_scan_ocr_warnings_returns_empty_for_clean_markdown():
+    markdown = "Texto jurídico normal, sem nenhum marcador de falha."
+
+    warnings = scan_ocr_warnings(markdown)
+
+    assert warnings == []
