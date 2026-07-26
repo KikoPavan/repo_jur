@@ -1,6 +1,8 @@
+import pytest
 from markitdown import MarkItDown
 
 from pipeline_juridico.engines import (
+    OcrConfigurationError,
     create_native_engine,
     create_ocr_engine,
     load_ocr_prompt,
@@ -34,3 +36,40 @@ def test_create_ocr_engine_returns_markitdown_instance():
     )
 
     assert isinstance(engine, MarkItDown)
+
+
+def test_create_ocr_engine_raises_when_api_key_missing():
+    with pytest.raises(OcrConfigurationError) as exc_info:
+        create_ocr_engine(api_key=None, model="gemini-2.0-flash")
+
+    message = str(exc_info.value)
+    assert "GEMINI_API_KEY ausente" in message
+    assert "None" not in message
+
+
+def test_create_ocr_engine_raises_when_api_key_empty():
+    with pytest.raises(OcrConfigurationError) as exc_info:
+        create_ocr_engine(api_key="", model="gemini-2.0-flash")
+
+    message = str(exc_info.value)
+    assert "GEMINI_API_KEY ausente" in message
+    assert "None" not in message
+
+
+def test_create_ocr_engine_raises_when_model_missing():
+    with pytest.raises(OcrConfigurationError) as exc_info:
+        create_ocr_engine(api_key="fake-key-for-tests", model=None)
+
+    message = str(exc_info.value)
+    assert "modelo (GEMINI_MODEL) ausente" in message
+    assert "fake-key-for-tests" not in message
+
+
+def test_create_ocr_engine_raises_when_both_missing():
+    with pytest.raises(OcrConfigurationError) as exc_info:
+        create_ocr_engine(api_key=None, model=None)
+
+    message = str(exc_info.value)
+    assert "GEMINI_API_KEY ausente" in message
+    assert "modelo (GEMINI_MODEL) ausente" in message
+    assert "None" not in message
