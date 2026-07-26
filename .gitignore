@@ -27,3 +27,12 @@ var/tmp/*
 .DS_Store
 .vscode/
 .idea/
+
+# Dependências Node locais dos agentes
+**/node_modules/
+
+# Configurações locais do Claude
+.claude/settings.local.json
+
+# Gemini CLI não utilizado neste projeto
+.gemini/

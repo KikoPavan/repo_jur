@@ -1,0 +1,32 @@
+schema: spec-driven
+
+context: |
+  Projeto: pipeline-conversao-juridica.
+  Objetivo da Fase 1: converter exclusivamente arquivos PDF jurídicos para Markdown UTF-8 com rastreabilidade por página, limpeza conservadora, validação de integridade e relatório JSON.
+  Runtime obrigatório: Python 3.12, projeto gerenciado por uv e layout src.
+  Motor principal: MarkItDown para PDF. OCR: plugin markitdown-ocr com cliente OpenAI-compatible, utilizado somente quando o roteamento da página exigir OCR.
+  O conteúdo jurídico não pode ser resumido, interpretado, classificado ou reescrito.
+  Open Knowledge Format e YAML front matter estão fora do escopo desta fase.
+  O marcador canônico de página é [[Pág. N]].
+  O pipeline é não destrutivo e o PDF de origem nunca é alterado.
+  A saída final deve ser gravada atomicamente somente após validação completa.
+  Documentos jurídicos podem conter dados sigilosos; segredos e conteúdo integral não devem ser registrados em logs.
+
+rules:
+  proposal:
+    - Manter o escopo restrito à Fase 1 e declarar explicitamente tudo que estiver fora do escopo.
+    - Distinguir comportamento observável de decisão de implementação.
+    - Não prometer fidelidade absoluta ou determinismo para resultados produzidos por OCR baseado em LLM.
+  specs:
+    - Escrever contratos comportamentais verificáveis com SHALL ou MUST.
+    - Cada requisito deve conter pelo menos um cenário com WHEN e THEN.
+    - Não citar nomes internos de classes, funções ou módulos.
+    - Definir condições de sucesso, falha, saída parcial, segurança e rastreabilidade.
+  design:
+    - Registrar versões de dependências, estrutura de diretórios, roteamento por página e política de falha do OCR.
+    - Explicar alternativas consideradas e riscos de cada decisão relevante.
+    - Preservar a separação entre conversão, limpeza, validação, relatório e CLI.
+  tasks:
+    - Usar exclusivamente tarefas rastreáveis no formato - [ ] X.Y descrição.
+    - Ordenar tarefas por dependência e incluir testes e validação OpenSpec.
+    - Não marcar tarefa como concluída sem teste ou evidência verificável.

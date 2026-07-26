@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "skills": {
+    "loop-library": {
+      "source": "Forward-Future/loopy",
+      "sourceType": "github",
+      "skillPath": "skills/loop-library/SKILL.md",
+      "computedHash": "050d3b950fa32ee7abd0261402bfd8f204ef0a4f2476e9c82f719ea9f409e970"
+    },
+    "loopy": {
+      "source": "Forward-Future/loopy",
+      "sourceType": "github",
+      "skillPath": "skills/loopy/SKILL.md",
+      "computedHash": "f22d8ce0bc7079e5c411e149d7bfa6fc1ca8d988f31d3d4c411dce97bd649ef9"
+    }
+  }
+}
