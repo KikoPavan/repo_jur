@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import shutil
+import tempfile
+from contextlib import contextmanager
 from pathlib import Path
 
 import fitz
@@ -79,3 +82,21 @@ def inspect_source(path: str | Path) -> FonteInfo:
         sha256=sha256,
         pages=pages,
     )
+
+
+@contextmanager
+def isolated_page_workspace(
+    source_path: str | Path,
+    temp_root: str | Path,
+    keep_temp: bool = False,
+) -> list[Path]:
+    doc = open_pdf(source_path)
+    Path(temp_root).mkdir(parents=True, exist_ok=True)
+    run_dir = Path(tempfile.mkdtemp(dir=str(temp_root)))
+    try:
+        pages = isolate_pages(doc, run_dir)
+        yield pages
+    finally:
+        doc.close()
+        if not keep_temp:
+            shutil.rmtree(run_dir, ignore_errors=True)
