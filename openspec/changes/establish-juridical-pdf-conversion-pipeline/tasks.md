@@ -27,7 +27,7 @@
 ## 4. Motores de conversão
 
 - [x] 4.1 Implementar o motor MarkItDown nativo com plugins desabilitados.
-- [ ] 4.2 Implementar o motor MarkItDown OCR com `OpenAI`, `base_url` opcional, modelo e prompt versionado de transcrição literal.
+- [x] 4.2 Implementar o motor MarkItDown OCR com `OpenAI`, `base_url` opcional, modelo e prompt versionado de transcrição literal.
 - [ ] 4.3 Falhar na configuração quando OCR for necessário e cliente, chave ou modelo estiver indisponível.
 - [ ] 4.4 Capturar avisos do OCR e sanitizar mensagens de erro.
 - [ ] 4.5 Verificar evidência OCR não vazia para cada página `ocr_integral` e `hibrido`.

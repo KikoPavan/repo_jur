@@ -1,0 +1,5 @@
+Transcreva todo o texto legível da imagem de forma literal.
+Preserve a ordem de leitura e a estrutura de tabelas quando possível.
+Não resuma, corrija nem complete trechos.
+Use [ilegível] apenas quando estritamente necessário.
+Não adicione nenhuma explicação, comentário ou saudação antes ou depois da transcrição.
