@@ -6,6 +6,7 @@ from pipeline_juridico.converter import PageBlock, format_page_marker
 from pipeline_juridico.models import Metodo, ResultadoPagina, StatusExecucao
 from pipeline_juridico.validator import (
     MarkdownValidationError,
+    OutputAlreadyExistsError,
     validate_encoding_and_line_endings,
     validate_markdown_matches_report,
     validate_page_content,
@@ -243,3 +244,27 @@ def test_write_atomic_leaves_no_leftover_temp_files(tmp_path):
     write_atomic("conteúdo\n", destination, temp_dir)
 
     assert list(temp_dir.iterdir()) == []
+
+
+def test_write_atomic_raises_when_destination_exists_and_not_overwrite(tmp_path):
+    destination = tmp_path / "documento.md"
+    destination.write_text("conteúdo antigo\n", encoding="utf-8")
+
+    with pytest.raises(OutputAlreadyExistsError):
+        write_atomic("conteúdo novo\n", destination, tmp_path / "temp")
+
+    assert destination.read_text(encoding="utf-8") == "conteúdo antigo\n"
+
+
+def test_write_atomic_overwrites_when_overwrite_true(tmp_path):
+    destination = tmp_path / "documento.md"
+    destination.write_text("conteúdo antigo\n", encoding="utf-8")
+
+    write_atomic(
+        "conteúdo novo\n",
+        destination,
+        tmp_path / "temp",
+        overwrite=True,
+    )
+
+    assert destination.read_text(encoding="utf-8") == "conteúdo novo\n"

@@ -11,6 +11,10 @@ class MarkdownValidationError(Exception):
     pass
 
 
+class OutputAlreadyExistsError(Exception):
+    pass
+
+
 _PAGE_WITH_METHOD_PATTERN = re.compile(
     r"\[\[Pág\. (\d+)\]\]\n<!-- método: (\w+) -->"
 )
@@ -20,8 +24,15 @@ def write_atomic(
     content: str,
     destination: str | Path,
     temp_dir: str | Path,
+    overwrite: bool = False,
 ) -> None:
     destination = Path(destination)
+    if destination.exists() and not overwrite:
+        raise OutputAlreadyExistsError(
+            f"O arquivo de saída já existe em '{destination}'. Use --overwrite "
+            "explicitamente para substituí-lo."
+        )
+
     temp_dir = Path(temp_dir)
     temp_dir.mkdir(parents=True, exist_ok=True)
     destination.parent.mkdir(parents=True, exist_ok=True)
