@@ -18,6 +18,7 @@ from pipeline_juridico.report import (
     build_page_result,
     build_report_json,
     build_runtime_info,
+    determine_final_status,
     ocr_page_numbers,
 )
 
@@ -185,3 +186,54 @@ def test_ocr_page_numbers_empty_when_no_ocr_pages():
     ]
 
     assert ocr_page_numbers(pages) == []
+
+
+def test_determine_final_status_sucesso_when_no_failures():
+    pages = [
+        ResultadoPagina(1, Metodo.texto_nativo, StatusExecucao.sucesso, 10, 10),
+        ResultadoPagina(2, Metodo.ocr_integral, StatusExecucao.sucesso, 20, 20),
+    ]
+
+    assert (
+        determine_final_status(pages, allow_partial=False)
+        == StatusExecucao.sucesso
+    )
+
+
+def test_determine_final_status_incompleto_when_failures_and_allow_partial():
+    pages = [
+        ResultadoPagina(1, Metodo.texto_nativo, StatusExecucao.sucesso, 10, 10),
+        ResultadoPagina(2, Metodo.erro, StatusExecucao.falha, 0, 20),
+    ]
+
+    assert (
+        determine_final_status(pages, allow_partial=True)
+        == StatusExecucao.incompleto
+    )
+
+
+def test_determine_final_status_falha_when_failures_and_not_allow_partial():
+    pages = [
+        ResultadoPagina(1, Metodo.texto_nativo, StatusExecucao.sucesso, 10, 10),
+        ResultadoPagina(2, Metodo.erro, StatusExecucao.falha, 0, 20),
+    ]
+
+    assert (
+        determine_final_status(pages, allow_partial=False)
+        == StatusExecucao.falha
+    )
+
+
+def test_determine_final_status_empty_pages_is_sucesso():
+    assert determine_final_status([], allow_partial=False) == StatusExecucao.sucesso
+
+
+def test_determine_final_status_never_sucesso_with_any_failure():
+    pages = [
+        ResultadoPagina(1, Metodo.erro, StatusExecucao.falha, 0, 10),
+    ]
+
+    for allow_partial in [True, False]:
+        result = determine_final_status(pages, allow_partial=allow_partial)
+
+        assert result != StatusExecucao.sucesso

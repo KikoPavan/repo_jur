@@ -59,5 +59,19 @@ def ocr_page_numbers(pages: list[ResultadoPagina]) -> list[int]:
     )
 
 
+def determine_final_status(
+    pages: list[ResultadoPagina],
+    allow_partial: bool,
+) -> StatusExecucao:
+    has_failed_pages = any(
+        page.status == StatusExecucao.falha for page in pages
+    )
+    if not has_failed_pages:
+        return StatusExecucao.sucesso
+    if allow_partial:
+        return StatusExecucao.incompleto
+    return StatusExecucao.falha
+
+
 def build_report_json(relatorio: Relatorio) -> str:
     return json.dumps(asdict(relatorio), ensure_ascii=False, indent=2)
