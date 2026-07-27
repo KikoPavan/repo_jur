@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import pytest
 
 from pipeline_juridico.converter import PageBlock, format_page_marker
@@ -8,6 +10,7 @@ from pipeline_juridico.validator import (
     validate_markdown_matches_report,
     validate_page_content,
     validate_page_markers,
+    write_atomic,
 )
 
 
@@ -211,3 +214,32 @@ def test_validate_page_content_rejects_ocr_methods_without_content(method):
 
     with pytest.raises(MarkdownValidationError):
         validate_page_content(blocks)
+
+
+def test_write_atomic_creates_file_with_content(tmp_path):
+    content = "conteúdo de teste\n"
+    destination = tmp_path / "saida" / "documento.md"
+
+    write_atomic(content, destination, tmp_path / "temp")
+
+    assert destination.exists()
+    assert Path(destination).read_text(encoding="utf-8") == content
+
+
+def test_write_atomic_creates_parent_directories(tmp_path):
+    destination = tmp_path / "a" / "b" / "c.md"
+    temp_dir = tmp_path / "temp" / "run"
+
+    write_atomic("conteúdo\n", destination, temp_dir)
+
+    assert destination.parent.is_dir()
+    assert temp_dir.is_dir()
+
+
+def test_write_atomic_leaves_no_leftover_temp_files(tmp_path):
+    destination = tmp_path / "saida" / "documento.md"
+    temp_dir = tmp_path / "temp"
+
+    write_atomic("conteúdo\n", destination, temp_dir)
+
+    assert list(temp_dir.iterdir()) == []

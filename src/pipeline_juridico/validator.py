@@ -1,4 +1,7 @@
+import os
 import re
+import tempfile
+from pathlib import Path
 
 from .converter import PageBlock
 from .models import Metodo, ResultadoPagina
@@ -11,6 +14,33 @@ class MarkdownValidationError(Exception):
 _PAGE_WITH_METHOD_PATTERN = re.compile(
     r"\[\[Pág\. (\d+)\]\]\n<!-- método: (\w+) -->"
 )
+
+
+def write_atomic(
+    content: str,
+    destination: str | Path,
+    temp_dir: str | Path,
+) -> None:
+    destination = Path(destination)
+    temp_dir = Path(temp_dir)
+    temp_dir.mkdir(parents=True, exist_ok=True)
+    destination.parent.mkdir(parents=True, exist_ok=True)
+
+    file_descriptor, temporary_path = tempfile.mkstemp(
+        dir=str(temp_dir),
+        suffix=".tmp",
+    )
+    try:
+        with os.fdopen(
+            file_descriptor,
+            mode="w",
+            encoding="utf-8",
+            newline="",
+        ) as temporary_file:
+            temporary_file.write(content)
+        os.replace(temporary_path, destination)
+    finally:
+        Path(temporary_path).unlink(missing_ok=True)
 
 
 def validate_encoding_and_line_endings(text: str) -> None:
