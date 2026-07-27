@@ -1,3 +1,4 @@
+import json
 import logging
 from pathlib import Path
 
@@ -5,6 +6,7 @@ import fitz
 import pytest
 
 from pipeline_juridico import cli, __version__
+from pipeline_juridico.cleaner import ILLEGIBLE_TEXT_MARKER
 
 
 def _configure_directories(monkeypatch, tmp_path) -> tuple[Path, Path]:
@@ -164,3 +166,89 @@ def test_main_never_logs_api_key_on_generic_failure(
     assert result == 2
     assert api_key not in caplog.text
     assert "***REDACTED***" in caplog.text
+
+
+def test_cli_strict_success_writes_valid_output(
+    tmp_path,
+    monkeypatch,
+) -> None:
+    source = tmp_path / "nativo.pdf"
+    _create_native_pdf(source)
+    output_dir, logs_dir = _configure_directories(monkeypatch, tmp_path)
+
+    result = cli.main([str(source)])
+
+    output_path = output_dir / "nativo.md"
+    report_path = logs_dir / "nativo.report.json"
+    assert result == 0
+    assert output_path.is_file()
+    output_content = output_path.read_text(encoding="utf-8")
+    assert "[[Pág. 1]]" in output_content
+    assert "<!-- método: texto_nativo -->" in output_content
+    assert report_path.is_file()
+    report = json.loads(report_path.read_text(encoding="utf-8"))
+    assert report["status"] == "sucesso"
+
+
+def test_cli_strict_failure_writes_nothing(
+    tmp_path,
+    monkeypatch,
+) -> None:
+    source = tmp_path / "digitalizado.pdf"
+    _create_scanned_pdf(source)
+    output_dir, logs_dir = _configure_directories(monkeypatch, tmp_path)
+
+    result = cli.main([str(source), "--no-ocr"])
+
+    assert result == 3
+    assert not (output_dir / "digitalizado.md").exists()
+    assert not (logs_dir / "digitalizado.report.json").exists()
+
+
+def test_cli_allow_partial_writes_incomplete_output(
+    tmp_path,
+    monkeypatch,
+) -> None:
+    source = tmp_path / "digitalizado.pdf"
+    _create_scanned_pdf(source)
+    output_dir, logs_dir = _configure_directories(monkeypatch, tmp_path)
+
+    result = cli.main(
+        [str(source), "--no-ocr", "--allow-partial"]
+    )
+
+    output_path = output_dir / "digitalizado.md"
+    report_path = logs_dir / "digitalizado.report.json"
+    assert result == 0
+    assert output_path.is_file()
+    assert ILLEGIBLE_TEXT_MARKER in output_path.read_text(encoding="utf-8")
+    assert report_path.is_file()
+    report = json.loads(report_path.read_text(encoding="utf-8"))
+    assert report["status"] == "incompleto"
+
+
+def test_cli_overwrite_protection_then_success(
+    tmp_path,
+    monkeypatch,
+) -> None:
+    source = tmp_path / "nativo.pdf"
+    _create_native_pdf(source)
+    output_dir, _logs_dir = _configure_directories(monkeypatch, tmp_path)
+    output_dir.mkdir()
+    output_path = output_dir / "nativo.md"
+    old_content = (
+        "conteúdo antigo que não deve ser perdido sem autorização"
+    )
+    output_path.write_text(old_content, encoding="utf-8")
+
+    protected_result = cli.main([str(source)])
+
+    assert protected_result == 4
+    assert output_path.read_text(encoding="utf-8") == old_content
+
+    overwrite_result = cli.main([str(source), "--overwrite"])
+
+    new_content = output_path.read_text(encoding="utf-8")
+    assert overwrite_result == 0
+    assert "[[Pág. 1]]" in new_content
+    assert old_content not in new_content
