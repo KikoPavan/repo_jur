@@ -1,5 +1,6 @@
 import json
 
+from pipeline_juridico.hashing import sha256_file
 from pipeline_juridico.models import (
     FonteInfo,
     Metodo,
@@ -11,7 +12,11 @@ from pipeline_juridico.models import (
     StatusExecucao,
     TimingInfo,
 )
-from pipeline_juridico.report import build_report_json
+from pipeline_juridico.report import (
+    build_ocr_info,
+    build_report_json,
+    build_runtime_info,
+)
 
 
 def _complete_report() -> Relatorio:
@@ -99,3 +104,31 @@ def test_build_report_json_page_record_has_expected_fields():
         "warnings": [],
         "error": None,
     }
+
+
+def test_build_runtime_info_returns_runtime_info_instance():
+    result = build_runtime_info()
+
+    assert isinstance(result, RuntimeInfo)
+    assert isinstance(result.python, str) and result.python
+    assert isinstance(result.markitdown, str) and result.markitdown
+    assert isinstance(result.markitdown_ocr, str) and result.markitdown_ocr
+    assert isinstance(result.pymupdf, str) and result.pymupdf
+
+
+def test_build_ocr_info_computes_prompt_hash(tmp_path):
+    prompt_path = tmp_path / "prompt.txt"
+    prompt_path.write_text("Transcreva literalmente.")
+
+    result = build_ocr_info(
+        enabled=True,
+        provider="openai-compatible",
+        model="gemini-2.0-flash",
+        prompt_path=prompt_path,
+    )
+
+    assert isinstance(result, OcrInfo)
+    assert result.enabled is True
+    assert result.provider == "openai-compatible"
+    assert result.model == "gemini-2.0-flash"
+    assert result.prompt_sha256 == sha256_file(prompt_path)
