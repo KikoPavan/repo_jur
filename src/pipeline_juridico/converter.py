@@ -57,19 +57,19 @@ def compose_document(blocks: list[PageBlock]) -> str:
     return "\n\n".join(formatted_blocks)
 
 
+def _geometric_reading_order_text(page: fitz.Page) -> str:
+    text_blocks = [
+        block for block in page.get_text("blocks") if block[6] == 0
+    ]
+    ordered_blocks = sorted(
+        text_blocks,
+        key=lambda block: (round(block[1], 1), block[0]),
+    )
+    return "\n".join(block[4] for block in ordered_blocks)
+
+
 def _reading_order_tokens(text: str) -> list[str]:
     return re.findall(r"\w+", text.casefold(), flags=re.UNICODE)
-
-
-def _has_label_value_block(text: str) -> bool:
-    lines = [line.strip() for line in text.splitlines() if line.strip()]
-    pairs = sum(
-        line.isupper()
-        and len(line.split()) <= 4
-        and following_line.startswith(":")
-        for line, following_line in zip(lines, lines[1:])
-    )
-    return pairs >= 2
 
 
 def _lexical_overlap(left: str, right: str) -> float:
@@ -92,7 +92,6 @@ def _has_native_reading_order_defect(
     reference_tokens = _reading_order_tokens(reference_content)
     return (
         bool(native_tokens)
-        and _has_label_value_block(reference_content)
         and native_tokens != reference_tokens
         and _lexical_overlap(native_content, reference_content) >= 0.98
     )
@@ -194,7 +193,7 @@ def convert_document(
                 page = doc[0]
                 method = route_page(page, routing_config)
                 reference_content = (
-                    page.get_text("text")
+                    _geometric_reading_order_text(page)
                     if method is Metodo.texto_nativo
                     else ""
                 )

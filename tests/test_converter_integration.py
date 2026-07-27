@@ -24,12 +24,23 @@ def _create_native_pdf(path, page_count: int = 2) -> None:
     document.close()
 
 
-def _isolate_first_page(source, target) -> None:
+def _isolate_first_page(source, target, page_index: int = 0) -> None:
     with fitz.open(source) as source_document:
         isolated_document = fitz.open()
-        isolated_document.insert_pdf(source_document, from_page=0, to_page=0)
+        isolated_document.insert_pdf(
+            source_document,
+            from_page=page_index,
+            to_page=page_index,
+        )
         isolated_document.save(target)
         isolated_document.close()
+
+
+def _normalize_whitespace(markdown: str) -> str:
+    normalized_lines = "\n".join(
+        " ".join(line.split()) for line in markdown.splitlines() if line.strip()
+    )
+    return " ".join(normalized_lines.split())
 
 
 def _create_scanned_pdf(path) -> None:
@@ -131,6 +142,111 @@ def test_convert_inf0024e_first_page_uses_clean_native_output(tmp_path) -> None:
     assert "RAMO DO DIREITO\nDIREITO PENAL" in normalized_lines
     assert "TEMA\nAção penal privada" in normalized_lines
     assert not any("[Image OCR]" in line for line in markdown.splitlines())
+
+
+def test_convert_aintaresp_page_3_preserves_paragraph_reading_order(
+    tmp_path,
+) -> None:
+    source = tmp_path / "aintaresp-pagina-3.pdf"
+    corpus_pdf = (
+        Path(__file__).parents[1] / "input" / "AINTARESP_1462304-PA.pdf"
+    )
+    _isolate_first_page(corpus_pdf, source, page_index=2)
+
+    markdown, _relatorio = convert_document(
+        pdf_path=source,
+        output_path=tmp_path / "saida.md",
+        temp_root=tmp_path / "temp",
+        use_ocr=False,
+    )
+
+    normalized_text = _normalize_whitespace(markdown)
+    first = "Requer, ao final, o provimento do especial com a atribuição do valor de"
+    second = "R$ 10.000,00 (dez mil reais) à causa."
+    assert normalized_text.index(first) < normalized_text.index(second)
+
+
+def test_convert_aintaresp_page_7_preserves_contiguous_text(
+    tmp_path,
+) -> None:
+    source = tmp_path / "aintaresp-pagina-7.pdf"
+    corpus_pdf = (
+        Path(__file__).parents[1] / "input" / "AINTARESP_1462304-PA.pdf"
+    )
+    _isolate_first_page(corpus_pdf, source, page_index=6)
+
+    markdown, _relatorio = convert_document(
+        pdf_path=source,
+        output_path=tmp_path / "saida.md",
+        temp_root=tmp_path / "temp",
+        use_ocr=False,
+    )
+
+    normalized_text = _normalize_whitespace(markdown)
+    assert (
+        "ORIENTAÇÃO PACIFICADA NO STJ. DIVERGÊNCIA JURISPRUDENCIAL NÃO "
+        "CARACTERIZADA"
+    ) in normalized_text
+    assert "interpretação jurídica" in normalized_text
+
+
+def test_convert_aintaresp_page_10_preserves_paragraph_reading_order(
+    tmp_path,
+) -> None:
+    source = tmp_path / "aintaresp-pagina-10.pdf"
+    corpus_pdf = (
+        Path(__file__).parents[1] / "input" / "AINTARESP_1462304-PA.pdf"
+    )
+    _isolate_first_page(corpus_pdf, source, page_index=9)
+
+    markdown, _relatorio = convert_document(
+        pdf_path=source,
+        output_path=tmp_path / "saida.md",
+        temp_root=tmp_path / "temp",
+        use_ocr=False,
+    )
+
+    normalized_text = _normalize_whitespace(markdown)
+    first = "Diante do exposto, DOU PARCIAL PROVIMENTO ao agravo"
+    second = "interno, apenas para afastar a Súmula 283 do STF."
+    assert normalized_text.index(first) < normalized_text.index(second)
+
+
+def test_convert_complete_aintaresp_preserves_native_reading_order(
+    tmp_path,
+) -> None:
+    corpus_pdf = (
+        Path(__file__).parents[1] / "input" / "AINTARESP_1462304-PA.pdf"
+    )
+
+    markdown, _relatorio = convert_document(
+        pdf_path=corpus_pdf,
+        output_path=tmp_path / "saida.md",
+        temp_root=tmp_path / "temp",
+        use_ocr=False,
+    )
+
+    normalized_text = _normalize_whitespace(markdown)
+    page_3_first = (
+        "Requer, ao final, o provimento do especial com a atribuição do valor de"
+    )
+    page_3_second = "R$ 10.000,00 (dez mil reais) à causa."
+    page_10_first = "Diante do exposto, DOU PARCIAL PROVIMENTO ao agravo"
+    page_10_second = "interno, apenas para afastar a Súmula 283 do STF."
+
+    assert normalized_text.index(page_3_first) < normalized_text.index(
+        page_3_second
+    )
+    assert (
+        "ORIENTAÇÃO PACIFICADA NO STJ. DIVERGÊNCIA JURISPRUDENCIAL NÃO "
+        "CARACTERIZADA"
+    ) in normalized_text
+    assert "interpretação jurídica" in normalized_text
+    assert normalized_text.index(page_10_first) < normalized_text.index(
+        page_10_second
+    )
+    for page_number in range(1, 13):
+        assert f"[[Pág. {page_number}]]" in markdown
 
 
 def test_convert_document_with_ocr_page_success(
