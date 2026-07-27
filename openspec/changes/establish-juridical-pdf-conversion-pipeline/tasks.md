@@ -53,7 +53,7 @@
 
 ## 7. Relatório técnico
 
-- [ ] 7.1 Implementar relatório JSON versionado com origem, saída, runtime, OCR, tempos e dados por página.
+- [x] 7.1 Implementar relatório JSON versionado com origem, saída, runtime, OCR, tempos e dados por página.
 - [ ] 7.2 Registrar em runtime as versões instaladas e o SHA-256 do prompt.
 - [ ] 7.3 Registrar quais páginas foram transmitidas ao OCR sem persistir o conteúdo das páginas.
 - [ ] 7.4 Implementar os estados finais `sucesso`, `incompleto` e `falha`.
