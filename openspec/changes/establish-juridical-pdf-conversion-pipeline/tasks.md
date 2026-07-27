@@ -80,7 +80,7 @@
 
 - [x] 10.1 Documentar instalação, variáveis de ambiente, aviso de privacidade, execução, códigos de saída e diagnóstico no README.
 - [x] 10.2 Documentar que o MarkItDown é direcionado a pipelines de análise textual, não à reprodução visual do PDF.
-- [ ] 10.3 Executar a suíte completa de testes e registrar o resultado.
+- [x] 10.3 Executar a suíte completa de testes e registrar o resultado.
 - [ ] 10.4 Executar `openspec validate establish-juridical-pdf-conversion-pipeline --strict` e resolver todos os apontamentos.
 - [ ] 10.5 Executar `/opsx:verify establish-juridical-pdf-conversion-pipeline` quando o fluxo expandido estiver habilitado.
 - [ ] 10.6 Marcar todas as tarefas concluídas, sincronizar as especificações e arquivar a mudança somente após aprovação dos critérios de aceite.
