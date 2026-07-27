@@ -1,14 +1,22 @@
 import argparse
+import json
 import logging
 import os
 from pathlib import Path
 
 from dotenv import load_dotenv
 
+from .cleaner import UnauthorizedIllegibleMarkerError
 from .config import RoutingConfig
 from .converter import convert_document
-from .report import build_report_json
-from .validator import write_atomic
+from .engines import OcrConfigurationError
+from .inspector import PdfInspectionError
+from .report import ReportContractError, build_report_json, validate_report_contract
+from .validator import (
+    MarkdownValidationError,
+    OutputAlreadyExistsError,
+    write_atomic,
+)
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -55,52 +63,71 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     logging.basicConfig(level=args.log_level)
+    logger = logging.getLogger(__name__)
 
-    output_dir = os.environ.get("OUTPUT_DIR", "output")
-    logs_dir = os.environ.get("LOGS_DIR", "logs")
-    temp_root = os.environ.get("TEMP_DIR", "var/tmp")
-    gemini_api_key = os.environ.get("GEMINI_API_KEY")
-    gemini_model = os.environ.get("GEMINI_MODEL")
-    ocr_prompt_file = os.environ.get(
-        "OCR_PROMPT_FILE",
-        "prompts/ocr_literal_ptbr.txt",
-    )
-    ocr_enabled_from_env = (
-        os.environ.get("OCR_ENABLED", "true").lower() == "true"
-    )
+    try:
+        output_dir = os.environ.get("OUTPUT_DIR", "output")
+        logs_dir = os.environ.get("LOGS_DIR", "logs")
+        temp_root = os.environ.get("TEMP_DIR", "var/tmp")
+        gemini_api_key = os.environ.get("GEMINI_API_KEY")
+        gemini_model = os.environ.get("GEMINI_MODEL")
+        ocr_prompt_file = os.environ.get(
+            "OCR_PROMPT_FILE",
+            "prompts/ocr_literal_ptbr.txt",
+        )
+        ocr_enabled_from_env = (
+            os.environ.get("OCR_ENABLED", "true").lower() == "true"
+        )
 
-    pdf_path = Path(args.pdf_path)
-    output_path = Path(output_dir) / f"{pdf_path.stem}.md"
-    report_path = Path(logs_dir) / f"{pdf_path.stem}.report.json"
-    routing_config = RoutingConfig.from_env()
-    use_ocr_final = (not args.no_ocr) and ocr_enabled_from_env
+        pdf_path = Path(args.pdf_path)
+        output_path = Path(output_dir) / f"{pdf_path.stem}.md"
+        report_path = Path(logs_dir) / f"{pdf_path.stem}.report.json"
+        routing_config = RoutingConfig.from_env()
+        use_ocr_final = (not args.no_ocr) and ocr_enabled_from_env
 
-    markdown, relatorio = convert_document(
-        pdf_path=pdf_path,
-        output_path=output_path,
-        temp_root=temp_root,
-        allow_partial=args.allow_partial,
-        use_ocr=use_ocr_final,
-        ocr_api_key=gemini_api_key,
-        ocr_model=gemini_model,
-        ocr_prompt_path=ocr_prompt_file,
-        routing_config=routing_config,
-        keep_temp=args.keep_temp,
-    )
-    report_json = build_report_json(relatorio)
+        markdown, relatorio = convert_document(
+            pdf_path=pdf_path,
+            output_path=output_path,
+            temp_root=temp_root,
+            allow_partial=args.allow_partial,
+            use_ocr=use_ocr_final,
+            ocr_api_key=gemini_api_key,
+            ocr_model=gemini_model,
+            ocr_prompt_path=ocr_prompt_file,
+            routing_config=routing_config,
+            keep_temp=args.keep_temp,
+        )
+        report_json = build_report_json(relatorio)
+        validate_report_contract(json.loads(report_json))
 
-    write_atomic(
-        markdown,
-        output_path,
-        temp_root,
-        overwrite=args.overwrite,
-    )
-    write_atomic(
-        report_json,
-        report_path,
-        temp_root,
-        overwrite=args.overwrite,
-    )
+        write_atomic(
+            markdown,
+            output_path,
+            temp_root,
+            overwrite=args.overwrite,
+        )
+        write_atomic(
+            report_json,
+            report_path,
+            temp_root,
+            overwrite=args.overwrite,
+        )
+    except (PdfInspectionError, OcrConfigurationError) as exc:
+        logger.error("Falha de entrada ou configuração: %s", exc)
+        return 1
+    except OutputAlreadyExistsError as exc:
+        logger.error("Conflito de saída existente: %s", exc)
+        return 4
+    except (
+        MarkdownValidationError,
+        UnauthorizedIllegibleMarkerError,
+        ReportContractError,
+    ) as exc:
+        logger.error("Falha de validação: %s", exc)
+        return 3
+    except Exception as exc:
+        logger.error("Falha de conversão ou OCR: %s", exc)
+        return 2
     return 0
 
 
