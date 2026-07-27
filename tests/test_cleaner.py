@@ -58,3 +58,78 @@ def test_clean_markdown_is_idempotent(text: str) -> None:
     cleaned = clean_markdown(text)
 
     assert clean_markdown(cleaned) == cleaned
+
+
+def test_clean_markdown_preserves_markdown_table() -> None:
+    table = (
+        "| Processo | Data | Situação |\n"
+        "| --- | --- | --- |\n"
+        "| 0001234-56.2020.8.26.0100 | 26/07/2026 | Ativo |\n"
+        "| 0009876-54.2021.8.26.0200 | 27/07/2026 | Arquivado |"
+    )
+    text = (
+        "\n\n\n"
+        "| Processo | Data | Situação |  \n"
+        "| --- | --- | --- |\n"
+        "| 0001234-56.2020.8.26.0100 | 26/07/2026 | Ativo |\t\n"
+        "| 0009876-54.2021.8.26.0200 | 27/07/2026 | Arquivado |  "
+        "\n\n\n\n"
+    )
+
+    result = clean_markdown(text)
+
+    assert table in result
+
+
+def test_clean_markdown_preserves_ocr_delimiters() -> None:
+    ocr_block = "*[Image OCR]\nTexto capturado por OCR aqui.\n[End OCR]*"
+    text = f"\n\n\n{ocr_block}\n\n\n\n"
+
+    result = clean_markdown(text)
+
+    assert ocr_block in result
+
+
+def test_clean_markdown_preserves_legal_citations() -> None:
+    citation = (
+        "Nos termos do art. 5º, inciso LIV, da Constituição Federal de 1988, "
+        "e do art. 927 do Código Civil (Lei nº 10.406/2002)..."
+    )
+    text = f"\n\n\n{citation}  \n\n\n"
+
+    result = clean_markdown(text)
+
+    assert citation in result
+
+
+def test_clean_markdown_preserves_dates() -> None:
+    dates = ("26/07/2026", "26 de julho de 2026", "2026-07-26")
+    text = f"\n\n\nDatas: {', '.join(dates)}.  \n\n\n"
+
+    result = clean_markdown(text)
+
+    assert all(date in result for date in dates)
+
+
+def test_clean_markdown_preserves_process_numbers() -> None:
+    process_number = "0001234-56.2020.8.26.0100"
+    text = f"\n\n\nProcesso nº {process_number}.  \n\n\n"
+
+    result = clean_markdown(text)
+
+    assert process_number in result
+
+
+def test_clean_markdown_preserves_signature_block() -> None:
+    signature_block = "_______________________\nJoão da Silva\nOAB/SP 123.456"
+    text = (
+        "\n\n\n"
+        "_______________________  \n"
+        "João da Silva\t\n"
+        "OAB/SP 123.456  "
+        "\n\n\n\n"
+    )
+
+    result = clean_markdown(text)
+
+    assert signature_block in result
