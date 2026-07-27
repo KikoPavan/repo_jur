@@ -99,6 +99,31 @@ def test_main_returns_0_for_successful_native_conversion(
     assert (logs_dir / "nativo.report.json").is_file()
 
 
+def test_main_uses_default_gemini_openai_base_url(
+    tmp_path,
+    monkeypatch,
+) -> None:
+    source = tmp_path / "nativo.pdf"
+    _create_native_pdf(source)
+    _configure_directories(monkeypatch, tmp_path)
+    monkeypatch.delenv("GEMINI_BASE_URL", raising=False)
+    captured_kwargs: dict[str, object] = {}
+    real_convert_document = cli.convert_document
+
+    def capture_convert_document(**kwargs):
+        captured_kwargs.update(kwargs)
+        return real_convert_document(**kwargs)
+
+    monkeypatch.setattr(cli, "convert_document", capture_convert_document)
+
+    result = cli.main([str(source)])
+
+    assert result == 0
+    assert captured_kwargs["ocr_base_url"] == (
+        "https://generativelanguage.googleapis.com/v1beta/openai/"
+    )
+
+
 def test_main_returns_4_when_output_exists_without_overwrite(
     tmp_path,
     monkeypatch,

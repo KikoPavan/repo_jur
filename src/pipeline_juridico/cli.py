@@ -18,6 +18,10 @@ from .validator import (
     write_atomic,
 )
 
+GEMINI_OPENAI_BASE_URL = (
+    "https://generativelanguage.googleapis.com/v1beta/openai/"
+)
+
 
 def _sanitize_log_message(
     message: str,
@@ -91,6 +95,10 @@ def main(argv: list[str] | None = None) -> int:
         gemini_api_key = os.environ.get("GEMINI_API_KEY")
         known_secrets = [gemini_api_key] if gemini_api_key else []
         gemini_model = os.environ.get("GEMINI_MODEL")
+        gemini_base_url = os.environ.get(
+            "GEMINI_BASE_URL",
+            GEMINI_OPENAI_BASE_URL,
+        )
         ocr_prompt_file = os.environ.get(
             "OCR_PROMPT_FILE",
             "prompts/ocr_literal_ptbr.txt",
@@ -113,6 +121,7 @@ def main(argv: list[str] | None = None) -> int:
             use_ocr=use_ocr_final,
             ocr_api_key=gemini_api_key,
             ocr_model=gemini_model,
+            ocr_base_url=gemini_base_url,
             ocr_prompt_path=ocr_prompt_file,
             routing_config=routing_config,
             keep_temp=args.keep_temp,
