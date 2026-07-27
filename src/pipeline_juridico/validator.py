@@ -1,7 +1,7 @@
 import re
 
 from .converter import PageBlock
-from .models import Metodo
+from .models import Metodo, ResultadoPagina
 
 
 class MarkdownValidationError(Exception):
@@ -40,6 +40,34 @@ def validate_page_content(
             raise MarkdownValidationError(
                 f"A página {block.number} com método {block.method.value} deveria "
                 "ter conteúdo, mas está vazia."
+            )
+
+
+def validate_markdown_matches_report(
+    markdown: str,
+    pages: list[ResultadoPagina],
+) -> None:
+    markdown_pages = {
+        int(page_number): method
+        for page_number, method in _PAGE_WITH_METHOD_PATTERN.findall(markdown)
+    }
+    report_pages = {page.number: page.method.value for page in pages}
+
+    missing_in_report = sorted(markdown_pages.keys() - report_pages.keys())
+    missing_in_markdown = sorted(report_pages.keys() - markdown_pages.keys())
+    if missing_in_report or missing_in_markdown:
+        raise MarkdownValidationError(
+            "Números de página divergentes: "
+            f"presentes no Markdown e ausentes no relatório: {missing_in_report}; "
+            f"presentes no relatório e ausentes no Markdown: {missing_in_markdown}."
+        )
+
+    for page_number, markdown_method in markdown_pages.items():
+        report_method = report_pages[page_number]
+        if markdown_method != report_method:
+            raise MarkdownValidationError(
+                f"Método divergente na página {page_number}: "
+                f"Markdown={markdown_method}, relatório={report_method}."
             )
 
 

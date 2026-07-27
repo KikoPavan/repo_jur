@@ -1,9 +1,10 @@
 import pytest
 
 from pipeline_juridico.converter import PageBlock, format_page_marker
-from pipeline_juridico.models import Metodo
+from pipeline_juridico.models import Metodo, ResultadoPagina, StatusExecucao
 from pipeline_juridico.validator import (
     MarkdownValidationError,
+    validate_markdown_matches_report,
     validate_page_content,
     validate_page_markers,
 )
@@ -11,6 +12,65 @@ from pipeline_juridico.validator import (
 
 def _page(number: int, method: Metodo = Metodo.texto_nativo) -> str:
     return f"{format_page_marker(number, method)}\n\nConteúdo da página {number}"
+
+
+def _result(number: int, method: Metodo) -> ResultadoPagina:
+    return ResultadoPagina(
+        number=number,
+        method=method,
+        status=StatusExecucao.sucesso,
+        characters=10,
+        duration_ms=5,
+        warnings=[],
+        error=None,
+    )
+
+
+def test_validate_markdown_matches_report_accepts_matching_data():
+    markdown = "\n\n".join(
+        [
+            _page(1, Metodo.texto_nativo),
+            _page(2, Metodo.ocr_integral),
+        ]
+    )
+    pages = [
+        _result(1, Metodo.texto_nativo),
+        _result(2, Metodo.ocr_integral),
+    ]
+
+    validate_markdown_matches_report(markdown, pages)
+
+
+def test_validate_markdown_matches_report_rejects_page_missing_in_report():
+    markdown = "\n\n".join(
+        [
+            _page(1, Metodo.texto_nativo),
+            _page(2, Metodo.ocr_integral),
+        ]
+    )
+    pages = [_result(1, Metodo.texto_nativo)]
+
+    with pytest.raises(MarkdownValidationError):
+        validate_markdown_matches_report(markdown, pages)
+
+
+def test_validate_markdown_matches_report_rejects_page_missing_in_markdown():
+    markdown = _page(1, Metodo.texto_nativo)
+    pages = [
+        _result(1, Metodo.texto_nativo),
+        _result(2, Metodo.ocr_integral),
+    ]
+
+    with pytest.raises(MarkdownValidationError):
+        validate_markdown_matches_report(markdown, pages)
+
+
+def test_validate_markdown_matches_report_rejects_method_mismatch():
+    markdown = _page(1, Metodo.texto_nativo)
+    pages = [_result(1, Metodo.ocr_integral)]
+
+    with pytest.raises(MarkdownValidationError):
+        validate_markdown_matches_report(markdown, pages)
 
 
 def test_validate_page_markers_accepts_valid_sequence():
