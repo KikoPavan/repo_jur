@@ -39,7 +39,7 @@
 - [x] 5.2 Compor blocos na ordem numérica original sem vazamento de contexto entre páginas.
 - [x] 5.3 Implementar limpeza conservadora e idempotente para finais de linha, espaços finais, linhas vazias e quebra final.
 - [x] 5.4 Preservar tabelas Markdown, delimitadores OCR, citações legais, datas, números processuais e assinaturas nos testes de limpeza.
-- [ ] 5.5 Implementar `[[TEXTO ILEGÍVEL]]` somente para saída parcial explicitamente autorizada.
+- [x] 5.5 Implementar `[[TEXTO ILEGÍVEL]]` somente para saída parcial explicitamente autorizada.
 
 ## 6. Validação e saída atômica
 

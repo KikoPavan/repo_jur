@@ -2,7 +2,12 @@ import re
 
 import pytest
 
-from pipeline_juridico.cleaner import clean_markdown
+from pipeline_juridico.cleaner import (
+    ILLEGIBLE_TEXT_MARKER,
+    UnauthorizedIllegibleMarkerError,
+    clean_markdown,
+    ensure_illegible_marker_authorized,
+)
 
 
 def test_clean_markdown_normalizes_line_endings() -> None:
@@ -133,3 +138,34 @@ def test_clean_markdown_preserves_signature_block() -> None:
     result = clean_markdown(text)
 
     assert signature_block in result
+
+
+def test_illegible_text_marker_constant_value() -> None:
+    assert ILLEGIBLE_TEXT_MARKER == "[[TEXTO ILEGÍVEL]]"
+
+
+def test_ensure_illegible_marker_authorized_allows_when_permitted() -> None:
+    text = f"Trecho não reconhecido: {ILLEGIBLE_TEXT_MARKER}"
+
+    ensure_illegible_marker_authorized(text, allow_partial=True)
+
+
+def test_ensure_illegible_marker_authorized_raises_when_not_permitted() -> None:
+    text = f"Trecho não reconhecido: {ILLEGIBLE_TEXT_MARKER}"
+
+    with pytest.raises(UnauthorizedIllegibleMarkerError):
+        ensure_illegible_marker_authorized(text, allow_partial=False)
+
+
+def test_ensure_illegible_marker_authorized_ignores_text_without_marker() -> None:
+    ensure_illegible_marker_authorized(
+        "Todo o conteúdo foi reconhecido.",
+        allow_partial=False,
+    )
+
+
+def test_dollar_variant_is_not_recognized_as_illegible_marker() -> None:
+    ensure_illegible_marker_authorized(
+        "Trecho legado: $$TEXTO ILEGÍVEL$$",
+        allow_partial=False,
+    )
