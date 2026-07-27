@@ -4,6 +4,7 @@ from pipeline_juridico.converter import PageBlock, format_page_marker
 from pipeline_juridico.models import Metodo, ResultadoPagina, StatusExecucao
 from pipeline_juridico.validator import (
     MarkdownValidationError,
+    validate_encoding_and_line_endings,
     validate_markdown_matches_report,
     validate_page_content,
     validate_page_markers,
@@ -24,6 +25,44 @@ def _result(number: int, method: Metodo) -> ResultadoPagina:
         warnings=[],
         error=None,
     )
+
+
+def test_validate_encoding_and_line_endings_accepts_valid_text():
+    text = "Texto válido em português com acentuação: ção, ã, é.\n"
+
+    validate_encoding_and_line_endings(text)
+
+
+def test_validate_encoding_and_line_endings_rejects_carriage_return():
+    text = "Texto com CRLF.\r\n"
+
+    with pytest.raises(MarkdownValidationError):
+        validate_encoding_and_line_endings(text)
+
+
+def test_validate_encoding_and_line_endings_rejects_missing_trailing_newline():
+    text = "Texto sem quebra final"
+
+    with pytest.raises(MarkdownValidationError):
+        validate_encoding_and_line_endings(text)
+
+
+def test_validate_encoding_and_line_endings_rejects_multiple_trailing_newlines():
+    text = "Texto com quebras finais em excesso.\n\n"
+
+    with pytest.raises(MarkdownValidationError):
+        validate_encoding_and_line_endings(text)
+
+
+def test_validate_encoding_and_line_endings_accepts_empty_string():
+    validate_encoding_and_line_endings("")
+
+
+def test_validate_encoding_and_line_endings_rejects_undecodable_surrogate():
+    text = "texto com surrogate: \udcff\n"
+
+    with pytest.raises(MarkdownValidationError):
+        validate_encoding_and_line_endings(text)
 
 
 def test_validate_markdown_matches_report_accepts_matching_data():

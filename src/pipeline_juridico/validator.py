@@ -13,6 +13,26 @@ _PAGE_WITH_METHOD_PATTERN = re.compile(
 )
 
 
+def validate_encoding_and_line_endings(text: str) -> None:
+    try:
+        text.encode("utf-8")
+    except UnicodeEncodeError as exc:
+        raise MarkdownValidationError(
+            "O texto contém caracteres que não podem ser codificados em UTF-8."
+        ) from exc
+
+    if "\r" in text:
+        raise MarkdownValidationError(
+            "Apenas finais de linha LF ('\\n') são permitidos; o texto não pode "
+            "conter CR."
+        )
+
+    if text and (not text.endswith("\n") or text.endswith("\n\n")):
+        raise MarkdownValidationError(
+            "O texto deve terminar com exatamente uma quebra de linha."
+        )
+
+
 def validate_page_content(
     blocks: list[PageBlock],
     strict: bool = True,

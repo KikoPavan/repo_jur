@@ -46,7 +46,7 @@
 - [x] 6.1 Validar quantidade, sequência exata, unicidade dos marcadores e um comentário de método por página.
 - [x] 6.2 Validar presença de conteúdo conforme o estado e rejeitar erros no modo estrito.
 - [x] 6.3 Validar correspondência entre blocos do Markdown e registros de página do JSON.
-- [ ] 6.4 Validar UTF-8, finais de linha LF e quebra de linha final.
+- [x] 6.4 Validar UTF-8, finais de linha LF e quebra de linha final.
 - [ ] 6.5 Implementar gravação temporária e promoção atômica após aprovação de todas as validações.
 - [ ] 6.6 Proteger saída existente salvo quando `--overwrite` for informado.
 - [ ] 6.7 Adicionar testes com injeção de falha comprovando que uma saída válida anterior nunca é corrompida.
