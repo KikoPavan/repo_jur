@@ -1,3 +1,4 @@
+from pathlib import Path
 from types import SimpleNamespace
 
 import fitz
@@ -21,6 +22,14 @@ def _create_native_pdf(path, page_count: int = 2) -> None:
         )
     document.save(path)
     document.close()
+
+
+def _isolate_first_page(source, target) -> None:
+    with fitz.open(source) as source_document:
+        isolated_document = fitz.open()
+        isolated_document.insert_pdf(source_document, from_page=0, to_page=0)
+        isolated_document.save(target)
+        isolated_document.close()
 
 
 def _create_scanned_pdf(path) -> None:
@@ -56,6 +65,27 @@ def test_convert_document_all_native_pages(tmp_path) -> None:
     assert all(
         page.method == Metodo.texto_nativo for page in relatorio.pages
     )
+
+
+def test_convert_document_preserves_native_label_value_reading_order(
+    tmp_path,
+) -> None:
+    source = tmp_path / "rotulos-valores.pdf"
+    corpus_pdf = (
+        Path(__file__).parents[1] / "input" / "AINTARESP_1462304-PA.pdf"
+    )
+    _isolate_first_page(corpus_pdf, source)
+
+    markdown, relatorio = convert_document(
+        pdf_path=source,
+        output_path=tmp_path / "saida.md",
+        temp_root=tmp_path / "temp",
+        use_ocr=False,
+    )
+
+    assert relatorio.pages[0].method == Metodo.texto_nativo
+    assert "RELATOR\n: MINISTRO GURGEL DE FARIA\nAGRAVANTE" in markdown
+    assert "AGRAVANTE\n: NORTE ENERGIA S.A.\nADVOGADOS" in markdown
 
 
 def test_convert_document_with_ocr_page_success(

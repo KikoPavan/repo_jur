@@ -1,8 +1,10 @@
 import time
 import uuid
+from collections import Counter
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
+import re
 
 import fitz
 
@@ -55,6 +57,41 @@ def compose_document(blocks: list[PageBlock]) -> str:
     return "\n\n".join(formatted_blocks)
 
 
+def _reading_order_tokens(text: str) -> list[str]:
+    return re.findall(r"\w+", text.casefold(), flags=re.UNICODE)
+
+
+def _has_label_value_block(text: str) -> bool:
+    lines = [line.strip() for line in text.splitlines() if line.strip()]
+    pairs = sum(
+        line.isupper()
+        and len(line.split()) <= 4
+        and following_line.startswith(":")
+        for line, following_line in zip(lines, lines[1:])
+    )
+    return pairs >= 2
+
+
+def _has_native_reading_order_defect(
+    native_content: str,
+    reference_content: str,
+) -> bool:
+    native_tokens = _reading_order_tokens(native_content)
+    reference_tokens = _reading_order_tokens(reference_content)
+    native_counts = Counter(native_tokens)
+    reference_counts = Counter(reference_tokens)
+    common_token_count = sum(
+        (native_counts & reference_counts).values()
+    )
+    largest_token_count = max(len(native_tokens), len(reference_tokens))
+    return (
+        bool(native_tokens)
+        and _has_label_value_block(reference_content)
+        and native_tokens != reference_tokens
+        and common_token_count / largest_token_count >= 0.98
+    )
+
+
 def convert_document(
     pdf_path: str | Path,
     *,
@@ -96,6 +133,11 @@ def convert_document(
             try:
                 page = doc[0]
                 method = route_page(page, routing_config)
+                reference_content = (
+                    page.get_text("text")
+                    if method is Metodo.texto_nativo
+                    else ""
+                )
             finally:
                 doc.close()
 
@@ -107,6 +149,11 @@ def convert_document(
             elif method is Metodo.texto_nativo:
                 result = native_engine.convert(page_path)
                 content = result.text_content or ""
+                if _has_native_reading_order_defect(
+                    content,
+                    reference_content,
+                ):
+                    content = reference_content
             elif not use_ocr:
                 method = Metodo.erro
                 warnings.append(
