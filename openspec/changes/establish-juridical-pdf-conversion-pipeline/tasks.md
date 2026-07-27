@@ -61,7 +61,7 @@
 
 ## 8. CLI e comportamento operacional
 
-- [ ] 8.1 Implementar o argumento posicional PDF e as opções `--overwrite`, `--allow-partial`, `--no-ocr`, `--keep-temp` e `--log-level`.
+- [x] 8.1 Implementar o argumento posicional PDF e as opções `--overwrite`, `--allow-partial`, `--no-ocr`, `--keep-temp` e `--log-level`.
 - [ ] 8.2 Implementar os códigos de saída documentados para entrada, conversão, validação e conflito de saída.
 - [ ] 8.3 Garantir que logs nunca exponham chaves, tokens ou conteúdo integral do documento.
 - [ ] 8.4 Adicionar testes de integração da CLI para sucesso estrito, falha estrita, saída parcial e proteção de sobrescrita.

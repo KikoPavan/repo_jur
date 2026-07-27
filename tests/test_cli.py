@@ -1,3 +1,5 @@
+import pytest
+
 from pipeline_juridico import cli, __version__
 
 
@@ -10,4 +12,5 @@ def test_main_exists_and_callable() -> None:
 
 
 def test_main_runs_without_error() -> None:
-    cli.main()
+    with pytest.raises(SystemExit):
+        cli.main([])
