@@ -2,6 +2,7 @@ from pathlib import Path
 
 import pytest
 
+import pipeline_juridico.validator as validator_module
 from pipeline_juridico.converter import PageBlock, format_page_marker
 from pipeline_juridico.models import Metodo, ResultadoPagina, StatusExecucao
 from pipeline_juridico.validator import (
@@ -268,3 +269,63 @@ def test_write_atomic_overwrites_when_overwrite_true(tmp_path):
     )
 
     assert destination.read_text(encoding="utf-8") == "conteúdo novo\n"
+
+
+def test_write_atomic_preserves_existing_output_when_write_fails(tmp_path):
+    previous_content = "conteúdo válido anterior\n"
+    destination = tmp_path / "documento.md"
+    temp_dir = tmp_path / "temp"
+    destination.write_text(previous_content, encoding="utf-8")
+
+    with pytest.raises(UnicodeEncodeError):
+        write_atomic(
+            "texto com surrogate: \udcff\n",
+            destination,
+            temp_dir,
+            overwrite=True,
+        )
+
+    assert destination.read_text(encoding="utf-8") == previous_content
+    assert list(temp_dir.iterdir()) == []
+
+
+def test_write_atomic_preserves_existing_output_when_replace_fails(
+    tmp_path,
+    monkeypatch,
+):
+    previous_content = "conteúdo válido anterior\n"
+    destination = tmp_path / "documento.md"
+    temp_dir = tmp_path / "temp"
+    destination.write_text(previous_content, encoding="utf-8")
+
+    def fail_replace(*args, **kwargs):
+        raise OSError("falha simulada de renomeação")
+
+    monkeypatch.setattr(validator_module.os, "replace", fail_replace)
+
+    with pytest.raises(OSError, match="falha simulada de renomeação"):
+        write_atomic(
+            "conteúdo novo válido\n",
+            destination,
+            temp_dir,
+            overwrite=True,
+        )
+
+    assert destination.read_text(encoding="utf-8") == previous_content
+    assert list(temp_dir.iterdir()) == []
+
+
+def test_write_atomic_does_not_create_destination_on_failure_when_no_prior_output(
+    tmp_path,
+):
+    destination = tmp_path / "documento.md"
+    temp_dir = tmp_path / "temp"
+
+    with pytest.raises(UnicodeEncodeError):
+        write_atomic(
+            "texto com surrogate: \udcff\n",
+            destination,
+            temp_dir,
+        )
+
+    assert not destination.exists()
