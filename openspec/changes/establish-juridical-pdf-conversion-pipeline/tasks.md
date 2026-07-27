@@ -57,7 +57,7 @@
 - [x] 7.2 Registrar em runtime as versões instaladas e o SHA-256 do prompt.
 - [x] 7.3 Registrar quais páginas foram transmitidas ao OCR sem persistir o conteúdo das páginas.
 - [x] 7.4 Implementar os estados finais `sucesso`, `incompleto` e `falha`.
-- [ ] 7.5 Adicionar JSON Schema ou testes de contrato equivalentes para campos obrigatórios e tipos de dados.
+- [x] 7.5 Adicionar JSON Schema ou testes de contrato equivalentes para campos obrigatórios e tipos de dados.
 
 ## 8. CLI e comportamento operacional
 

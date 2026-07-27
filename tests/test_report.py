@@ -1,6 +1,8 @@
 import json
 from dataclasses import asdict
 
+import pytest
+
 from pipeline_juridico.hashing import sha256_file
 from pipeline_juridico.models import (
     FonteInfo,
@@ -14,12 +16,14 @@ from pipeline_juridico.models import (
     TimingInfo,
 )
 from pipeline_juridico.report import (
+    ReportContractError,
     build_ocr_info,
     build_page_result,
     build_report_json,
     build_runtime_info,
     determine_final_status,
     ocr_page_numbers,
+    validate_report_contract,
 )
 
 
@@ -108,6 +112,65 @@ def test_build_report_json_page_record_has_expected_fields():
         "warnings": [],
         "error": None,
     }
+
+
+def test_validate_report_contract_accepts_valid_report():
+    data = json.loads(build_report_json(_complete_report()))
+
+    validate_report_contract(data)
+
+
+@pytest.mark.parametrize(
+    "field",
+    [
+        "schema_version",
+        "run_id",
+        "status",
+        "source",
+        "output",
+        "runtime",
+        "ocr",
+        "timing",
+        "pages",
+    ],
+)
+def test_validate_report_contract_rejects_missing_top_level_field(field):
+    data = json.loads(build_report_json(_complete_report()))
+    del data[field]
+
+    with pytest.raises(ReportContractError, match=field):
+        validate_report_contract(data)
+
+
+def test_validate_report_contract_rejects_invalid_status():
+    data = json.loads(build_report_json(_complete_report()))
+    data["status"] = "invalido"
+
+    with pytest.raises(ReportContractError, match="status"):
+        validate_report_contract(data)
+
+
+def test_validate_report_contract_rejects_invalid_page_method():
+    data = json.loads(build_report_json(_complete_report()))
+    data["pages"][0]["method"] = "metodo_que_nao_existe"
+
+    with pytest.raises(ReportContractError, match=r"pages\[0\]\.method"):
+        validate_report_contract(data)
+
+
+def test_validate_report_contract_rejects_wrong_field_type():
+    data = json.loads(build_report_json(_complete_report()))
+    data["source"]["size_bytes"] = "1000"
+
+    with pytest.raises(ReportContractError, match=r"source\.size_bytes"):
+        validate_report_contract(data)
+
+
+def test_validate_report_contract_accepts_none_page_error():
+    data = json.loads(build_report_json(_complete_report()))
+    data["pages"][0]["error"] = None
+
+    validate_report_contract(data)
 
 
 def test_build_runtime_info_returns_runtime_info_instance():
