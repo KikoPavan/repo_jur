@@ -330,7 +330,7 @@ Opções mínimas:
 
 ```text
 --overwrite       permite substituir saída existente após validação
---allow-partial   permite publicar páginas com $$TEXTO ILEGÍVEL$$
+--allow-partial   permite publicar páginas com [[TEXTO ILEGÍVEL]]
 --no-ocr          proíbe qualquer chamada externa de OCR
 --keep-temp       preserva temporários para diagnóstico
 --log-level       define nível de log técnico

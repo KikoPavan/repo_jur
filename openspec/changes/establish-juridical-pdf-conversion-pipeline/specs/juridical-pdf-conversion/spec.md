@@ -160,7 +160,7 @@ O sistema SHALL operar em modo estrito por padrão e SHALL publicar saída parci
 #### Scenario: Saída parcial autorizada
 
 - **WHEN** uma ou mais páginas falham e `--allow-partial` foi informado
-- **THEN** o sistema publica o Markdown com `$$TEXTO ILEGÍVEL$$` somente nas páginas afetadas
+- **THEN** o sistema publica o Markdown com `[[TEXTO ILEGÍVEL]]` somente nas páginas afetadas
 - **AND** o relatório recebe status `incompleto`
 - **AND** lista explicitamente todas as páginas afetadas
 

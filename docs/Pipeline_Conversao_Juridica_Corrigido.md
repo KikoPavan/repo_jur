@@ -174,7 +174,7 @@ Modo padrão: estrito.
 
 Modo parcial: somente com `--allow-partial`.
 
-- Páginas em erro recebem `$$TEXTO ILEGÍVEL$$`.
+- Páginas em erro recebem `[[TEXTO ILEGÍVEL]]`.
 - O relatório recebe status `incompleto`.
 - Todas as páginas afetadas são listadas.
 
