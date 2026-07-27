@@ -19,6 +19,24 @@ from .validator import (
 )
 
 
+def _sanitize_log_message(
+    message: str,
+    secrets: list[str],
+    max_length: int = 500,
+) -> str:
+    for secret in secrets:
+        if secret:
+            message = message.replace(secret, "***REDACTED***")
+
+    if len(message) > max_length:
+        message = (
+            message[:max_length]
+            + " ... [mensagem truncada por segurança]"
+        )
+
+    return message
+
+
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description="Converte um PDF jurídico em Markdown e gera seu relatório."
@@ -64,12 +82,14 @@ def main(argv: list[str] | None = None) -> int:
 
     logging.basicConfig(level=args.log_level)
     logger = logging.getLogger(__name__)
+    known_secrets: list[str] = []
 
     try:
         output_dir = os.environ.get("OUTPUT_DIR", "output")
         logs_dir = os.environ.get("LOGS_DIR", "logs")
         temp_root = os.environ.get("TEMP_DIR", "var/tmp")
         gemini_api_key = os.environ.get("GEMINI_API_KEY")
+        known_secrets = [gemini_api_key] if gemini_api_key else []
         gemini_model = os.environ.get("GEMINI_MODEL")
         ocr_prompt_file = os.environ.get(
             "OCR_PROMPT_FILE",
@@ -113,20 +133,32 @@ def main(argv: list[str] | None = None) -> int:
             overwrite=args.overwrite,
         )
     except (PdfInspectionError, OcrConfigurationError) as exc:
-        logger.error("Falha de entrada ou configuração: %s", exc)
+        logger.error(
+            "Falha de entrada ou configuração: %s",
+            _sanitize_log_message(str(exc), known_secrets),
+        )
         return 1
     except OutputAlreadyExistsError as exc:
-        logger.error("Conflito de saída existente: %s", exc)
+        logger.error(
+            "Conflito de saída existente: %s",
+            _sanitize_log_message(str(exc), known_secrets),
+        )
         return 4
     except (
         MarkdownValidationError,
         UnauthorizedIllegibleMarkerError,
         ReportContractError,
     ) as exc:
-        logger.error("Falha de validação: %s", exc)
+        logger.error(
+            "Falha de validação: %s",
+            _sanitize_log_message(str(exc), known_secrets),
+        )
         return 3
     except Exception as exc:
-        logger.error("Falha de conversão ou OCR: %s", exc)
+        logger.error(
+            "Falha de conversão ou OCR: %s",
+            _sanitize_log_message(str(exc), known_secrets),
+        )
         return 2
     return 0
 

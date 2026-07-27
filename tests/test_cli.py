@@ -1,3 +1,4 @@
+import logging
 from pathlib import Path
 
 import fitz
@@ -43,6 +44,29 @@ def test_version() -> None:
 
 def test_main_exists_and_callable() -> None:
     assert callable(cli.main)
+
+
+def test_sanitize_log_message_redacts_secret() -> None:
+    result = cli._sanitize_log_message(
+        "Erro: chave abc123secreta inválida",
+        ["abc123secreta"],
+    )
+
+    assert "abc123secreta" not in result
+    assert "***REDACTED***" in result
+
+
+def test_sanitize_log_message_truncates_long_messages() -> None:
+    suffix = " ... [mensagem truncada por segurança]"
+
+    result = cli._sanitize_log_message("a" * 1000, [], max_length=500)
+
+    assert len(result) <= 500 + len(suffix)
+    assert "[mensagem truncada por segurança]" in result
+
+
+def test_sanitize_log_message_handles_empty_secrets_list() -> None:
+    assert cli._sanitize_log_message("mensagem normal", []) == "mensagem normal"
 
 
 def test_main_runs_without_error() -> None:
@@ -118,3 +142,25 @@ def test_main_returns_2_for_unexpected_conversion_error(
     result = cli.main([str(tmp_path / "qualquer.pdf")])
 
     assert result == 2
+
+
+def test_main_never_logs_api_key_on_generic_failure(
+    tmp_path,
+    monkeypatch,
+    caplog,
+) -> None:
+    api_key = "chave-secreta-de-teste-12345"
+    monkeypatch.setenv("GEMINI_API_KEY", api_key)
+    _configure_directories(monkeypatch, tmp_path)
+    caplog.set_level(logging.ERROR)
+
+    def raise_error_with_secret(**_kwargs) -> None:
+        raise RuntimeError(f"Falha ao autenticar com a chave {api_key}")
+
+    monkeypatch.setattr(cli, "convert_document", raise_error_with_secret)
+
+    result = cli.main([str(tmp_path / "qualquer.pdf")])
+
+    assert result == 2
+    assert api_key not in caplog.text
+    assert "***REDACTED***" in caplog.text
