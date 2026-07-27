@@ -121,14 +121,21 @@ def convert_document(
                         base_url=ocr_base_url,
                         prompt=prompt_text,
                     )
-                result = ocr_engine.convert(page_path)
-                raw_content = result.text_content or ""
-                method, evidence_warnings = verify_ocr_evidence(
-                    raw_content,
-                    method,
-                )
-                warnings.extend(evidence_warnings)
-                content = "" if method is Metodo.erro else raw_content
+                try:
+                    result = ocr_engine.convert(page_path)
+                except Exception:
+                    method = Metodo.erro
+                    warnings.append(
+                        "Falha técnica durante o processamento de OCR."
+                    )
+                else:
+                    raw_content = result.text_content or ""
+                    method, evidence_warnings = verify_ocr_evidence(
+                        raw_content,
+                        method,
+                    )
+                    warnings.extend(evidence_warnings)
+                    content = "" if method is Metodo.erro else raw_content
 
             if method is Metodo.erro:
                 content = ILLEGIBLE_TEXT_MARKER if allow_partial else ""

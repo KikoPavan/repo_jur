@@ -68,13 +68,13 @@
 
 ## 9. Testes de aceite
 
-- [ ] 9.1 Converter um PDF jurídico totalmente digital e verificar que nenhuma chamada OCR ocorra.
-- [ ] 9.2 Converter um PDF jurídico totalmente escaneado e verificar evidência OCR em todas as páginas não vazias.
-- [ ] 9.3 Converter um PDF jurídico misto e verificar o registro correto de páginas nativas, híbridas, escaneadas e vazias.
-- [ ] 9.4 Verificar que cada página de origem possui exatamente um bloco Markdown e um registro no relatório.
-- [ ] 9.5 Verificar que falha de OCR nunca produz status global `sucesso`.
-- [ ] 9.6 Verificar presença dos hashes da origem e da saída e das versões dos pacotes no relatório.
-- [ ] 9.7 Comparar conteúdo jurídico representativo com a origem para datas, números processuais, citações, títulos, tabelas e assinaturas.
+- [x] 9.1 Converter um PDF jurídico totalmente digital e verificar que nenhuma chamada OCR ocorra.
+- [x] 9.2 Converter um PDF jurídico totalmente escaneado e verificar evidência OCR em todas as páginas não vazias.
+- [x] 9.3 Converter um PDF jurídico misto e verificar o registro correto de páginas nativas, híbridas, escaneadas e vazias.
+- [x] 9.4 Verificar que cada página de origem possui exatamente um bloco Markdown e um registro no relatório.
+- [x] 9.5 Verificar que falha de OCR nunca produz status global `sucesso`.
+- [x] 9.6 Verificar presença dos hashes da origem e da saída e das versões dos pacotes no relatório.
+- [x] 9.7 Comparar conteúdo jurídico representativo com a origem para datas, números processuais, citações, títulos, tabelas e assinaturas.
 
 ## 10. Documentação e conclusão OpenSpec
 
