@@ -72,23 +72,83 @@ def _has_label_value_block(text: str) -> bool:
     return pairs >= 2
 
 
+def _lexical_overlap(left: str, right: str) -> float:
+    left_tokens = _reading_order_tokens(left)
+    right_tokens = _reading_order_tokens(right)
+    largest_token_count = max(len(left_tokens), len(right_tokens))
+    if not largest_token_count:
+        return 0.0
+    common_token_count = sum(
+        (Counter(left_tokens) & Counter(right_tokens)).values()
+    )
+    return common_token_count / largest_token_count
+
+
 def _has_native_reading_order_defect(
     native_content: str,
     reference_content: str,
 ) -> bool:
     native_tokens = _reading_order_tokens(native_content)
     reference_tokens = _reading_order_tokens(reference_content)
-    native_counts = Counter(native_tokens)
-    reference_counts = Counter(reference_tokens)
-    common_token_count = sum(
-        (native_counts & reference_counts).values()
-    )
-    largest_token_count = max(len(native_tokens), len(reference_tokens))
     return (
         bool(native_tokens)
         and _has_label_value_block(reference_content)
         and native_tokens != reference_tokens
-        and common_token_count / largest_token_count >= 0.98
+        and _lexical_overlap(native_content, reference_content) >= 0.98
+    )
+
+
+def _markdown_table_cells(line: str) -> list[str]:
+    return [cell.strip() for cell in line.strip().strip("|").split("|")]
+
+
+def _is_markdown_separator(cells: list[str]) -> bool:
+    return bool(cells) and all(
+        re.fullmatch(r":?-{3,}:?", cell) for cell in cells
+    )
+
+
+def _has_fabricated_table_structure(content: str) -> bool:
+    lines = content.splitlines()
+    index = 0
+    while index < len(lines):
+        if not lines[index].lstrip().startswith("|"):
+            index += 1
+            continue
+
+        table_lines: list[str] = []
+        while index < len(lines) and lines[index].lstrip().startswith("|"):
+            table_lines.append(lines[index])
+            index += 1
+
+        rows = [_markdown_table_cells(line) for line in table_lines]
+        if len(rows) < 2 or not _is_markdown_separator(rows[1]):
+            continue
+        column_count = len(rows[0])
+        if column_count < 2 or any(
+            len(row) != column_count for row in rows
+        ):
+            continue
+
+        data_rows = rows[2:]
+        single_row_table = not data_rows
+        disguised_single_column = bool(data_rows) and all(
+            row[0] and all(not cell for cell in row[1:])
+            for row in data_rows
+        )
+        if single_row_table or disguised_single_column:
+            return True
+
+    return False
+
+
+def _has_fabricated_native_table(
+    native_content: str,
+    reference_content: str,
+) -> bool:
+    return (
+        _has_fabricated_table_structure(native_content)
+        and _lexical_overlap(native_content, reference_content) >= 0.98
     )
 
 
@@ -150,6 +210,9 @@ def convert_document(
                 result = native_engine.convert(page_path)
                 content = result.text_content or ""
                 if _has_native_reading_order_defect(
+                    content,
+                    reference_content,
+                ) or _has_fabricated_native_table(
                     content,
                     reference_content,
                 ):

@@ -88,6 +88,27 @@ def test_convert_document_preserves_native_label_value_reading_order(
     assert "AGRAVANTE\n: NORTE ENERGIA S.A.\nADVOGADOS" in markdown
 
 
+def test_convert_document_replaces_fabricated_native_tables(
+    tmp_path,
+) -> None:
+    source = tmp_path / "tabelas-fabricadas.pdf"
+    corpus_pdf = (
+        Path(__file__).parents[1] / "input" / "REsp_1704551-SP.pdf"
+    )
+    _isolate_first_page(corpus_pdf, source)
+
+    markdown, relatorio = convert_document(
+        pdf_path=source,
+        output_path=tmp_path / "saida.md",
+        temp_root=tmp_path / "temp",
+        use_ocr=False,
+    )
+
+    assert not any(line.startswith("|") for line in markdown.splitlines())
+    assert "RELATORA\n: MINISTRA NANCY ANDRIGHI" in markdown
+    assert relatorio.pages[0].method == Metodo.texto_nativo
+
+
 def test_convert_document_with_ocr_page_success(
     tmp_path,
     monkeypatch,
