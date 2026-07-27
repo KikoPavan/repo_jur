@@ -109,6 +109,30 @@ def test_convert_document_replaces_fabricated_native_tables(
     assert relatorio.pages[0].method == Metodo.texto_nativo
 
 
+def test_convert_inf0024e_first_page_uses_clean_native_output(tmp_path) -> None:
+    source = tmp_path / "inf0024e-pagina-1.pdf"
+    corpus_pdf = Path(__file__).parents[1] / "input" / "Inf0024E.pdf"
+    _isolate_first_page(corpus_pdf, source)
+
+    markdown, relatorio = convert_document(
+        pdf_path=source,
+        output_path=tmp_path / "saida.md",
+        temp_root=tmp_path / "temp",
+        use_ocr=False,
+    )
+
+    assert relatorio.pages[0].method == Metodo.texto_nativo
+    normalized_lines = "\n".join(
+        " ".join(line.split()) for line in markdown.splitlines() if line.strip()
+    )
+    normalized_text = " ".join(normalized_lines.split())
+    assert "Ausência de inércia do Ministério Público" in normalized_text
+    assert "PROCESSO\nProcesso em segredo" in normalized_lines
+    assert "RAMO DO DIREITO\nDIREITO PENAL" in normalized_lines
+    assert "TEMA\nAção penal privada" in normalized_lines
+    assert not any("[Image OCR]" in line for line in markdown.splitlines())
+
+
 def test_convert_document_with_ocr_page_success(
     tmp_path,
     monkeypatch,

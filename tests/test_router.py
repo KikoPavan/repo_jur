@@ -119,6 +119,31 @@ def test_route_page_hybrid() -> None:
     doc.close()
 
 
+def test_route_page_abundant_multiblock_text_with_small_images_stays_native() -> None:
+    doc = fitz.open()
+    page = doc.new_page()
+    for index in range(6):
+        page.insert_text(
+            (50, 80 + index * 45),
+            f"Bloco jurídico {index}: " + "conteúdo nativo abundante " * 12,
+        )
+
+    pix = fitz.Pixmap(fitz.csRGB, fitz.IRect(0, 0, 100, 100))
+    pix.set_rect(pix.irect, (255, 0, 0))
+    page.insert_image(fitz.Rect(20, 400, 180, 560), pixmap=pix)
+    page.insert_image(fitz.Rect(200, 400, 360, 560), pixmap=pix)
+    page.insert_image(fitz.Rect(380, 400, 540, 560), pixmap=pix)
+
+    native = inspect_native_text(page)
+    raster = inspect_raster_content(page)
+    assert native.char_count >= 500
+    assert native.block_count >= 3
+    assert raster.total_image_area_ratio >= 0.15
+    assert raster.largest_image_area_ratio < 0.70
+    assert route_page(page) == Metodo.texto_nativo
+    doc.close()
+
+
 def test_route_page_short_native_text_is_vazia() -> None:
     doc = fitz.open()
     page = doc.new_page()

@@ -68,11 +68,21 @@ def route_page(
         raster.total_image_area_ratio >= config.significant_image_min_ratio
     )
     has_raster_signal = has_full_page_image or has_significant_raster
+    # Ten times the native minimum (500 chars with the default config) plus
+    # three text blocks distinguishes substantial page text from a long
+    # caption or isolated label. In that case, summed decorative images must
+    # not promote the page to hybrid; a full-page image still always does.
+    has_clearly_sufficient_native = (
+        native.char_count >= config.native_min_text_chars * 10
+        and native.block_count >= 3
+    )
 
     if not has_native and not has_raster_signal:
         return Metodo.vazia
     if has_native and not has_raster_signal:
         return Metodo.texto_nativo
     if has_native and has_raster_signal:
+        if has_clearly_sufficient_native and not has_full_page_image:
+            return Metodo.texto_nativo
         return Metodo.hibrido
     return Metodo.ocr_integral
