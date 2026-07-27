@@ -1,4 +1,5 @@
 import json
+from dataclasses import asdict
 
 from pipeline_juridico.hashing import sha256_file
 from pipeline_juridico.models import (
@@ -14,8 +15,10 @@ from pipeline_juridico.models import (
 )
 from pipeline_juridico.report import (
     build_ocr_info,
+    build_page_result,
     build_report_json,
     build_runtime_info,
+    ocr_page_numbers,
 )
 
 
@@ -132,3 +135,53 @@ def test_build_ocr_info_computes_prompt_hash(tmp_path):
     assert result.provider == "openai-compatible"
     assert result.model == "gemini-2.0-flash"
     assert result.prompt_sha256 == sha256_file(prompt_path)
+
+
+def test_build_page_result_records_character_count_not_content():
+    content = "Segredo jurídico confidencial de 42 caracteres."
+
+    result = build_page_result(
+        number=1,
+        method=Metodo.ocr_integral,
+        status=StatusExecucao.sucesso,
+        content=content,
+        duration_ms=100,
+    )
+
+    assert result.characters == 47
+    assert not hasattr(result, "content")
+    assert content not in str(asdict(result))
+
+
+def test_build_page_result_defaults_warnings_to_empty_list():
+    result = build_page_result(
+        number=1,
+        method=Metodo.ocr_integral,
+        status=StatusExecucao.sucesso,
+        content="Texto convertido.",
+        duration_ms=100,
+    )
+
+    assert result.warnings == []
+    assert result.error is None
+
+
+def test_ocr_page_numbers_filters_correctly():
+    pages = [
+        ResultadoPagina(1, Metodo.texto_nativo, StatusExecucao.sucesso, 10, 10),
+        ResultadoPagina(2, Metodo.ocr_integral, StatusExecucao.sucesso, 20, 20),
+        ResultadoPagina(3, Metodo.vazia, StatusExecucao.sucesso, 0, 30),
+        ResultadoPagina(4, Metodo.hibrido, StatusExecucao.sucesso, 40, 40),
+        ResultadoPagina(5, Metodo.erro, StatusExecucao.falha, 0, 50),
+    ]
+
+    assert ocr_page_numbers(pages) == [2, 4]
+
+
+def test_ocr_page_numbers_empty_when_no_ocr_pages():
+    pages = [
+        ResultadoPagina(1, Metodo.texto_nativo, StatusExecucao.sucesso, 10, 10),
+        ResultadoPagina(2, Metodo.vazia, StatusExecucao.sucesso, 0, 20),
+    ]
+
+    assert ocr_page_numbers(pages) == []
