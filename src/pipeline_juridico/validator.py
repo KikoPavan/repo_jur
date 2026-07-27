@@ -1,5 +1,8 @@
 import re
 
+from .converter import PageBlock
+from .models import Metodo
+
 
 class MarkdownValidationError(Exception):
     pass
@@ -8,6 +11,36 @@ class MarkdownValidationError(Exception):
 _PAGE_WITH_METHOD_PATTERN = re.compile(
     r"\[\[Pág\. (\d+)\]\]\n<!-- método: (\w+) -->"
 )
+
+
+def validate_page_content(
+    blocks: list[PageBlock],
+    strict: bool = True,
+) -> None:
+    for block in blocks:
+        if block.method is Metodo.erro:
+            if strict:
+                raise MarkdownValidationError(
+                    f"A página {block.number} está em erro; páginas em erro não são "
+                    "permitidas no modo estrito. Use --allow-partial para autorizar "
+                    "saída parcial."
+                )
+            continue
+
+        has_content = bool(block.content.strip())
+        if block.method is Metodo.vazia:
+            if has_content:
+                raise MarkdownValidationError(
+                    f"A página {block.number} está marcada como vazia, mas contém "
+                    "conteúdo."
+                )
+            continue
+
+        if not has_content:
+            raise MarkdownValidationError(
+                f"A página {block.number} com método {block.method.value} deveria "
+                "ter conteúdo, mas está vazia."
+            )
 
 
 def validate_page_markers(markdown: str, expected_page_count: int) -> None:

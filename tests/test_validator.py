@@ -1,9 +1,10 @@
 import pytest
 
-from pipeline_juridico.converter import format_page_marker
+from pipeline_juridico.converter import PageBlock, format_page_marker
 from pipeline_juridico.models import Metodo
 from pipeline_juridico.validator import (
     MarkdownValidationError,
+    validate_page_content,
     validate_page_markers,
 )
 
@@ -63,3 +64,51 @@ def test_validate_page_markers_rejects_marker_without_method_comment():
 
     with pytest.raises(MarkdownValidationError):
         validate_page_markers(markdown, 3)
+
+
+def test_validate_page_content_accepts_valid_blocks():
+    blocks = [
+        PageBlock(1, Metodo.texto_nativo, "Conteúdo nativo"),
+        PageBlock(2, Metodo.ocr_integral, "Conteúdo OCR"),
+        PageBlock(3, Metodo.hibrido, "Conteúdo híbrido"),
+        PageBlock(4, Metodo.vazia, ""),
+    ]
+
+    validate_page_content(blocks)
+
+
+def test_validate_page_content_rejects_erro_in_strict_mode():
+    blocks = [PageBlock(1, Metodo.erro, "")]
+
+    with pytest.raises(MarkdownValidationError):
+        validate_page_content(blocks, strict=True)
+
+
+def test_validate_page_content_allows_erro_when_not_strict():
+    blocks = [PageBlock(1, Metodo.erro, "")]
+
+    validate_page_content(blocks, strict=False)
+
+
+def test_validate_page_content_rejects_vazia_with_content():
+    blocks = [
+        PageBlock(1, Metodo.vazia, "Texto que não deveria estar aqui"),
+    ]
+
+    with pytest.raises(MarkdownValidationError):
+        validate_page_content(blocks)
+
+
+def test_validate_page_content_rejects_texto_nativo_without_content():
+    blocks = [PageBlock(1, Metodo.texto_nativo, "   ")]
+
+    with pytest.raises(MarkdownValidationError):
+        validate_page_content(blocks)
+
+
+@pytest.mark.parametrize("method", [Metodo.ocr_integral, Metodo.hibrido])
+def test_validate_page_content_rejects_ocr_methods_without_content(method):
+    blocks = [PageBlock(1, method, "   ")]
+
+    with pytest.raises(MarkdownValidationError):
+        validate_page_content(blocks)
