@@ -783,6 +783,22 @@ def test_normalize_legal_symbols_normalizes_law_number() -> None:
     assert "Lei nº 8.069, de 13 de julho de 1990" in result
 
 
+def test_normalize_legal_symbols_removes_space_in_law_number_symbol() -> None:
+    content = "Revogado pela Lei n º 13.105, de 2015"
+
+    result = normalize_legal_symbols(content)
+
+    assert "Lei nº 13.105" in result
+
+
+def test_normalize_legal_symbols_normalizes_day_of_month_ordinal() -> None:
+    content = "de 1 o de janeiro de 1916"
+
+    result = normalize_legal_symbols(content)
+
+    assert "de 1º de janeiro de 1916" in result
+
+
 def test_normalize_legal_symbols_normalizes_named_paragraph_ordinal() -> None:
     content = "No caso do parágrafo 2 o , reverterão..."
 
@@ -799,12 +815,24 @@ def test_normalize_legal_symbols_preserves_unanchored_office_ordinal() -> None:
     assert result == content
 
 
-def test_normalize_legal_symbols_preserves_unanchored_historical_ordinals() -> None:
-    content = (
-        "...consideram-se feitas às disposições correspondentes deste Código. "
-        "Brasília, 10 de janeiro de 2002; 181 o da Independência e "
-        "114 o da República."
-    )
+def test_normalize_legal_symbols_normalizes_promulgation_ordinals() -> None:
+    content = "181 o da Independência e 114 o da República"
+
+    result = normalize_legal_symbols(content)
+
+    assert "181º da Independência e 114º da República" in result
+
+
+def test_normalize_legal_symbols_normalizes_split_year_in_date() -> None:
+    content = "de 1 o de janeiro de 191 6, poderá"
+
+    result = normalize_legal_symbols(content)
+
+    assert "de 1º de janeiro de 1916, poderá" in result
+
+
+def test_normalize_legal_symbols_preserves_split_number_outside_date() -> None:
+    content = "O identificador 191 6 permanece separado."
 
     result = normalize_legal_symbols(content)
 

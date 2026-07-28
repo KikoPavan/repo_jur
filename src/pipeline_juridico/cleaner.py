@@ -281,6 +281,31 @@ def normalize_legal_symbols(content: str) -> str:
         r"\1º",
         content,
     )
+    months = (
+        r"janeiro|fevereiro|março|abril|maio|junho|julho|agosto|"
+        r"setembro|outubro|novembro|dezembro"
+    )
+    content = re.sub(r"\b(Lei\s+n)\s+º\b", r"\1º", content)
+    content = re.sub(
+        rf"\b(\d+)\s+o(\s+de\s+(?:{months})\b)",
+        r"\1º\2",
+        content,
+    )
+    content = re.sub(
+        r"\b(\d+)\s+o(\s+da\s+Independência\b)",
+        r"\1º\2",
+        content,
+    )
+    content = re.sub(
+        r"\b(\d+)\s+o(\s+da\s+República\b)",
+        r"\1º\2",
+        content,
+    )
+    content = re.sub(
+        rf"(de\s+(?:{months})\s+de\s+)(\d{{3}})\s+(\d)\b",
+        r"\1\2\3",
+        content,
+    )
     return content
 
 
