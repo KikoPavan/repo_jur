@@ -34,7 +34,7 @@
 
 ## 5. Índice final
 
-- [ ] 5.1 Localizar no corpus (provavelmente Código Civil) o ponto real de transição corpo normativo → índice e escrever teste de regressão com esse caso.
+- [x] 5.1 Localizar no corpus (provavelmente Código Civil) o ponto real de transição corpo normativo → índice e escrever teste de regressão com esse caso.
 - [ ] 5.2 Implementar a heurística de detecção do início do índice e inserção do cabeçalho `# ÍNDICE`, sem remover ou reordenar conteúdo.
 - [ ] 5.3 Adicionar teste garantindo que documentos sem índice detectável permanecem inalterados (nenhum cabeçalho `# ÍNDICE` inserido).
 - [ ] 5.4 Executar a suíte completa e reconverter o corpus; comparar com a linha de base e confirmar ausência de regressão.

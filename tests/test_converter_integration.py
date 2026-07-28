@@ -316,6 +316,33 @@ def test_convert_cc_2002_removes_repetitive_print_header_and_footer(
     assert "Art. 2" in markdown
 
 
+def test_convert_cc_2002_marks_final_index_section(tmp_path) -> None:
+    source = tmp_path / "codigo-civil-paginas-175-a-180.pdf"
+    corpus_pdf = (
+        Path(__file__).parents[1] / "input" / "L10.406_CC_2002.pdf"
+    )
+    _isolate_page_range(corpus_pdf, source, start_index=174, end_index=179)
+
+    markdown, _relatorio = convert_document(
+        pdf_path=source,
+        output_path=tmp_path / "saida.md",
+        temp_root=tmp_path / "temp",
+        use_ocr=False,
+    )
+
+    assert "# ÍNDICE" in markdown.splitlines()
+    article_index = markdown.index("Art. 2.046")
+    index_heading = markdown.index("# ÍNDICE")
+    assert article_index < index_heading
+
+    index_content = markdown[index_heading:]
+    assert (
+        "LIVRO I DAS PESSOAS" in index_content
+        or "P A R T E" in index_content
+    )
+    assert "Todas as remissões, em diplomas legislativos" in markdown
+
+
 def test_convert_aintaresp_page_3_preserves_paragraph_reading_order(
     tmp_path,
 ) -> None:
