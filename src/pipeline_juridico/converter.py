@@ -12,6 +12,7 @@ from .cleaner import (
     ILLEGIBLE_TEXT_MARKER,
     clean_markdown,
     ensure_illegible_marker_authorized,
+    recompose_native_paragraphs,
 )
 from .config import RoutingConfig
 from .engines import (
@@ -66,6 +67,21 @@ def _geometric_reading_order_text(page: fitz.Page) -> str:
         key=lambda block: (round(block[1], 1), block[0]),
     )
     return "\n".join(block[4] for block in ordered_blocks)
+
+
+def _sorted_native_text_blocks(
+    page: fitz.Page,
+) -> list[tuple[float, float, str]]:
+    text_blocks = [
+        block for block in page.get_text("blocks") if block[6] == 0
+    ]
+    ordered_blocks = sorted(
+        text_blocks,
+        key=lambda block: (round(block[1], 1), block[0]),
+    )
+    return [
+        (block[1], block[3], block[4]) for block in ordered_blocks
+    ]
 
 
 def _reading_order_tokens(text: str) -> list[str]:
@@ -197,6 +213,11 @@ def convert_document(
                     if method is Metodo.texto_nativo
                     else ""
                 )
+                native_blocks = (
+                    _sorted_native_text_blocks(page)
+                    if method is Metodo.texto_nativo
+                    else []
+                )
             finally:
                 doc.close()
 
@@ -216,6 +237,10 @@ def convert_document(
                     reference_content,
                 ):
                     content = reference_content
+                content = recompose_native_paragraphs(
+                    content,
+                    native_blocks,
+                )
             elif not use_ocr:
                 method = Metodo.erro
                 warnings.append(
