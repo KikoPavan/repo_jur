@@ -8,6 +8,7 @@ from pipeline_juridico.cleaner import (
     build_legislative_headings,
     clean_markdown,
     ensure_illegible_marker_authorized,
+    mark_final_index,
     normalize_legal_symbols,
     recompose_native_paragraphs,
     remove_repetitive_margins,
@@ -142,6 +143,28 @@ def test_clean_markdown_preserves_signature_block() -> None:
     result = clean_markdown(text)
 
     assert signature_block in result
+
+
+def test_mark_final_index_preserves_document_without_structural_tail() -> None:
+    markdown = (
+        "# Decisão\n\n"
+        "Art. 12. O pedido é julgado improcedente.\n\n"
+        "Publique-se. Intimem-se.\n\n"
+        "Documento assinado eletronicamente."
+    )
+
+    assert mark_final_index(markdown) == markdown
+
+
+def test_mark_final_index_preserves_document_with_sparse_structural_tail() -> None:
+    markdown = (
+        "# Lei sintética\n\n"
+        "Art. 99. Esta Lei entra em vigor na data de sua publicação.\n\n"
+        "LIVRO I\n\n"
+        "TÍTULO ÚNICO"
+    )
+
+    assert mark_final_index(markdown) == markdown
 
 
 def test_build_legislative_headings_builds_book_heading() -> None:

@@ -188,6 +188,40 @@ def test_convert_resp_removes_repetitive_page_counters(tmp_path) -> None:
     assert "RECURSO ESPECIAL" in markdown
 
 
+def test_convert_aintaresp_does_not_add_final_index(tmp_path) -> None:
+    source = tmp_path / "aintaresp-sem-indice-final.pdf"
+    corpus_pdf = (
+        Path(__file__).parents[1] / "input" / "AINTARESP_1462304-PA.pdf"
+    )
+    _isolate_page_range(corpus_pdf, source, start_index=0, end_index=2)
+
+    markdown, _relatorio = convert_document(
+        pdf_path=source,
+        output_path=tmp_path / "saida.md",
+        temp_root=tmp_path / "temp",
+        use_ocr=False,
+    )
+
+    assert "# ÍNDICE" not in markdown
+
+
+def test_convert_resp_does_not_add_final_index(tmp_path) -> None:
+    source = tmp_path / "resp-sem-indice-final.pdf"
+    corpus_pdf = (
+        Path(__file__).parents[1] / "input" / "REsp_1704551-SP.pdf"
+    )
+    _isolate_page_range(corpus_pdf, source, start_index=0, end_index=3)
+
+    markdown, _relatorio = convert_document(
+        pdf_path=source,
+        output_path=tmp_path / "saida.md",
+        temp_root=tmp_path / "temp",
+        use_ocr=False,
+    )
+
+    assert "# ÍNDICE" not in markdown
+
+
 def test_convert_inf0024e_first_page_uses_clean_native_output(tmp_path) -> None:
     source = tmp_path / "inf0024e-pagina-1.pdf"
     corpus_pdf = Path(__file__).parents[1] / "input" / "Inf0024E.pdf"
