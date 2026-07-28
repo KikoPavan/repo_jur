@@ -114,15 +114,51 @@ uv run converter-juridico input/Inf0024E.pdf --no-ocr --overwrite --log-level WA
 openspec validate improve-markdown-cleanup-structuring --strict
 ```
 
-## 9. Casos encaminhados para revisão humana (atualizado após a segunda rodada)
+## 9. Terceira rodada de validação (defeitos de estrutura final e símbolos)
 
-Os casos 2 ("P A R T E" com letras espaçadas) e 4 ("LIVRO COMPLEMENTAR") listados na seção 7 da primeira rodada foram **resolvidos** nesta segunda rodada e removidos desta lista. Casos que permanecem, mais um novo caso investigado:
+Uma terceira validação humana, a partir de geometria real do PDF (página física 177), identificou 4 defeitos adicionais. Diagnosticados e corrigidos com o mesmo processo (teste primeiro, menor alteração, verificação independente).
 
-1. **Ordinais soltos sem âncora jurídica** (Código Civil): `"...no 1 o Ofício da Capital do Estado..."` e `"...181 o da Independência e 114 o da República."` continuam com o "o" não normalizado. Corrigir exigiria uma heurística sem palavra-chave anterior, o que a instrução do projeto proíbe explicitamente ("não fazer substituição global de toda letra 'o' após números"). Testado e documentado como comportamento intencional.
-2. **"191 6" no Art. 2.040** (Código Civil): investigado diretamente contra o PDF de origem — confirmado como artefato de extração do próprio PyMuPDF (presente até em `page.get_text("text")` bruto, sem qualquer processamento do pipeline), ocorrência única em todo o corpus. Não corrigido nesta rodada: uma regra genérica para "juntar números partidos por um espaço" seria frágil e arriscada para um único caso conhecido: poderia colidir com incisos, valores ou outras numerações legítimas em pontos não testados do corpus. Recomenda-se decisão humana explícita antes de qualquer normalização aqui.
-3. **Cabeçalho/rodapé técnico do AINTARESP e do REsp** (ex. "Superior Tribunal de Justiça" repetido, bloco de assinatura eletrônica com códigos de controle, `"Documento: 1807307 - Inteiro Teor do Acórdão - Site certificado - DJe: 04/04/2019"` repetido): nenhum corresponde às 4 categorias autorizadas de remoção de margem e por isso permanece intocado, por decisão conservadora.
-4. **Segunda ocorrência de "Seção Única" dentro do índice do Código Civil**: aparece como `"Seção Única Da Caracterização"`, já fundida em um único parágrafo pela recomposição geométrica de parágrafos (porque no índice o espaçamento vertical entre marcador e título é menor que no corpo) — não é um par marcador+título separado, então a correção da subtarefa 7.4 (por design, escopada a pares marcador+título) não se aplica a essa ocorrência específica. Nenhuma perda de conteúdo; permanece como texto comum dentro do índice.
+### 9.1 Causas raiz e correções
 
-## 10. Estado da mudança
+1. **"P A R T E ESPECIAL" colado ao final do Art. 232** — o marcador letra-espaçado ficava unido ao parágrafo do artigo (mesma folga vertical abaixo do limiar de junção), então nunca chegava à pré-passada letra-espaçada de `build_legislative_headings` (que exige o parágrafo inteiro ser só o marcador). **Corrigido** com uma nova pré-passada que detecta e separa um marcador letra-espaçado colado ao FINAL de um parágrafo maior, antes da construção de cabeçalhos, sem dividir texto maiúsculo comum.
+2. **Blocos finais da lei fundidos** — Art. 2.046, linha de promulgação, os dois signatários, nota de publicação e "ÍNDICE" terminal formavam uma cadeia de parágrafos unidos (gaps geométricos de 9,8–10,9pt, todos abaixo do limiar de 1,2×). **Corrigido** com três novas exceções em `recompose_native_paragraphs`, ancoradas em padrões de CONTEÚDO genéricos (fórmula de promulgação "Cidade, DD de mês de AAAA"; frase padrão "não substitui o publicado"; palavra isolada "ÍNDICE") — não em nomes próprios. A separação entre os dois signatários já ocorria por acaso graças à salvaguarda `native_label_pattern` existente.
+3. **Índice terminal duplicado** — com o "ÍNDICE" agora isolado (correção 2), `mark_final_index` inseria um `# ÍNDICE` novo AO LADO do "ÍNDICE" solto, em vez de substituí-lo. **Corrigido**: agora substitui o parágrafo "ÍNDICE" isolado (quando existe) pelo cabeçalho, em vez de inserir ao lado. O "ÍNDICE" válido da página 1 permanece como texto comum (fora da região de busca, que só olha depois do último artigo).
+4. **Símbolos residuais** — "Lei n º" (variante de espaço não coberta antes), ordinais de data ancorados por nome de mês ("N o de janeiro"→"Nº de janeiro", cobrindo os 12 meses) e ancorados pela fórmula constitucional ("N o da Independência"/"N o da República"), e "191 6" no Art. 2.040 (já confirmado na rodada 2 como artefato de extração do PyMuPDF; agora autorizado e corrigido, com regra estritamente ancorada ao contexto de data "de \<mês\> de NNN N"). **Corrigidos os quatro casos.** O ordinal "1 o Ofício da Capital" (sem âncora de mês/Independência/República) permanece intencionalmente intocado — teste da rodada 1 ainda passa.
 
-Todas as subtarefas 0–7.7 de `tasks.md` estão marcadas `[x]`. Falta apenas o arquivamento (`openspec archive`), que este orquestrador não deve executar sem aprovação humana explícita, conforme `AGENTS.md`.
+### 9.2 Verificação final da terceira rodada
+
+- Suíte completa: **260 passed**, 0 falhas (era 251 ao final da segunda rodada; +9 testes novos, 1 teste da rodada 1 atualizado para refletir a expansão de escopo autorizada dos ordinais de promulgação — o exemplo do "Ofício" permanece intocado e ainda passa).
+- 186 marcadores `[[Pág. N]]` sequenciais preservados.
+- Reconciliação exata de tokens no Código Civil entre o estado pré-rodada-3 e pós-rodada-3: removidos `1`×7, `o`×9, `6`×1, `114`×1, `181`×1, `191`×1, `n`×12, `º`×12; adicionados `nº`×12, `1º`×7, `1916`×1, `181º`×1, `114º`×1 — cada mudança corresponde exatamente a uma das quatro correções, nenhuma sobra inexplicada.
+- Comparação letra-a-letra confirma: nenhuma perda de conteúdo jurídico; a única redução de conteúdo (-6 letras) corresponde exatamente à remoção do "ÍNDICE" duplicado (correção 3), não a texto legal.
+- AINTARESP, REsp e Inf0024E: **0 mudanças** em todas as quatro correções (nenhum desses padrões existe nesses arquivos); **0 cabeçalhos novos**.
+- Idempotência verificada em cada subtarefa (reaplicar a limpeza duas vezes produz o mesmo resultado).
+
+### 9.3 Arquivos alterados nesta rodada
+
+- `src/pipeline_juridico/cleaner.py`: nova pré-passada em `build_legislative_headings` (marcador letra-espaçado colado); três novas exceções em `recompose_native_paragraphs` (promulgação, nota de publicação, ÍNDICE isolado); correção de substituição em `mark_final_index`; quatro regras novas em `normalize_legal_symbols`.
+- `tests/test_cleaner.py`: +9 testes novos, 1 teste atualizado (escopo de ordinais de promulgação).
+
+### 9.4 Comandos de reprodução (iguais aos da seção 6)
+
+```bash
+uv sync
+uv run pytest tests/ -q
+uv run converter-juridico input/L10.406_CC_2002.pdf --no-ocr --overwrite --log-level WARNING
+uv run converter-juridico input/AINTARESP_1462304-PA.pdf --no-ocr --overwrite --log-level WARNING
+uv run converter-juridico input/REsp_1704551-SP.pdf --no-ocr --overwrite --log-level WARNING
+uv run converter-juridico input/Inf0024E.pdf --no-ocr --overwrite --log-level WARNING
+openspec validate improve-markdown-cleanup-structuring --strict
+```
+
+## 10. Casos encaminhados para revisão humana (atualizado após a terceira rodada)
+
+Os casos "191 6" e os ordinais de promulgação ("181 o da Independência"/"114 o da República"), pendentes desde a segunda rodada, foram **resolvidos** nesta terceira rodada (ver seção 9 acima). Casos que permanecem:
+
+1. **Ordinal solto sem âncora de mês/Independência/República** (Código Civil): `"...no 1 o Ofício da Capital do Estado..."` continua com o "o" não normalizado — não há palavra-chave ou contexto de data inequívoco por perto (não é "de \<mês\>" nem "da Independência/República"), e generalizar mais arrisca a "substituição global de toda letra 'o' após números" explicitamente proibida. Testado e documentado como comportamento intencional.
+2. **Cabeçalho/rodapé técnico do AINTARESP e do REsp** (ex. "Superior Tribunal de Justiça" repetido, bloco de assinatura eletrônica com códigos de controle, `"Documento: 1807307 - Inteiro Teor do Acórdão - Site certificado - DJe: 04/04/2019"` repetido): nenhum corresponde às 4 categorias autorizadas de remoção de margem e por isso permanece intocado, por decisão conservadora.
+3. **Segunda ocorrência de "Seção Única" dentro do índice do Código Civil**: aparece como `"Seção Única Da Caracterização"`, já fundida em um único parágrafo pela recomposição geométrica de parágrafos — não é um par marcador+título separado, então a correção da subtarefa 7.4 (escopada a pares marcador+título) não se aplica a essa ocorrência específica. Nenhuma perda de conteúdo; permanece como texto comum dentro do índice.
+
+## 11. Estado da mudança
+
+Todas as subtarefas 0–8.7 de `tasks.md` estão marcadas `[x]`. Falta apenas o arquivamento (`openspec archive`), que este orquestrador não deve executar sem aprovação humana explícita, conforme `AGENTS.md`.
