@@ -68,13 +68,61 @@ uv run converter-juridico input/Inf0024E.pdf --no-ocr --overwrite --log-level WA
 openspec validate improve-markdown-cleanup-structuring --strict
 ```
 
-## 7. Casos encaminhados para revisão humana (não implementados nesta iteração, por decisão de escopo conservadora)
+## 7. Casos encaminhados para revisão humana — estado ao final da PRIMEIRA rodada (histórico; ver seção 9 para a lista atualizada após a segunda rodada — os itens 2 e 4 abaixo foram resolvidos)
 
 1. **Ordinais soltos sem âncora jurídica** (Código Civil): `"...no 1 o Ofício da Capital do Estado..."` e `"...181 o da Independência e 114 o da República."` continuam com o "o" não normalizado. Corrigir exigiria uma heurística sem palavra-chave anterior, o que a instrução do projeto proíbe explicitamente ("não fazer substituição global de toda letra 'o' após números"). Testado e documentado como comportamento intencional.
 2. **`"P A R T E GERAL"` / `"P A R T E ESPECIAL"`** (Código Civil): grafados com letras espaçadas (kerning) no PDF de origem; não casam com o regex de marcador estrutural "nu" e por isso não viram cabeçalho de nível 1 (`#`). LIVRO/TÍTULO/CAPÍTULO/SEÇÃO funcionam normalmente porque não têm essa grafia espaçada no original.
 3. **Cabeçalho/rodapé técnico do AINTARESP** (ex. "Superior Tribunal de Justiça" repetido, bloco de assinatura eletrônica com códigos de controle "GABGF09 AREsp 1462304 Petição : 592169/2020 C542506155;...") e do REsp (`"Documento: 1807307 - Inteiro Teor do Acórdão - Site certificado - DJe: 04/04/2019"` repetido): nenhum corresponde às 4 categorias autorizadas (não é data/hora+arquivo isolado, não é URL, não é contador de página no formato esperado) e por isso permaneceu intocado, por decisão conservadora — remover exigiria uma quinta categoria autorizada, que não foi solicitada pelo objetivo e arriscaria remover conteúdo de assinatura/autenticação juridicamente relevante.
 4. **"LIVRO COMPLEMENTAR DAS DISPOSIÇÕES FINAIS E TRANSITÓRIAS"** (dentro do índice do Código Civil): usa "COMPLEMENTAR" em vez de numeral romano/"ÚNICO"; se essa mesma grafia existir como marcador "nu" no corpo (fora do índice), não seria reconhecida pela subtarefa 4. Não foi encontrada ocorrência assim no corpo durante os testes, mas fica registrado para o caso de aparecer em outro documento.
 
-## 8. Estado da mudança
+## 8. Segunda rodada de validação (grupo 7) — correções de regressão e cobertura residual
 
-Todas as subtarefas 0–6.3 de `tasks.md` estão marcadas `[x]`. Falta apenas o arquivamento (`openspec archive`), que este orquestrador não deve executar sem aprovação humana explícita, conforme `AGENTS.md`.
+Uma segunda validação humana identificou 5 categorias de defeito residual não cobertas pela primeira rodada. Cada uma foi diagnosticada por reconversão completa do corpus antes de qualquer código ser escrito, corrigida com um teste de regressão criado primeiro, e verificada de forma independente pelo orquestrador (suíte completa + reconversão do corpus + comparação de tokens/letras antes-depois) antes de ser aprovada.
+
+### 8.1 Causas raiz e correções
+
+1. **Falso positivo maiúscula/minúscula em `recompose_native_paragraphs`** — as exceções de marcador estrutural (`formal_structure_pattern`/`bare_structure_pattern`) usavam `re.IGNORECASE` sem exigir letra inicial maiúscula, então as palavras comuns minúsculas "parte" e "título" (não os marcadores PARTE/TÍTULO) bloqueavam indevidamente a junção de parágrafos. **Corrigido** com uma checagem adicional `_is_uppercase_led(text)`. Confirmados e corrigidos os 7 artigos citados (129, 233, 244, 880, 1.027, 1.258, 1.673) mais 7 outros pontos do mesmo padrão — 14 blocos no total, 0 residuais após a correção.
+2. **Continuidade de símbolo entre páginas** — "Lei n" terminava a página 175 e "o 3.071, de 1 o de janeiro de 1916." começava a página 176 (Art. 2.029), sem normalizar através da fronteira. **Corrigido** com `join_symbol_across_page_break`, que funde "Lei n" + "o " através do marcador `[[Pág. N]]` sem mover ou remover o marcador. Único caso desse tipo no corpus inteiro (verificado por varredura completa); 0 residuais.
+3. **Cobertura de símbolos estendida** — `normalize_legal_symbols` só reconhecia "Art." maiúsculo; ocorrências reais minúsculas "art. 3 o" e "art. 5 o" (×2) não eram normalizadas, e a variante "§ 1 º" (já com "º" correto, mas espaço espúrio antes) também não. **Corrigido** com duas regras novas. "191 6" no Art. 2.040 foi investigado contra o PDF de origem: confirmado como artefato do próprio PyMuPDF (presente até em `page.get_text("text")` bruto), ocorrência única no corpus — **deliberadamente não alterado** nesta rodada (ver seção 9).
+4. **Estrutura legislativa incompleta** — `build_legislative_headings` não reconhecia sufixo "-A" em numeral romano (TÍTULO I-A, CAPÍTULO VII-A), qualificador feminino "ÚNICA" (Seção Única), qualificador "COMPLEMENTAR" (LIVRO COMPLEMENTAR), nem anotações parentéticas "(Incluído/Redação dada pela Lei ...) (Vigência)" separadas do marcador em parágrafo próprio (causava fusão ERRADA: "Seção I" fundia com a anotação órfã em vez do título real "Disposições Gerais"); e "P A R T E GERAL"/"P A R T E ESPECIAL" (letras espaçadas no PDF de origem) não eram reconhecidas. **Corrigidos os cinco casos.**
+5. **Posicionamento do índice** — `mark_final_index` inseria `# ÍNDICE` logo após o último artigo, deixando o segundo signatário (Aloysio Nunes Ferreira Filho) e a nota de publicação DENTRO do índice. **Corrigido** ancorando no parágrafo que contém a palavra literal "ÍNDICE" (título terminal real, presente no próprio texto de origem como link de navegação) e inserindo o cabeçalho imediatamente depois dele.
+
+### 8.2 Verificação final da segunda rodada
+
+- Suíte completa: **251 passed**, 0 falhas (era 241 ao final da primeira rodada; +10 testes novos).
+- 186 marcadores `[[Pág. N]]` sequenciais preservados.
+- Comparação letra-a-letra (todo caractere que não é letra ou "º" removido, incluindo espaços/dígitos/pontuação) entre o estado pré-rodada-2 e pós-rodada-2 do Código Civil: soma de letras+ordinais idêntica (503.729 = 503.729); a única diferença posicional encontrada corresponde exatamente às trocas "o"→"º" já auditadas nas correções 2 e 3 — nenhuma perda, duplicação ou alteração de conteúdo jurídico.
+- AINTARESP, REsp e Inf0024E: **0 tokens alterados** nas correções 1, 2, 3 e 5 (nenhum desses padrões existe nesses arquivos); **0 cabeçalhos novos** criados pela correção 4 (bloqueio explícito do objetivo, confirmado).
+- Contagem de cabeçalhos por nível no Código Civil (antes → depois da correção 4): H1 1→4, H2 8→9, H3 42→43, H4 175→176, H5 152→153, H6 15→15 (só adições correspondentes aos marcadores recém-reconhecidos, sem duplicatas).
+- `openspec validate improve-markdown-cleanup-structuring --strict` → válido (reexecutado ao final).
+
+### 8.3 Arquivos alterados nesta rodada
+
+- `src/pipeline_juridico/cleaner.py`: correção pontual em `recompose_native_paragraphs`; nova função `join_symbol_across_page_break`; duas regras novas em `normalize_legal_symbols`; extensão de `_LEGISLATIVE_MARKER_PATTERN` e `build_legislative_headings`; correção de ancoragem em `mark_final_index`.
+- `src/pipeline_juridico/converter.py`: uma chamada nova (`join_symbol_across_page_break`).
+- `tests/test_cleaner.py`: +10 testes novos.
+
+### 8.4 Comandos de reprodução (iguais aos da seção 6, repetidos para conveniência)
+
+```bash
+uv sync
+uv run pytest tests/ -q
+uv run converter-juridico input/L10.406_CC_2002.pdf --no-ocr --overwrite --log-level WARNING
+uv run converter-juridico input/AINTARESP_1462304-PA.pdf --no-ocr --overwrite --log-level WARNING
+uv run converter-juridico input/REsp_1704551-SP.pdf --no-ocr --overwrite --log-level WARNING
+uv run converter-juridico input/Inf0024E.pdf --no-ocr --overwrite --log-level WARNING
+openspec validate improve-markdown-cleanup-structuring --strict
+```
+
+## 9. Casos encaminhados para revisão humana (atualizado após a segunda rodada)
+
+Os casos 2 ("P A R T E" com letras espaçadas) e 4 ("LIVRO COMPLEMENTAR") listados na seção 7 da primeira rodada foram **resolvidos** nesta segunda rodada e removidos desta lista. Casos que permanecem, mais um novo caso investigado:
+
+1. **Ordinais soltos sem âncora jurídica** (Código Civil): `"...no 1 o Ofício da Capital do Estado..."` e `"...181 o da Independência e 114 o da República."` continuam com o "o" não normalizado. Corrigir exigiria uma heurística sem palavra-chave anterior, o que a instrução do projeto proíbe explicitamente ("não fazer substituição global de toda letra 'o' após números"). Testado e documentado como comportamento intencional.
+2. **"191 6" no Art. 2.040** (Código Civil): investigado diretamente contra o PDF de origem — confirmado como artefato de extração do próprio PyMuPDF (presente até em `page.get_text("text")` bruto, sem qualquer processamento do pipeline), ocorrência única em todo o corpus. Não corrigido nesta rodada: uma regra genérica para "juntar números partidos por um espaço" seria frágil e arriscada para um único caso conhecido: poderia colidir com incisos, valores ou outras numerações legítimas em pontos não testados do corpus. Recomenda-se decisão humana explícita antes de qualquer normalização aqui.
+3. **Cabeçalho/rodapé técnico do AINTARESP e do REsp** (ex. "Superior Tribunal de Justiça" repetido, bloco de assinatura eletrônica com códigos de controle, `"Documento: 1807307 - Inteiro Teor do Acórdão - Site certificado - DJe: 04/04/2019"` repetido): nenhum corresponde às 4 categorias autorizadas de remoção de margem e por isso permanece intocado, por decisão conservadora.
+4. **Segunda ocorrência de "Seção Única" dentro do índice do Código Civil**: aparece como `"Seção Única Da Caracterização"`, já fundida em um único parágrafo pela recomposição geométrica de parágrafos (porque no índice o espaçamento vertical entre marcador e título é menor que no corpo) — não é um par marcador+título separado, então a correção da subtarefa 7.4 (por design, escopada a pares marcador+título) não se aplica a essa ocorrência específica. Nenhuma perda de conteúdo; permanece como texto comum dentro do índice.
+
+## 10. Estado da mudança
+
+Todas as subtarefas 0–7.7 de `tasks.md` estão marcadas `[x]`. Falta apenas o arquivamento (`openspec archive`), que este orquestrador não deve executar sem aprovação humana explícita, conforme `AGENTS.md`.
