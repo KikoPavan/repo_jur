@@ -11,7 +11,8 @@ _METHOD_COMMENT_PATTERN = re.compile(r"^<!-- método: .+ -->$")
 _LEGISLATIVE_MARKER_PATTERN = re.compile(
     r"^(PARTE|LIVRO|TÍTULO|TITULO|CAPÍTULO|CAPITULO|"
     r"SEÇÃO|SECAO|SUBSEÇÃO|SUBSECAO)\b\s*"
-    r"(?:[IVXLCDM]+|ÚNICO|UNICO)?\s*$",
+    r"(?:[IVXLCDM]+(?:-A)?|ÚNIC[OA]|UNIC[OA]|COMPLEMENTAR)?"
+    r"(?:\s*\([^)]*\))*\s*$",
     flags=re.IGNORECASE,
 )
 _DIGIT_SEQUENCE_PATTERN = re.compile(r"\d+")
@@ -298,25 +299,77 @@ def build_legislative_headings(markdown: str) -> str:
         "subsecao": 6,
     }
     paragraphs = re.split(r"\n\n", markdown)
+    letter_spaced_pattern = re.compile(r"^(?:[A-ZÀ-Ú]\s)+[A-ZÀ-Ú]$")
+    uppercase_keywords = sorted(
+        (keyword.upper() for keyword in heading_levels),
+        key=len,
+        reverse=True,
+    )
+
+    for index, paragraph in enumerate(paragraphs):
+        stripped = paragraph.strip()
+        if not letter_spaced_pattern.fullmatch(stripped):
+            continue
+        collapsed = stripped.replace(" ", "")
+        keyword = next(
+            (
+                candidate
+                for candidate in uppercase_keywords
+                if collapsed.startswith(candidate)
+                and collapsed != candidate
+            ),
+            None,
+        )
+        if keyword is not None:
+            level = heading_levels[keyword.casefold()]
+            paragraphs[index] = (
+                f"{'#' * level} {keyword} {collapsed[len(keyword):]}"
+            )
+
+    def _is_uppercase_led(text: str) -> bool:
+        return bool(text) and text[0].isupper()
+
+    annotation_pattern = re.compile(r"^(?:\([^)]*\)\s*)+$")
     processed: list[str] = []
     index = 0
 
     while index < len(paragraphs):
         marker_text = paragraphs[index].strip()
         marker_match = _LEGISLATIVE_MARKER_PATTERN.fullmatch(marker_text)
-        if marker_match and index + 1 < len(paragraphs):
-            title_text = paragraphs[index + 1].strip()
+        if (
+            marker_match
+            and _is_uppercase_led(marker_text)
+            and index + 1 < len(paragraphs)
+        ):
+            title_index = index + 1
+            possible_annotation = paragraphs[title_index].strip()
+            if annotation_pattern.fullmatch(possible_annotation):
+                marker_text = f"{marker_text} {possible_annotation}"
+                title_index += 1
+
+            if title_index >= len(paragraphs):
+                processed.append(paragraphs[index])
+                index += 1
+                continue
+
+            title_text = paragraphs[title_index].strip()
+            title_marker_match = _LEGISLATIVE_MARKER_PATTERN.fullmatch(
+                title_text
+            )
             title_is_excluded = (
                 _PAGE_MARKER_PATTERN.fullmatch(title_text)
                 or _METHOD_COMMENT_PATTERN.fullmatch(title_text)
-                or _LEGISLATIVE_MARKER_PATTERN.fullmatch(title_text)
+                or (
+                    title_marker_match
+                    and _is_uppercase_led(title_text)
+                )
             )
             if not title_is_excluded:
                 level = heading_levels[marker_match.group(1).casefold()]
                 processed.append(
                     f"{'#' * level} {marker_text} — {title_text}"
                 )
-                index += 2
+                index = title_index + 1
                 continue
 
         processed.append(paragraphs[index])

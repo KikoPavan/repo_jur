@@ -302,6 +302,78 @@ def test_build_legislative_headings_preserves_page_marker_and_method() -> None:
     )
 
 
+def test_build_legislative_headings_accepts_roman_numeral_a_suffix() -> None:
+    content = (
+        "TÍTULO I-A (Incluído pela Lei nº 12.441, de 2011) (Vigência)\n\n"
+        "DA EMPRESA INDIVIDUAL DE RESPONSABILIDADE LIMITADA\n\n"
+        "CAPÍTULO VII-A (Incluído pela Lei nº 13.777, de 2018) "
+        "(Vigência)\n\n"
+        "DO CONDOMÍNIO EM MULTIPROPRIEDADE"
+    )
+
+    result = build_legislative_headings(content)
+
+    assert (
+        "### TÍTULO I-A (Incluído pela Lei nº 12.441, de 2011) "
+        "(Vigência) — DA EMPRESA INDIVIDUAL DE RESPONSABILIDADE LIMITADA"
+        in result
+    )
+    assert (
+        "#### CAPÍTULO VII-A (Incluído pela Lei nº 13.777, de 2018) "
+        "(Vigência) — DO CONDOMÍNIO EM MULTIPROPRIEDADE"
+        in result
+    )
+
+
+def test_build_legislative_headings_accepts_feminine_unique_qualifier() -> None:
+    content = "Seção Única\n\nDa Caracterização"
+
+    result = build_legislative_headings(content)
+
+    assert result == "##### Seção Única — Da Caracterização"
+
+
+def test_build_legislative_headings_accepts_complementary_qualifier() -> None:
+    content = "LIVRO COMPLEMENTAR\n\nDAS Disposições Finais e Transitórias"
+
+    result = build_legislative_headings(content)
+
+    assert result == (
+        "## LIVRO COMPLEMENTAR — DAS Disposições Finais e Transitórias"
+    )
+
+
+def test_build_legislative_headings_absorbs_separate_annotations() -> None:
+    content = (
+        "CAPÍTULO VII-A (Incluído pela Lei nº 13.777, de 2018) "
+        "(Vigência)\n\n"
+        "DO CONDOMÍNIO EM MULTIPROPRIEDADE\n\n"
+        "Seção I\n\n"
+        "(Incluído pela Lei nº 13.777, de 2018) (Vigência)\n\n"
+        "Disposições Gerais"
+    )
+
+    result = build_legislative_headings(content)
+
+    assert (
+        "##### Seção I (Incluído pela Lei nº 13.777, de 2018) "
+        "(Vigência) — Disposições Gerais"
+        in result
+    )
+    assert (
+        "##### Seção I — (Incluído pela Lei nº 13.777, de 2018)"
+        not in result
+    )
+
+
+def test_build_legislative_headings_converts_letter_spaced_parts() -> None:
+    content = "P A R T E G E R A L\n\nP A R T E E S P E C I A L"
+
+    result = build_legislative_headings(content)
+
+    assert result == "# PARTE GERAL\n\n# PARTE ESPECIAL"
+
+
 def test_remove_repetitive_margins_preserves_repeated_legal_header() -> None:
     legal_header = "Superior Tribunal de Justiça"
     pages = [
