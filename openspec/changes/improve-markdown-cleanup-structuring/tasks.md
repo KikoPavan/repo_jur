@@ -9,8 +9,8 @@
 - [x] 1.1 Criar teste de regressão que reproduza o caso obrigatório do Código Civil: "Art. 2º ... desde a concepção, os" + "direitos do nascituro." devem virar um único parágrafo no Markdown final, e que hoje falha (fragmentado).
 - [x] 1.2 Implementar extração de blocos geométricos por página nativa (bbox, texto) reutilizando o padrão já usado em `_geometric_reading_order_text`, sem alterar a salvaguarda de ordem de leitura existente.
 - [x] 1.3 Implementar a regra de junção de blocos (distância vertical relativa + continuidade textual) com a lista de exceção (Art./§/inciso/alínea/item; PARTE/LIVRO/TÍTULO/CAPÍTULO/SEÇÃO/SUBSEÇÃO; marcador `[[Pág. N]]`; novo bloco estrutural) e conectá-la ao ponto de geração do conteúdo nativo em `converter.py`.
-- [ ] 1.4 Adicionar testes cobrindo cada exceção de não-junção (um teste por tipo de marcador que bloqueia a junção).
-- [ ] 1.5 Executar a suíte completa e reconverter o corpus; comparar com a linha de base e confirmar ausência de regressão (nenhuma perda/alteração/duplicação de texto, 186 marcadores sequenciais no Código Civil).
+- [x] 1.4 Adicionar testes cobrindo cada exceção de não-junção (um teste por tipo de marcador que bloqueia a junção).
+- [x] 1.5 Executar a suíte completa e reconverter o corpus; comparar com a linha de base e confirmar ausência de regressão (nenhuma perda/alteração/duplicação de texto, 186 marcadores sequenciais no Código Civil).
 
 ## 2. Remoção de cabeçalhos e rodapés repetitivos
 

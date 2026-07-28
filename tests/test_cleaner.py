@@ -7,6 +7,7 @@ from pipeline_juridico.cleaner import (
     UnauthorizedIllegibleMarkerError,
     clean_markdown,
     ensure_illegible_marker_authorized,
+    recompose_native_paragraphs,
 )
 
 
@@ -169,3 +170,181 @@ def test_dollar_variant_is_not_recognized_as_illegible_marker() -> None:
         "Trecho legado: $$TEXTO ILEGÍVEL$$",
         allow_partial=False,
     )
+
+
+def test_recompose_native_paragraphs_joins_nearby_plain_lines() -> None:
+    content = "Este texto continua\nna linha seguinte."
+    blocks = [
+        (10.0, 21.0, "Este texto continua"),
+        (22.0, 33.0, "na linha seguinte."),
+    ]
+
+    result = recompose_native_paragraphs(content, blocks)
+
+    assert result == "Este texto continua na linha seguinte."
+
+
+def test_recompose_native_paragraphs_does_not_join_article() -> None:
+    content = "Disposição preliminar\nArt. 2 Esta norma entra em vigor."
+    blocks = [
+        (10.0, 21.0, "Disposição preliminar"),
+        (22.0, 33.0, "Art. 2 Esta norma entra em vigor."),
+    ]
+
+    result = recompose_native_paragraphs(content, blocks)
+
+    assert result == "Disposição preliminar\n\nArt. 2 Esta norma entra em vigor."
+
+
+def test_recompose_native_paragraphs_does_not_join_numbered_paragraph() -> None:
+    content = "Regra geral\n§ 1 O prazo será contado em dias úteis."
+    blocks = [
+        (10.0, 21.0, "Regra geral"),
+        (22.0, 33.0, "§ 1 O prazo será contado em dias úteis."),
+    ]
+
+    result = recompose_native_paragraphs(content, blocks)
+
+    assert result == "Regra geral\n\n§ 1 O prazo será contado em dias úteis."
+
+
+@pytest.mark.parametrize(
+    "paragraph",
+    [
+        "Parágrafo único Esta regra aplica-se imediatamente.",
+        "Parágrafo 2 O prazo poderá ser prorrogado.",
+    ],
+)
+def test_recompose_native_paragraphs_does_not_join_named_paragraph(
+    paragraph: str,
+) -> None:
+    content = f"Regra geral\n{paragraph}"
+    blocks = [
+        (10.0, 21.0, "Regra geral"),
+        (22.0, 33.0, paragraph),
+    ]
+
+    result = recompose_native_paragraphs(content, blocks)
+
+    assert result == f"Regra geral\n\n{paragraph}"
+
+
+def test_recompose_native_paragraphs_does_not_join_roman_numeral_item() -> None:
+    content = "São requisitos:\nIV - comprovação da capacidade técnica."
+    blocks = [
+        (10.0, 21.0, "São requisitos:"),
+        (22.0, 33.0, "IV - comprovação da capacidade técnica."),
+    ]
+
+    result = recompose_native_paragraphs(content, blocks)
+
+    assert result == "São requisitos:\n\nIV - comprovação da capacidade técnica."
+
+
+def test_recompose_native_paragraphs_does_not_join_lettered_item() -> None:
+    content = "Documentos exigidos:\na) comprovante de residência."
+    blocks = [
+        (10.0, 21.0, "Documentos exigidos:"),
+        (22.0, 33.0, "a) comprovante de residência."),
+    ]
+
+    result = recompose_native_paragraphs(content, blocks)
+
+    assert result == "Documentos exigidos:\n\na) comprovante de residência."
+
+
+def test_recompose_native_paragraphs_does_not_join_numbered_item() -> None:
+    content = "Etapas do procedimento:\n1) apresentação do requerimento."
+    blocks = [
+        (10.0, 21.0, "Etapas do procedimento:"),
+        (22.0, 33.0, "1) apresentação do requerimento."),
+    ]
+
+    result = recompose_native_paragraphs(content, blocks)
+
+    assert result == "Etapas do procedimento:\n\n1) apresentação do requerimento."
+
+
+@pytest.mark.parametrize(
+    "marker",
+    [
+        "PARTE GERAL",
+        "LIVRO DAS OBRIGAÇÕES",
+        "TÍTULO DOS CONTRATOS",
+        "CAPÍTULO DAS DISPOSIÇÕES GERAIS",
+        "SEÇÃO DOS PRAZOS",
+        "SUBSEÇÃO DOS RECURSOS",
+    ],
+)
+def test_recompose_native_paragraphs_does_not_join_formal_structure_marker(
+    marker: str,
+) -> None:
+    content = f"Texto introdutório\n{marker}"
+    blocks = [
+        (10.0, 21.0, "Texto introdutório"),
+        (22.0, 33.0, marker),
+    ]
+
+    result = recompose_native_paragraphs(content, blocks)
+
+    assert result == f"Texto introdutório\n\n{marker}"
+
+
+def test_recompose_native_paragraphs_does_not_join_after_bare_structure() -> None:
+    content = "LIVRO I\nDAS PESSOAS"
+    blocks = [
+        (10.0, 21.0, "LIVRO I"),
+        (22.0, 33.0, "DAS PESSOAS"),
+    ]
+
+    result = recompose_native_paragraphs(content, blocks)
+
+    assert result == "LIVRO I\n\nDAS PESSOAS"
+
+
+def test_recompose_native_paragraphs_does_not_join_across_large_gap() -> None:
+    content = "Primeiro parágrafo.\nSegundo parágrafo."
+    blocks = [
+        (10.0, 21.0, "Primeiro parágrafo."),
+        (51.0, 62.0, "Segundo parágrafo."),
+    ]
+
+    result = recompose_native_paragraphs(content, blocks)
+
+    assert result == "Primeiro parágrafo.\n\nSegundo parágrafo."
+
+
+def test_recompose_native_paragraphs_preserves_uppercase_label_and_value() -> None:
+    content = "RELATOR\n: MINISTRO FULANO"
+    blocks = [
+        (10.0, 21.0, "RELATOR"),
+        (22.0, 33.0, ": MINISTRO FULANO"),
+    ]
+
+    result = recompose_native_paragraphs(content, blocks)
+
+    assert result == content
+
+
+def test_recompose_native_paragraphs_preserves_markdown_table() -> None:
+    content = (
+        "| Campo | Valor |\n"
+        "| --- | --- |\n"
+        "| Relator | Ministro Fulano |"
+    )
+    blocks = [
+        (10.0, 21.0, "Campo Valor"),
+        (22.0, 33.0, "Relator Ministro Fulano"),
+    ]
+
+    result = recompose_native_paragraphs(content, blocks)
+
+    assert result == content
+
+
+def test_recompose_native_paragraphs_preserves_content_with_empty_blocks() -> None:
+    content = "Primeira linha\nSegunda linha"
+
+    result = recompose_native_paragraphs(content, [])
+
+    assert result == content
