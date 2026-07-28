@@ -271,6 +271,16 @@ def normalize_legal_symbols(content: str) -> str:
     return content
 
 
+def join_symbol_across_page_break(markdown: str) -> str:
+    """Normalize a law-number symbol split across a page marker."""
+    return re.sub(
+        r"(Lei\s+n)(\n\n\[\[Pág\. \d+\]\]\n"
+        r"<!-- método: [^\n]+ -->\n\n)o\s+(?=\d)",
+        r"\1º\2",
+        markdown,
+    )
+
+
 def build_legislative_headings(markdown: str) -> str:
     """Combine bare legislative markers and titles into Markdown headings."""
     heading_levels = {

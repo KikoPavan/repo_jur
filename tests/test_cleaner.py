@@ -8,11 +8,30 @@ from pipeline_juridico.cleaner import (
     build_legislative_headings,
     clean_markdown,
     ensure_illegible_marker_authorized,
+    join_symbol_across_page_break,
     mark_final_index,
     normalize_legal_symbols,
     recompose_native_paragraphs,
     remove_repetitive_margins,
 )
+
+
+def test_join_symbol_across_page_break_preserves_page_marker() -> None:
+    content = (
+        "vigência do anterior, Lei n\n\n"
+        "[[Pág. 176]]\n"
+        "<!-- método: texto_nativo -->\n\n"
+        "o 3.071, de 1 o de janeiro de 1916."
+    )
+
+    result = join_symbol_across_page_break(content)
+
+    assert result == (
+        "vigência do anterior, Lei nº\n\n"
+        "[[Pág. 176]]\n"
+        "<!-- método: texto_nativo -->\n\n"
+        "3.071, de 1 o de janeiro de 1916."
+    )
 
 
 def test_clean_markdown_normalizes_line_endings() -> None:
