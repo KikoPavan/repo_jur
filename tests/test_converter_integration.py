@@ -144,6 +144,29 @@ def test_convert_inf0024e_first_page_uses_clean_native_output(tmp_path) -> None:
     assert not any("[Image OCR]" in line for line in markdown.splitlines())
 
 
+def test_convert_cc_2002_page_1_recomposes_art_2_paragraph(tmp_path) -> None:
+    source = tmp_path / "codigo-civil-pagina-1.pdf"
+    _isolate_first_page(
+        Path("input/L10.406_CC_2002.pdf"),
+        source,
+        page_index=0,
+    )
+
+    markdown, _relatorio = convert_document(
+        pdf_path=source,
+        output_path=tmp_path / "saida.md",
+        temp_root=tmp_path / "temp",
+        use_ocr=False,
+    )
+
+    # Esperado falhar hoje: o Art. 2º ainda é fragmentado entre parágrafos.
+    assert (
+        "Art. 2 o A personalidade civil da pessoa começa do nascimento com "
+        "vida; mas a lei põe a salvo, desde a concepção, os direitos do "
+        "nascituro."
+    ) in markdown
+
+
 def test_convert_aintaresp_page_3_preserves_paragraph_reading_order(
     tmp_path,
 ) -> None:
