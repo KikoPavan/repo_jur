@@ -7,6 +7,7 @@ from pipeline_juridico.cleaner import (
     UnauthorizedIllegibleMarkerError,
     clean_markdown,
     ensure_illegible_marker_authorized,
+    normalize_legal_symbols,
     recompose_native_paragraphs,
     remove_repetitive_margins,
 )
@@ -372,3 +373,81 @@ def test_recompose_native_paragraphs_preserves_content_with_empty_blocks() -> No
     result = recompose_native_paragraphs(content, [])
 
     assert result == content
+
+
+def test_normalize_legal_symbols_normalizes_article_ordinal() -> None:
+    content = "Art. 1 o Toda pessoa é capaz..."
+
+    result = normalize_legal_symbols(content)
+
+    assert "Art. 1º Toda pessoa é capaz..." in result
+    assert "Art. 1 o " not in result
+
+
+def test_normalize_legal_symbols_normalizes_numbered_paragraph() -> None:
+    content = "§ 1 o Findo o prazo..."
+
+    result = normalize_legal_symbols(content)
+
+    assert "§ 1º Findo o prazo..." in result
+    assert "Findo o prazo..." in result
+
+
+def test_normalize_legal_symbols_normalizes_law_number() -> None:
+    content = "Lei n o 8.069, de 13 de julho de 1990"
+
+    result = normalize_legal_symbols(content)
+
+    assert "Lei nº 8.069, de 13 de julho de 1990" in result
+
+
+def test_normalize_legal_symbols_normalizes_named_paragraph_ordinal() -> None:
+    content = "No caso do parágrafo 2 o , reverterão..."
+
+    result = normalize_legal_symbols(content)
+
+    assert "No caso do parágrafo 2º, reverterão..." in result
+
+
+def test_normalize_legal_symbols_preserves_unanchored_office_ordinal() -> None:
+    content = "...ou, em sua falta, no 1 o Ofício da Capital do Estado..."
+
+    result = normalize_legal_symbols(content)
+
+    assert result == content
+
+
+def test_normalize_legal_symbols_preserves_unanchored_historical_ordinals() -> None:
+    content = (
+        "...consideram-se feitas às disposições correspondentes deste Código. "
+        "Brasília, 10 de janeiro de 2002; 181 o da Independência e "
+        "114 o da República."
+    )
+
+    result = normalize_legal_symbols(content)
+
+    assert result == content
+
+
+@pytest.mark.parametrize(
+    "content",
+    [
+        "O prazo é de 10 outubro.",
+        "O contrato prevê 5 obrigações.",
+    ],
+)
+def test_normalize_legal_symbols_preserves_words_starting_with_o(
+    content: str,
+) -> None:
+    result = normalize_legal_symbols(content)
+
+    assert result == content
+
+
+def test_normalize_legal_symbols_is_idempotent() -> None:
+    content = "Art. 1º Toda pessoa é capaz..."
+
+    normalized = normalize_legal_symbols(content)
+
+    assert normalized == content
+    assert normalize_legal_symbols(normalized) == normalized
