@@ -210,6 +210,35 @@ def test_mark_final_index_follows_terminal_literal_index_anchor() -> None:
     assert index_heading < result.index("P A R T E")
 
 
+def test_mark_final_index_replaces_isolated_terminal_index_paragraph() -> None:
+    markdown = (
+        "LEI Nº 10.406, DE 10 DE JANEIRO DE 2002\n\n"
+        "Vigência\n\n"
+        "ÍNDICE\n\n"
+        "Art. 2.046. Todas as remissões consideram-se feitas às disposições "
+        "correspondentes deste Código.\n\n"
+        "Brasília, 10 de janeiro de 2002.\n\n"
+        "FERNANDO HENRIQUE CARDOSO\n"
+        "Aloysio Nunes Ferreira Filho\n\n"
+        "Este texto não substitui o publicado no DOU de 11.1.2002\n\n"
+        "ÍNDICE\n\n"
+        "PARTE GERAL\n\n"
+        "LIVRO I\n\n"
+        "TÍTULO I\n\n"
+        "CAPÍTULO I"
+    )
+
+    result = mark_final_index(markdown)
+
+    assert result.count("# ÍNDICE") == 1
+    assert re.findall(r"^ÍNDICE$", result, re.MULTILINE) == ["ÍNDICE"]
+    assert result.index("ÍNDICE") < result.index("Art. 2.046.")
+    assert (
+        "Este texto não substitui o publicado no DOU de 11.1.2002\n\n"
+        "# ÍNDICE"
+    ) in result
+
+
 def test_build_legislative_headings_builds_book_heading() -> None:
     result = build_legislative_headings("LIVRO I\n\nDAS PESSOAS")
 

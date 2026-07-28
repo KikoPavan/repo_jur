@@ -454,6 +454,11 @@ def mark_final_index(markdown: str) -> str:
 
     insertion_index = last_article_index + 1
     for index in range(insertion_index, len(paragraphs)):
+        if paragraphs[index].strip() == "ÍNDICE":
+            paragraphs[index] = "# ÍNDICE"
+            return "\n\n".join(paragraphs)
+
+    for index in range(insertion_index, len(paragraphs)):
         if "ÍNDICE" in paragraphs[index]:
             insertion_index = index + 1
             break
