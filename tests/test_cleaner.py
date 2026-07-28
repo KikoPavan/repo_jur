@@ -540,6 +540,14 @@ def test_normalize_legal_symbols_normalizes_article_ordinal() -> None:
     assert "Art. 1 o " not in result
 
 
+def test_normalize_legal_symbols_normalizes_lowercase_article_ordinal() -> None:
+    content = "nos termos do art. 3 o Código..."
+
+    result = normalize_legal_symbols(content)
+
+    assert "art. 3º Código..." in result
+
+
 def test_normalize_legal_symbols_normalizes_numbered_paragraph() -> None:
     content = "§ 1 o Findo o prazo..."
 
@@ -547,6 +555,14 @@ def test_normalize_legal_symbols_normalizes_numbered_paragraph() -> None:
 
     assert "§ 1º Findo o prazo..." in result
     assert "Findo o prazo..." in result
+
+
+def test_normalize_legal_symbols_removes_space_before_ordinal_symbol() -> None:
+    content = "§ 1 º Nos aforamentos..."
+
+    result = normalize_legal_symbols(content)
+
+    assert "§ 1º Nos aforamentos..." in result
 
 
 def test_normalize_legal_symbols_normalizes_law_number() -> None:

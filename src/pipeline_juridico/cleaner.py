@@ -261,7 +261,9 @@ def remove_repetitive_margins(markdown: str) -> str:
 def normalize_legal_symbols(content: str) -> str:
     """Normalize OCR-split legal ordinal and number symbols."""
     content = re.sub(r"\b(Art\.\s*\d+)\s+o\b", r"\1º", content)
+    content = re.sub(r"\b(art\.\s*\d+)\s+o\b", r"\1º", content)
     content = re.sub(r"(?<!\w)(§\s*\d+)\s+o\b", r"\1º", content)
+    content = re.sub(r"(§\s*\d+)\s+º\b", r"\1º", content)
     content = re.sub(r"\b(Lei\s+n)\s+o\b", r"\1º", content)
     content = re.sub(
         r"\b([Pp]arágrafo\s+\d+)\s+o\b(?:\s+(?=,))?",
