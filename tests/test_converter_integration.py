@@ -36,6 +36,23 @@ def _isolate_first_page(source, target, page_index: int = 0) -> None:
         isolated_document.close()
 
 
+def _isolate_page_range(
+    source,
+    target,
+    start_index: int,
+    end_index: int,
+) -> None:
+    with fitz.open(source) as source_document:
+        isolated_document = fitz.open()
+        isolated_document.insert_pdf(
+            source_document,
+            from_page=start_index,
+            to_page=end_index,
+        )
+        isolated_document.save(target)
+        isolated_document.close()
+
+
 def _normalize_whitespace(markdown: str) -> str:
     normalized_lines = "\n".join(
         " ".join(line.split()) for line in markdown.splitlines() if line.strip()
@@ -144,6 +161,33 @@ def test_convert_inf0024e_first_page_uses_clean_native_output(tmp_path) -> None:
     assert not any("[Image OCR]" in line for line in markdown.splitlines())
 
 
+def test_convert_inf0024e_removes_repetitive_url_footer(tmp_path) -> None:
+    source = tmp_path / "inf0024e-paginas-1-a-3.pdf"
+    corpus_pdf = Path(__file__).parents[1] / "input" / "Inf0024E.pdf"
+    _isolate_page_range(corpus_pdf, source, start_index=0, end_index=2)
+
+    markdown, _relatorio = convert_document(
+        pdf_path=source,
+        output_path=tmp_path / "saida.md",
+        temp_root=tmp_path / "temp",
+        use_ocr=False,
+    )
+
+    assert (
+        "processo.stj.jus.br/jurisprudencia/externo/informativo/"
+        not in markdown
+    )
+    page_markers = ["[[Pág. 1]]", "[[Pág. 2]]", "[[Pág. 3]]"]
+    assert all(marker in markdown for marker in page_markers)
+    assert [markdown.index(marker) for marker in page_markers] == sorted(
+        markdown.index(marker) for marker in page_markers
+    )
+    assert (
+        "A competência da Justiça Federal para julgar crimes ambientais"
+        in markdown
+    )
+
+
 def test_convert_cc_2002_page_1_recomposes_art_2_paragraph(tmp_path) -> None:
     source = tmp_path / "codigo-civil-pagina-1.pdf"
     _isolate_first_page(
@@ -165,6 +209,36 @@ def test_convert_cc_2002_page_1_recomposes_art_2_paragraph(tmp_path) -> None:
         "vida; mas a lei põe a salvo, desde a concepção, os direitos do "
         "nascituro."
     ) in markdown
+
+
+def test_convert_cc_2002_removes_repetitive_print_header_and_footer(
+    tmp_path,
+) -> None:
+    source = tmp_path / "codigo-civil-paginas-1-a-3.pdf"
+    corpus_pdf = (
+        Path(__file__).parents[1] / "input" / "L10.406_CC_2002.pdf"
+    )
+    _isolate_page_range(corpus_pdf, source, start_index=0, end_index=2)
+
+    markdown, _relatorio = convert_document(
+        pdf_path=source,
+        output_path=tmp_path / "saida.md",
+        temp_root=tmp_path / "temp",
+        use_ocr=False,
+    )
+
+    assert "30/11/24, 19:06 L10406compilada" not in markdown
+    assert (
+        "https://www.planalto.gov.br/ccivil_03/leis/2002/"
+        "l10406compilada.htm"
+        not in markdown
+    )
+    page_markers = ["[[Pág. 1]]", "[[Pág. 2]]", "[[Pág. 3]]"]
+    assert all(marker in markdown for marker in page_markers)
+    assert [markdown.index(marker) for marker in page_markers] == sorted(
+        markdown.index(marker) for marker in page_markers
+    )
+    assert "Art. 2" in markdown
 
 
 def test_convert_aintaresp_page_3_preserves_paragraph_reading_order(

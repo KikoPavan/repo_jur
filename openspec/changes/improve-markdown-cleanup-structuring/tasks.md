@@ -14,7 +14,7 @@
 
 ## 2. Remoção de cabeçalhos e rodapés repetitivos
 
-- [ ] 2.1 A partir do corpus reconvertido, identificar concretamente quais linhas marginais repetitivas existem (data/hora, nome de arquivo, URL, contador "N/186") e escrever teste de regressão com exemplos reais extraídos do corpus.
+- [x] 2.1 A partir do corpus reconvertido, identificar concretamente quais linhas marginais repetitivas existem (data/hora, nome de arquivo, URL, contador "N/186") e escrever teste de regressão com exemplos reais extraídos do corpus.
 - [ ] 2.2 Implementar detecção por repetição entre blocos de página (topo/rodapé) restrita aos 4 padrões autorizados, sem tocar nos demais.
 - [ ] 2.3 Implementar a remoção preservando `[[Pág. N]]` e todo conteúdo jurídico repetido que não corresponda aos padrões autorizados.
 - [ ] 2.4 Adicionar teste garantindo que conteúdo jurídico repetido (ex. cabeçalho de seção genuíno) NÃO é removido.
