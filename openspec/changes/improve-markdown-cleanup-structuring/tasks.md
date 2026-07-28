@@ -18,7 +18,7 @@
 - [x] 2.2 Implementar detecção por repetição entre blocos de página (topo/rodapé) restrita aos 4 padrões autorizados, sem tocar nos demais.
 - [x] 2.3 Implementar a remoção preservando `[[Pág. N]]` e todo conteúdo jurídico repetido que não corresponda aos padrões autorizados.
 - [x] 2.4 Adicionar teste garantindo que conteúdo jurídico repetido (ex. cabeçalho de seção genuíno) NÃO é removido.
-- [ ] 2.5 Executar a suíte completa e reconverter o corpus; comparar com a linha de base e confirmar ausência de regressão.
+- [x] 2.5 Executar a suíte completa e reconverter o corpus; comparar com a linha de base e confirmar ausência de regressão.
 
 ## 3. Normalização contextual de símbolos
 
