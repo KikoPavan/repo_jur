@@ -41,7 +41,7 @@
 
 ## 6. Fechamento
 
-- [ ] 6.1 Executar a suíte completa de testes uma última vez e registrar o resultado.
-- [ ] 6.2 Reconverter o corpus completo uma última vez e confirmar: 186 marcadores `[[Pág. N]]` sequenciais no Código Civil; ausência dos cabeçalhos/rodapés identificados; parágrafos obrigatórios recompostos; símbolos normalizados apenas nos contextos autorizados; hierarquia Markdown validada; os outros 3 PDFs sem regressão frente à linha de base.
-- [ ] 6.3 Executar `openspec validate improve-markdown-cleanup-structuring --strict` e resolver todos os apontamentos.
+- [x] 6.1 Executar a suíte completa de testes uma última vez e registrar o resultado. (241 passed)
+- [x] 6.2 Reconverter o corpus completo uma última vez e confirmar: 186 marcadores `[[Pág. N]]` sequenciais no Código Civil; ausência dos cabeçalhos/rodapés identificados; parágrafos obrigatórios recompostos; símbolos normalizados apenas nos contextos autorizados; hierarquia Markdown validada; os outros 3 PDFs sem regressão frente à linha de base.
+- [x] 6.3 Executar `openspec validate improve-markdown-cleanup-structuring --strict` e resolver todos os apontamentos. (Change is valid)
 - [ ] 6.4 Escrever o relatório final (métricas, arquivos alterados, testes criados, comandos de reprodução, casos encaminhados para revisão humana) e arquivar a mudança somente após aprovação humana dos critérios de aceite.
