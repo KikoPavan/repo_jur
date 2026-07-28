@@ -99,6 +99,10 @@ def recompose_native_paragraphs(
         r"SEÇÃO|SECAO|SUBSEÇÃO|SUBSECAO)\b\s*[\wºª°]*\s*$",
         flags=re.IGNORECASE,
     )
+
+    def _is_uppercase_led(text: str) -> bool:
+        return bool(text) and text[0].isupper()
+
     native_label_pattern = re.compile(
         r"^[A-ZÁÀÂÃÉÊÍÓÔÕÚÇ][A-ZÁÀÂÃÉÊÍÓÔÕÚÇ ]*$"
     )
@@ -109,8 +113,14 @@ def recompose_native_paragraphs(
         previous_height = previous_y1 - previous_y0
         should_join = (
             not current_line_pattern.match(current_text)
-            and not formal_structure_pattern.match(current_text)
-            and not bare_structure_pattern.match(previous_text)
+            and not (
+                _is_uppercase_led(current_text)
+                and formal_structure_pattern.match(current_text)
+            )
+            and not (
+                _is_uppercase_led(previous_text)
+                and bare_structure_pattern.match(previous_text)
+            )
             and not native_label_pattern.match(previous_text)
             and gap <= previous_height * 1.2
         )

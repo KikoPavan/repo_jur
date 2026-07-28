@@ -325,6 +325,27 @@ def test_recompose_native_paragraphs_joins_nearby_plain_lines() -> None:
     assert result == "Este texto continua na linha seguinte."
 
 
+def test_recompose_native_paragraphs_joins_art_129_lowercase_parte() -> None:
+    first_line = (
+        "Art. 129. Reputa-se verificada, quanto aos efeitos jurídicos, a "
+        "condição cujo implemento for maliciosamente obstado pela"
+    )
+    second_line = (
+        "parte a quem desfavorecer, considerando-se, ao contrário, não "
+        "verificada a condição maliciosamente levada a efeito por aquele a "
+        "quem aproveita o seu implemento."
+    )
+    content = f"{first_line}\n{second_line}"
+    blocks = [
+        (10.0, 21.0, first_line),
+        (22.0, 33.0, second_line),
+    ]
+
+    result = recompose_native_paragraphs(content, blocks)
+
+    assert result == f"{first_line} {second_line}"
+
+
 def test_recompose_native_paragraphs_does_not_join_article() -> None:
     content = "Disposição preliminar\nArt. 2 Esta norma entra em vigor."
     blocks = [
