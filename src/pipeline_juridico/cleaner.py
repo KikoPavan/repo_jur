@@ -306,21 +306,46 @@ def build_legislative_headings(markdown: str) -> str:
         reverse=True,
     )
 
-    for index, paragraph in enumerate(paragraphs):
-        stripped = paragraph.strip()
-        if not letter_spaced_pattern.fullmatch(stripped):
-            continue
-        collapsed = stripped.replace(" ", "")
+    def _letter_spaced_keyword(text: str) -> tuple[str, str] | None:
+        collapsed = text.replace(" ", "")
         keyword = next(
             (
                 candidate
                 for candidate in uppercase_keywords
                 if collapsed.startswith(candidate)
-                and collapsed != candidate
             ),
             None,
         )
-        if keyword is not None:
+        if keyword is None:
+            return None
+        return keyword, collapsed
+
+    attached_letter_spaced_pattern = re.compile(
+        r"(?<=\s)((?:[A-ZÀ-Ú]\s){2,}[A-ZÀ-Ú])$"
+    )
+    separated_paragraphs: list[str] = []
+    for paragraph in paragraphs:
+        stripped = paragraph.strip()
+        match = attached_letter_spaced_pattern.search(stripped)
+        if (
+            match is None
+            or _letter_spaced_keyword(match.group(1)) is None
+        ):
+            separated_paragraphs.append(paragraph)
+            continue
+        separated_paragraphs.extend(
+            [stripped[:match.start()].rstrip(), match.group(1)]
+        )
+    paragraphs = separated_paragraphs
+
+    for index, paragraph in enumerate(paragraphs):
+        stripped = paragraph.strip()
+        if not letter_spaced_pattern.fullmatch(stripped):
+            continue
+        keyword_match = _letter_spaced_keyword(stripped)
+        if keyword_match is not None:
+            keyword, collapsed = keyword_match
+        if keyword_match is not None and collapsed != keyword:
             level = heading_levels[keyword.casefold()]
             paragraphs[index] = (
                 f"{'#' * level} {keyword} {collapsed[len(keyword):]}"

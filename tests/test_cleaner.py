@@ -374,6 +374,32 @@ def test_build_legislative_headings_converts_letter_spaced_parts() -> None:
     assert result == "# PARTE GERAL\n\n# PARTE ESPECIAL"
 
 
+def test_build_legislative_headings_splits_attached_letter_spaced_part() -> None:
+    article = (
+        "Art. 232. A recusa à perícia médica ordenada pelo juiz poderá suprir "
+        "a prova que se pretendia obter com o exame."
+    )
+    content = (
+        f"{article} P A R T E E S P E C I A L\n\n"
+        "LIVRO I\n\nDO DIREITO DAS OBRIGAÇÕES"
+    )
+
+    result = build_legislative_headings(content)
+
+    assert result == (
+        f"{article}\n\n"
+        "# PARTE ESPECIAL\n\n"
+        "## LIVRO I — DO DIREITO DAS OBRIGAÇÕES"
+    )
+    assert build_legislative_headings(result) == result
+
+
+def test_build_legislative_headings_preserves_unknown_letter_spaced_suffix() -> None:
+    content = "Consulte também a seção técnica de apoio A P O I O T E C N I C O"
+
+    assert build_legislative_headings(content) == content
+
+
 def test_remove_repetitive_margins_preserves_repeated_legal_header() -> None:
     legal_header = "Superior Tribunal de Justiça"
     pages = [
