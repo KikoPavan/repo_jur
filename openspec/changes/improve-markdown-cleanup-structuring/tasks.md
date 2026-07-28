@@ -28,7 +28,7 @@
 
 ## 4. Estrutura Markdown legislativa
 
-- [ ] 4.1 Criar teste de regressão para o caso obrigatório "LIVRO I" + "DAS PESSOAS" (Código Civil) tornando-se um único cabeçalho Markdown, e um teste negativo de texto maiúsculo comum que não deve virar título.
+- [x] 4.1 Criar teste de regressão para o caso obrigatório "LIVRO I" + "DAS PESSOAS" (Código Civil) tornando-se um único cabeçalho Markdown, e um teste negativo de texto maiúsculo comum que não deve virar título.
 - [ ] 4.2 Implementar reconhecimento de PARTE/LIVRO/TÍTULO/CAPÍTULO/SEÇÃO/SUBSEÇÃO e fusão com o título imediatamente seguinte no nível de cabeçalho correspondente (`#` a `######`).
 - [ ] 4.3 Executar a suíte completa e reconverter o corpus; comparar com a linha de base e validar a hierarquia Markdown resultante (níveis consistentes, sem título espúrio).
 

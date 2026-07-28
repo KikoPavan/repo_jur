@@ -5,6 +5,7 @@ import pytest
 from pipeline_juridico.cleaner import (
     ILLEGIBLE_TEXT_MARKER,
     UnauthorizedIllegibleMarkerError,
+    build_legislative_headings,
     clean_markdown,
     ensure_illegible_marker_authorized,
     normalize_legal_symbols,
@@ -141,6 +142,98 @@ def test_clean_markdown_preserves_signature_block() -> None:
     result = clean_markdown(text)
 
     assert signature_block in result
+
+
+def test_build_legislative_headings_builds_book_heading() -> None:
+    result = build_legislative_headings("LIVRO I\n\nDAS PESSOAS")
+
+    assert re.search(
+        r"^##(?!#)\s+LIVRO I\b.*DAS PESSOAS",
+        result,
+        re.MULTILINE,
+    )
+
+
+def test_build_legislative_headings_builds_title_heading() -> None:
+    result = build_legislative_headings("TÍTULO I\n\nDAS PESSOAS NATURAIS")
+
+    assert re.search(
+        r"^###(?!#)\s+TÍTULO I\b.*DAS PESSOAS NATURAIS",
+        result,
+        re.MULTILINE,
+    )
+
+
+def test_build_legislative_headings_builds_chapter_heading() -> None:
+    result = build_legislative_headings(
+        "CAPÍTULO I\n\nDa Personalidade e da Capacidade"
+    )
+
+    assert re.search(
+        r"^####(?!#)\s+CAPÍTULO I\b.*Da Personalidade e da Capacidade",
+        result,
+        re.MULTILINE,
+    )
+
+
+def test_build_legislative_headings_builds_mixed_case_section_heading() -> None:
+    result = build_legislative_headings(
+        "Seção I\n\nDa Curadoria dos Bens do Ausente"
+    )
+
+    assert re.search(
+        r"^#####(?!#)\s+Seção I\b.*Da Curadoria dos Bens do Ausente",
+        result,
+        re.MULTILINE,
+    )
+
+
+def test_build_legislative_headings_preserves_complete_single_line_part() -> None:
+    content = "PARTE GERAL"
+
+    assert build_legislative_headings(content) == content
+
+
+def test_build_legislative_headings_preserves_common_uppercase_text() -> None:
+    content = (
+        "Texto de introdução qualquer.\n\n"
+        "TÍTULO INSTITUCIONAL SEM MARCADOR"
+    )
+
+    assert build_legislative_headings(content) == content
+
+
+def test_build_legislative_headings_preserves_remaining_content() -> None:
+    article = "Art. 1º Toda pessoa é capaz de direitos e deveres."
+    content = f"LIVRO I\n\nDAS PESSOAS\n\n{article}"
+
+    result = build_legislative_headings(content)
+
+    assert re.search(
+        r"^##(?!#)\s+LIVRO I\b.*DAS PESSOAS",
+        result,
+        re.MULTILINE,
+    )
+    assert article in result
+
+
+def test_build_legislative_headings_preserves_page_marker_and_method() -> None:
+    page_marker = "[[Pág. 1]]"
+    method_comment = "<!-- método: texto_nativo -->"
+    content = (
+        f"{page_marker}\n{method_comment}\n\n"
+        "LIVRO I\n\nDAS PESSOAS"
+    )
+
+    result = build_legislative_headings(content)
+
+    assert page_marker in result
+    assert method_comment in result
+    assert re.search(
+        r"^##(?!#)\s+LIVRO I\b.*DAS PESSOAS",
+        result,
+        re.MULTILINE,
+    )
 
 
 def test_remove_repetitive_margins_preserves_repeated_legal_header() -> None:
