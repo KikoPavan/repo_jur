@@ -8,6 +8,12 @@ ILLEGIBLE_TEXT_MARKER = "[[TEXTO ILEGÍVEL]]"
 
 _PAGE_MARKER_PATTERN = re.compile(r"^\[\[Pág\. \d+\]\]$")
 _METHOD_COMMENT_PATTERN = re.compile(r"^<!-- método: .+ -->$")
+_LEGISLATIVE_MARKER_PATTERN = re.compile(
+    r"^(PARTE|LIVRO|TÍTULO|TITULO|CAPÍTULO|CAPITULO|"
+    r"SEÇÃO|SECAO|SUBSEÇÃO|SUBSECAO)\b\s*"
+    r"(?:[IVXLCDM]+|ÚNICO|UNICO)?\s*$",
+    flags=re.IGNORECASE,
+)
 _DIGIT_SEQUENCE_PATTERN = re.compile(r"\d+")
 _PAGE_COUNTER = r"(?:\d+\s*/\s*\d+|Página\s*\d+\s*(?:de|/)\s*\d+)"
 _URL = (
@@ -253,6 +259,48 @@ def normalize_legal_symbols(content: str) -> str:
         content,
     )
     return content
+
+
+def build_legislative_headings(markdown: str) -> str:
+    """Combine bare legislative markers and titles into Markdown headings."""
+    heading_levels = {
+        "parte": 1,
+        "livro": 2,
+        "título": 3,
+        "titulo": 3,
+        "capítulo": 4,
+        "capitulo": 4,
+        "seção": 5,
+        "secao": 5,
+        "subseção": 6,
+        "subsecao": 6,
+    }
+    paragraphs = re.split(r"\n\n", markdown)
+    processed: list[str] = []
+    index = 0
+
+    while index < len(paragraphs):
+        marker_text = paragraphs[index].strip()
+        marker_match = _LEGISLATIVE_MARKER_PATTERN.fullmatch(marker_text)
+        if marker_match and index + 1 < len(paragraphs):
+            title_text = paragraphs[index + 1].strip()
+            title_is_excluded = (
+                _PAGE_MARKER_PATTERN.fullmatch(title_text)
+                or _METHOD_COMMENT_PATTERN.fullmatch(title_text)
+                or _LEGISLATIVE_MARKER_PATTERN.fullmatch(title_text)
+            )
+            if not title_is_excluded:
+                level = heading_levels[marker_match.group(1).casefold()]
+                processed.append(
+                    f"{'#' * level} {marker_text} — {title_text}"
+                )
+                index += 2
+                continue
+
+        processed.append(paragraphs[index])
+        index += 1
+
+    return "\n\n".join(processed)
 
 
 def clean_markdown(text: str) -> str:
