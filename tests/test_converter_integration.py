@@ -117,6 +117,28 @@ def test_convert_document_preserves_native_label_value_reading_order(
     assert "AGRAVANTE\n: NORTE ENERGIA S.A.\nADVOGADOS" in markdown
 
 
+def test_convert_aintaresp_preserves_repeated_legal_header(tmp_path) -> None:
+    source = tmp_path / "aintaresp-paginas-1-a-3.pdf"
+    corpus_pdf = (
+        Path(__file__).parents[1] / "input" / "AINTARESP_1462304-PA.pdf"
+    )
+    _isolate_page_range(corpus_pdf, source, start_index=0, end_index=2)
+
+    markdown, _relatorio = convert_document(
+        pdf_path=source,
+        output_path=tmp_path / "saida.md",
+        temp_root=tmp_path / "temp",
+        use_ocr=False,
+    )
+
+    assert "Superior Tribunal de Justiça" in markdown
+    page_markers = ["[[Pág. 1]]", "[[Pág. 2]]", "[[Pág. 3]]"]
+    assert all(marker in markdown for marker in page_markers)
+    assert [markdown.index(marker) for marker in page_markers] == sorted(
+        markdown.index(marker) for marker in page_markers
+    )
+
+
 def test_convert_document_replaces_fabricated_native_tables(
     tmp_path,
 ) -> None:
@@ -214,6 +236,30 @@ def test_convert_inf0024e_removes_repetitive_url_footer(tmp_path) -> None:
     assert (
         "A competência da Justiça Federal para julgar crimes ambientais"
         in markdown
+    )
+
+
+def test_convert_inf0024e_preserves_repeated_legal_title(tmp_path) -> None:
+    source = tmp_path / "inf0024e-titulo-paginas-1-a-3.pdf"
+    corpus_pdf = Path(__file__).parents[1] / "input" / "Inf0024E.pdf"
+    _isolate_page_range(corpus_pdf, source, start_index=0, end_index=2)
+
+    markdown, _relatorio = convert_document(
+        pdf_path=source,
+        output_path=tmp_path / "saida.md",
+        temp_root=tmp_path / "temp",
+        use_ocr=False,
+    )
+
+    assert "Informativo de Jurisprudência n. 24" in markdown
+    assert (
+        "processo.stj.jus.br/jurisprudencia/externo/informativo/"
+        not in markdown
+    )
+    page_markers = ["[[Pág. 1]]", "[[Pág. 2]]", "[[Pág. 3]]"]
+    assert all(marker in markdown for marker in page_markers)
+    assert [markdown.index(marker) for marker in page_markers] == sorted(
+        markdown.index(marker) for marker in page_markers
     )
 
 

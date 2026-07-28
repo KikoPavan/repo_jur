@@ -8,6 +8,7 @@ from pipeline_juridico.cleaner import (
     clean_markdown,
     ensure_illegible_marker_authorized,
     recompose_native_paragraphs,
+    remove_repetitive_margins,
 )
 
 
@@ -139,6 +140,29 @@ def test_clean_markdown_preserves_signature_block() -> None:
     result = clean_markdown(text)
 
     assert signature_block in result
+
+
+def test_remove_repetitive_margins_preserves_repeated_legal_header() -> None:
+    legal_header = "Superior Tribunal de Justiça"
+    pages = [
+        (
+            f"[[Pág. {page_number}]]\n"
+            "<!-- método: texto_nativo -->\n"
+            f"{legal_header}\n"
+            f"Conteúdo jurídico exclusivo da página {page_number}."
+        )
+        for page_number in range(1, 6)
+    ]
+
+    result = remove_repetitive_margins("\n".join(pages))
+
+    assert result.count(legal_header) == len(pages)
+    for page_number in range(1, 6):
+        page = result.split(f"[[Pág. {page_number}]]", maxsplit=1)[1]
+        assert (
+            f"<!-- método: texto_nativo -->\n{legal_header}\n"
+            in page
+        )
 
 
 def test_illegible_text_marker_constant_value() -> None:
