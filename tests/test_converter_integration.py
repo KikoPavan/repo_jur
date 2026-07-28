@@ -1,4 +1,5 @@
 from pathlib import Path
+import re
 from types import SimpleNamespace
 
 import fitz
@@ -135,6 +136,34 @@ def test_convert_document_replaces_fabricated_native_tables(
     assert not any(line.startswith("|") for line in markdown.splitlines())
     assert "RELATORA\n: MINISTRA NANCY ANDRIGHI" in markdown
     assert relatorio.pages[0].method == Metodo.texto_nativo
+
+
+def test_convert_resp_removes_repetitive_page_counters(tmp_path) -> None:
+    source = tmp_path / "resp-paginas-1-a-4.pdf"
+    corpus_pdf = (
+        Path(__file__).parents[1] / "input" / "REsp_1704551-SP.pdf"
+    )
+    _isolate_page_range(corpus_pdf, source, start_index=0, end_index=3)
+
+    markdown, _relatorio = convert_document(
+        pdf_path=source,
+        output_path=tmp_path / "saida.md",
+        temp_root=tmp_path / "temp",
+        use_ocr=False,
+    )
+
+    assert re.search(r"Página\s*\d+\s*de\s*\d+", markdown) is None
+    page_markers = [
+        "[[Pág. 1]]",
+        "[[Pág. 2]]",
+        "[[Pág. 3]]",
+        "[[Pág. 4]]",
+    ]
+    assert all(marker in markdown for marker in page_markers)
+    assert [markdown.index(marker) for marker in page_markers] == sorted(
+        markdown.index(marker) for marker in page_markers
+    )
+    assert "RECURSO ESPECIAL" in markdown
 
 
 def test_convert_inf0024e_first_page_uses_clean_native_output(tmp_path) -> None:

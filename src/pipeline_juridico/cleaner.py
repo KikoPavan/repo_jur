@@ -6,6 +6,25 @@ import re
 
 ILLEGIBLE_TEXT_MARKER = "[[TEXTO ILEGÍVEL]]"
 
+_PAGE_MARKER_PATTERN = re.compile(r"^\[\[Pág\. \d+\]\]$")
+_METHOD_COMMENT_PATTERN = re.compile(r"^<!-- método: .+ -->$")
+_DIGIT_SEQUENCE_PATTERN = re.compile(r"\d+")
+_PAGE_COUNTER = r"(?:\d+\s*/\s*\d+|Página\s*\d+\s*(?:de|/)\s*\d+)"
+_URL = (
+    r"(?:https?://\S+|"
+    r"(?:[\w-]+\.)+[a-z]{2,}(?:\.[a-z]{2,})?/\S*)"
+)
+_REMOVABLE_MARGIN = (
+    rf"(?:"
+    rf"\d{{1,2}}/\d{{1,2}}/\d{{2,4}},?\s*"
+    rf"\d{{1,2}}:\d{{2}}(?:\s+\S+)?|"
+    rf"{_URL}(?:\s+{_PAGE_COUNTER})?|"
+    rf"{_PAGE_COUNTER}"
+    rf")"
+)
+_FIRST_MARGIN_PATTERN = re.compile(rf"^{_REMOVABLE_MARGIN}")
+_LAST_MARGIN_PATTERN = re.compile(rf"{_REMOVABLE_MARGIN}$")
+
 
 class UnauthorizedIllegibleMarkerError(Exception):
     """Raised when partial-output content appears without explicit authorization."""
@@ -117,6 +136,110 @@ def recompose_native_paragraphs(
         )
         overlap = common_token_count / largest_token_count
     return geometric_text if overlap >= 0.98 else content
+
+
+def remove_repetitive_margins(markdown: str) -> str:
+    """Remove only recognized headers and footers repeated across pages."""
+    if not markdown:
+        return markdown
+
+    had_trailing_newline = markdown.endswith("\n")
+    lines = markdown.splitlines()
+    page_starts = [
+        index
+        for index, line in enumerate(lines)
+        if _PAGE_MARKER_PATTERN.fullmatch(line)
+    ]
+    if not page_starts:
+        return markdown
+
+    pages: list[tuple[int, int, int, int]] = []
+    for page_index, start in enumerate(page_starts):
+        end = (
+            page_starts[page_index + 1]
+            if page_index + 1 < len(page_starts)
+            else len(lines)
+        )
+        content_indices = [
+            index
+            for index in range(start, end)
+            if lines[index].strip()
+            and not _PAGE_MARKER_PATTERN.fullmatch(lines[index])
+            and not _METHOD_COMMENT_PATTERN.fullmatch(lines[index])
+        ]
+        if content_indices:
+            pages.append(
+                (start, end, content_indices[0], content_indices[-1])
+            )
+
+    if not pages:
+        return markdown
+
+    minimum_occurrences = (3 * len(pages) + 4) // 5
+    first_matches = {
+        first: _FIRST_MARGIN_PATTERN.match(lines[first])
+        for _, _, first, _ in pages
+    }
+    last_matches = {
+        last: _LAST_MARGIN_PATTERN.search(lines[last])
+        for _, _, _, last in pages
+    }
+    first_templates = Counter(
+        re.sub(
+            r"\s+",
+            " ",
+            _DIGIT_SEQUENCE_PATTERN.sub("#", match.group()),
+        )
+        for match in first_matches.values()
+        if match
+    )
+    last_templates = Counter(
+        re.sub(
+            r"\s+",
+            " ",
+            _DIGIT_SEQUENCE_PATTERN.sub("#", match.group()),
+        )
+        for match in last_matches.values()
+        if match
+    )
+
+    removals: dict[int, str] = {}
+    for _, _, first, last in pages:
+        first_line = lines[first]
+        first_match = first_matches[first]
+        if first_match:
+            first_template = re.sub(
+                r"\s+",
+                " ",
+                _DIGIT_SEQUENCE_PATTERN.sub("#", first_match.group()),
+            )
+            if first_templates[first_template] >= minimum_occurrences:
+                removals[first] = first_line[first_match.end():].lstrip()
+
+        last_line = removals.get(last, lines[last])
+        last_match = last_matches[last]
+        if last_match:
+            last_template = re.sub(
+                r"\s+",
+                " ",
+                _DIGIT_SEQUENCE_PATTERN.sub("#", last_match.group()),
+            )
+            if last_templates[last_template] >= minimum_occurrences:
+                current_match = _LAST_MARGIN_PATTERN.search(last_line)
+                if current_match:
+                    removals[last] = (
+                        last_line[:current_match.start()].rstrip()
+                    )
+
+    processed_lines = [
+        removals.get(index, line)
+        for index, line in enumerate(lines)
+        if index not in removals or removals[index]
+    ]
+    result = "\n".join(processed_lines)
+    if had_trailing_newline:
+        result += "\n"
+    return result
 
 
 def clean_markdown(text: str) -> str:

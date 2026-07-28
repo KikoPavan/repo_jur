@@ -13,6 +13,7 @@ from .cleaner import (
     clean_markdown,
     ensure_illegible_marker_authorized,
     recompose_native_paragraphs,
+    remove_repetitive_margins,
 )
 from .config import RoutingConfig
 from .engines import (
@@ -302,6 +303,7 @@ def convert_document(
             )
 
     raw_markdown = compose_document(blocks)
+    raw_markdown = remove_repetitive_margins(raw_markdown)
     final_markdown = clean_markdown(raw_markdown)
 
     ensure_illegible_marker_authorized(final_markdown, allow_partial)
