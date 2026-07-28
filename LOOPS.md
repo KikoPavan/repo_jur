@@ -2,7 +2,11 @@
 
 Mudança ativa:
 
-`establish-juridical-pdf-conversion-pipeline`
+`improve-markdown-cleanup-structuring`
+
+Histórico: `establish-juridical-pdf-conversion-pipeline` foi concluída e arquivada em 2026-07-27.
+
+Regra específica desta mudança: todas as reconversões do corpus de regressão usam `converter-juridico --no-ocr`. Este objetivo não altera nem exercita o caminho de OCR; página que exigir OCR sob `--no-ocr` é regressão de roteamento ou caso BLOQUEADO, nunca resolvido chamando a API Gemini.
 
 Fluxo:
 
