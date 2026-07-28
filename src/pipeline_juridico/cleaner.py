@@ -303,6 +303,49 @@ def build_legislative_headings(markdown: str) -> str:
     return "\n\n".join(processed)
 
 
+def mark_final_index(markdown: str) -> str:
+    """Mark a structurally dense final index after the document's last article."""
+    paragraphs = re.split(r"\n\n", markdown)
+    article_pattern = re.compile(r"^Art\.?\s*\d+")
+    structural_pattern = re.compile(
+        r"^(?:#{1,6}\s|"
+        r"(?:PARTE|LIVRO|TÍTULO|TITULO|CAPÍTULO|CAPITULO|"
+        r"SEÇÃO|SECAO|SUBSEÇÃO|SUBSECAO)\b)"
+    )
+
+    last_article_index = None
+    for index in range(len(paragraphs) - 1, -1, -1):
+        paragraph = paragraphs[index].strip()
+        if (
+            _PAGE_MARKER_PATTERN.fullmatch(paragraph)
+            or _METHOD_COMMENT_PATTERN.fullmatch(paragraph)
+        ):
+            continue
+        if article_pattern.match(paragraph):
+            last_article_index = index
+            break
+
+    if last_article_index is None:
+        return markdown
+
+    structural_count = 0
+    for paragraph in paragraphs[last_article_index + 1:]:
+        stripped = paragraph.strip()
+        if (
+            _PAGE_MARKER_PATTERN.fullmatch(stripped)
+            or _METHOD_COMMENT_PATTERN.fullmatch(stripped)
+        ):
+            continue
+        if structural_pattern.match(stripped):
+            structural_count += 1
+
+    if structural_count < 3:
+        return markdown
+
+    paragraphs.insert(last_article_index + 1, "# ÍNDICE")
+    return "\n\n".join(paragraphs)
+
+
 def clean_markdown(text: str) -> str:
     """Normalize Markdown formatting without changing its content."""
     if text == "":

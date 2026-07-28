@@ -13,6 +13,7 @@ from .cleaner import (
     build_legislative_headings,
     clean_markdown,
     ensure_illegible_marker_authorized,
+    mark_final_index,
     normalize_legal_symbols,
     recompose_native_paragraphs,
     remove_repetitive_margins,
@@ -308,6 +309,7 @@ def convert_document(
     raw_markdown = remove_repetitive_margins(raw_markdown)
     raw_markdown = normalize_legal_symbols(raw_markdown)
     raw_markdown = build_legislative_headings(raw_markdown)
+    raw_markdown = mark_final_index(raw_markdown)
     final_markdown = clean_markdown(raw_markdown)
 
     ensure_illegible_marker_authorized(final_markdown, allow_partial)
