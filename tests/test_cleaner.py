@@ -186,6 +186,30 @@ def test_mark_final_index_preserves_document_with_sparse_structural_tail() -> No
     assert mark_final_index(markdown) == markdown
 
 
+def test_mark_final_index_follows_terminal_literal_index_anchor() -> None:
+    markdown = (
+        "Art. 2.046. Todas as remissões, em diplomas legislativos, "
+        "consideram-se feitas às disposições correspondentes deste Código. "
+        "FERNANDO HENRIQUE CARDOSO\n\n"
+        "Aloysio Nunes Ferreira Filho Este texto não substitui o publicado "
+        "no DOU de 11.1.2002 ÍNDICE\n\n"
+        "P A R T E G E R A L\n\n"
+        "LIVRO I DAS PESSOAS\n\n"
+        "TÍTULO I DAS PESSOAS NATURAIS\n\n"
+        "CAPÍTULO I DA PERSONALIDADE"
+    )
+
+    result = mark_final_index(markdown)
+
+    index_heading = result.index("# ÍNDICE")
+    assert result.index("Aloysio Nunes Ferreira Filho") < index_heading
+    assert (
+        result.index("Este texto não substitui o publicado no DOU")
+        < index_heading
+    )
+    assert index_heading < result.index("P A R T E")
+
+
 def test_build_legislative_headings_builds_book_heading() -> None:
     result = build_legislative_headings("LIVRO I\n\nDAS PESSOAS")
 

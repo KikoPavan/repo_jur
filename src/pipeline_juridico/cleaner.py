@@ -364,7 +364,13 @@ def mark_final_index(markdown: str) -> str:
     if structural_count < 3:
         return markdown
 
-    paragraphs.insert(last_article_index + 1, "# ÍNDICE")
+    insertion_index = last_article_index + 1
+    for index in range(insertion_index, len(paragraphs)):
+        if "ÍNDICE" in paragraphs[index]:
+            insertion_index = index + 1
+            break
+
+    paragraphs.insert(insertion_index, "# ÍNDICE")
     return "\n\n".join(paragraphs)
 
 
