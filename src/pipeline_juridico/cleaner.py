@@ -242,6 +242,19 @@ def remove_repetitive_margins(markdown: str) -> str:
     return result
 
 
+def normalize_legal_symbols(content: str) -> str:
+    """Normalize OCR-split legal ordinal and number symbols."""
+    content = re.sub(r"\b(Art\.\s*\d+)\s+o\b", r"\1º", content)
+    content = re.sub(r"(?<!\w)(§\s*\d+)\s+o\b", r"\1º", content)
+    content = re.sub(r"\b(Lei\s+n)\s+o\b", r"\1º", content)
+    content = re.sub(
+        r"\b([Pp]arágrafo\s+\d+)\s+o\b(?:\s+(?=,))?",
+        r"\1º",
+        content,
+    )
+    return content
+
+
 def clean_markdown(text: str) -> str:
     """Normalize Markdown formatting without changing its content."""
     if text == "":

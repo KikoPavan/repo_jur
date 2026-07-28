@@ -23,8 +23,8 @@
 ## 3. Normalização contextual de símbolos
 
 - [x] 3.1 Criar testes de regressão para os três padrões obrigatórios ("Art. 1 o" → "Art. 1º", "§ 1 o" → "§ 1º", "Lei n o" → "Lei nº") e para um caso negativo explícito (uma letra "o" após número que NÃO deve ser alterada, ex. numeração de item ou data).
-- [ ] 3.2 Implementar a normalização com regex restritas aos padrões autorizados.
-- [ ] 3.3 Executar a suíte completa e reconverter o corpus; comparar com a linha de base e confirmar que nenhum número, data, valor ou referência legal fora do padrão foi alterado.
+- [x] 3.2 Implementar a normalização com regex restritas aos padrões autorizados.
+- [x] 3.3 Executar a suíte completa e reconverter o corpus; comparar com a linha de base e confirmar que nenhum número, data, valor ou referência legal fora do padrão foi alterado.
 
 ## 4. Estrutura Markdown legislativa
 

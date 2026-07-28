@@ -280,7 +280,7 @@ def test_convert_cc_2002_page_1_recomposes_art_2_paragraph(tmp_path) -> None:
 
     # Esperado falhar hoje: o Art. 2º ainda é fragmentado entre parágrafos.
     assert (
-        "Art. 2 o A personalidade civil da pessoa começa do nascimento com "
+        "Art. 2º A personalidade civil da pessoa começa do nascimento com "
         "vida; mas a lei põe a salvo, desde a concepção, os direitos do "
         "nascituro."
     ) in markdown
