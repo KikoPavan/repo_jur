@@ -487,6 +487,65 @@ def test_recompose_native_paragraphs_joins_art_129_lowercase_parte() -> None:
     assert result == f"{first_line} {second_line}"
 
 
+def test_recompose_native_paragraphs_separates_federal_law_closing() -> None:
+    article = (
+        "Art. 2.046. Todas as remissões, em diplomas legislativos, aos "
+        "Códigos referidos no artigo antecedente, consideram-se feitas às\n"
+        "disposições correspondentes deste Código.\n"
+    )
+    promulgation = (
+        "Brasília, 10 de janeiro de 2002; 181 o da Independência e 114 o "
+        "da República.\n"
+    )
+    signatures = (
+        "FERNANDO HENRIQUE CARDOSO\nAloysio Nunes Ferreira Filho\n"
+    )
+    publication_note = (
+        "Este texto não substitui o publicado no DOU de 11.1.2002\n"
+    )
+    index = "ÍNDICE\n"
+    content = article + promulgation + signatures + publication_note + index
+    blocks = [
+        (28.6, 51.7, article),
+        (62.3, 77.5, promulgation),
+        (88.4, 110.9, signatures),
+        (120.7, 131.9, publication_note),
+        (142.6, 153.7, index),
+    ]
+
+    result = recompose_native_paragraphs(content, blocks)
+
+    assert result == (
+        "Art. 2.046. Todas as remissões, em diplomas legislativos, aos "
+        "Códigos referidos no artigo antecedente, consideram-se feitas às "
+        "disposições correspondentes deste Código.\n\n"
+        "Brasília, 10 de janeiro de 2002; 181 o da Independência e 114 o "
+        "da República.\n\n"
+        "FERNANDO HENRIQUE CARDOSO\n\n"
+        "Aloysio Nunes Ferreira Filho\n\n"
+        "Este texto não substitui o publicado no DOU de 11.1.2002\n\n"
+        "ÍNDICE"
+    )
+
+
+def test_recompose_native_paragraphs_still_joins_unstructured_lines() -> None:
+    content = (
+        "A obrigação deve ser cumprida no prazo estabelecido\n"
+        "pelas partes no instrumento contratual."
+    )
+    blocks = [
+        (10.0, 21.0, "A obrigação deve ser cumprida no prazo estabelecido"),
+        (31.5, 42.5, "pelas partes no instrumento contratual."),
+    ]
+
+    result = recompose_native_paragraphs(content, blocks)
+
+    assert result == (
+        "A obrigação deve ser cumprida no prazo estabelecido "
+        "pelas partes no instrumento contratual."
+    )
+
+
 def test_recompose_native_paragraphs_does_not_join_article() -> None:
     content = "Disposição preliminar\nArt. 2 Esta norma entra em vigor."
     blocks = [

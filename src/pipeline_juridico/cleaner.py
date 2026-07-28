@@ -107,6 +107,12 @@ def recompose_native_paragraphs(
     native_label_pattern = re.compile(
         r"^[A-ZÁÀÂÃÉÊÍÓÔÕÚÇ][A-ZÁÀÂÃÉÊÍÓÔÕÚÇ ]*$"
     )
+    promulgation_line_pattern = re.compile(
+        r"^[A-ZÀ-Ú][a-zà-úãõâêîôû]+"
+        r"(?:\s[A-ZÀ-Ú][a-zà-úãõâêîôû]+)*,"
+        r"\s*\d{1,2}\s*o?\s*de\s+[a-zà-ú]+\s+de\s+\d{4}"
+    )
+    publication_note_pattern = re.compile(r"não substitui o publicado")
     paragraphs = [lines[0][2]]
     previous_y0, previous_y1, previous_text = lines[0]
     for current_y0, current_y1, current_text in lines[1:]:
@@ -123,6 +129,10 @@ def recompose_native_paragraphs(
                 and bare_structure_pattern.match(previous_text)
             )
             and not native_label_pattern.match(previous_text)
+            and not promulgation_line_pattern.match(current_text)
+            and not promulgation_line_pattern.match(previous_text)
+            and not publication_note_pattern.search(current_text)
+            and current_text.strip() != "ÍNDICE"
             and gap <= previous_height * 1.2
         )
         if should_join:
