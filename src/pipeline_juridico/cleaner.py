@@ -123,6 +123,10 @@ def recompose_native_paragraphs(
             and not (
                 _is_uppercase_led(current_text)
                 and formal_structure_pattern.match(current_text)
+                and (
+                    bare_structure_pattern.match(current_text)
+                    or current_text.isupper()
+                )
             )
             and not (
                 _is_uppercase_led(previous_text)
