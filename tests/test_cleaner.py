@@ -567,6 +567,30 @@ def test_recompose_native_paragraphs_joins_secao_reference_in_prose() -> None:
 
 
 @pytest.mark.parametrize(
+    "second_entry",
+    [
+        "Seção II Da Sucessão Provisória",
+        "Capítulo IV-A Da Tutela",
+        "Seção Única Da Caracterização",
+        "Livro Complementar Das Disposições Finais e Transitórias",
+    ],
+)
+def test_recompose_native_paragraphs_separates_structured_index_entries(
+    second_entry: str,
+) -> None:
+    first_entry = "Seção I Da Curadoria dos Bens do Ausente"
+    content = f"{first_entry}\n{second_entry}"
+    blocks = [
+        (10.0, 21.0, first_entry),
+        (22.0, 33.0, second_entry),
+    ]
+
+    result = recompose_native_paragraphs(content, blocks)
+
+    assert result == f"{first_entry}\n\n{second_entry}"
+
+
+@pytest.mark.parametrize(
     "heading",
     [
         "CAPÍTULO II — DAS ASSOCIAÇÕES",

@@ -100,6 +100,12 @@ def recompose_native_paragraphs(
         r"SEÇÃO|SECAO|SUBSEÇÃO|SUBSECAO)\b\s*[\wºª°]*\s*$",
         flags=re.IGNORECASE,
     )
+    qualified_structure_pattern = re.compile(
+        r"^(?:PARTE|LIVRO|TÍTULO|TITULO|CAPÍTULO|CAPITULO|"
+        r"SEÇÃO|SECAO|SUBSEÇÃO|SUBSECAO)\b\s+"
+        r"(?:[IVXLCDM]+(?:-A)?|ÚNICO|ÚNICA|UNICO|UNICA|COMPLEMENTAR)\b",
+        flags=re.IGNORECASE,
+    )
 
     def _is_uppercase_led(text: str) -> bool:
         return bool(text) and text[0].isupper()
@@ -126,6 +132,7 @@ def recompose_native_paragraphs(
                 and (
                     bare_structure_pattern.match(current_text)
                     or current_text.isupper()
+                    or qualified_structure_pattern.match(current_text)
                 )
             )
             and not (
