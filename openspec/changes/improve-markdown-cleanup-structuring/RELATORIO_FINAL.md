@@ -159,6 +159,48 @@ Os casos "191 6" e os ordinais de promulgação ("181 o da Independência"/"114 
 2. **Cabeçalho/rodapé técnico do AINTARESP e do REsp** (ex. "Superior Tribunal de Justiça" repetido, bloco de assinatura eletrônica com códigos de controle, `"Documento: 1807307 - Inteiro Teor do Acórdão - Site certificado - DJe: 04/04/2019"` repetido): nenhum corresponde às 4 categorias autorizadas de remoção de margem e por isso permanece intocado, por decisão conservadora.
 3. **Segunda ocorrência de "Seção Única" dentro do índice do Código Civil**: aparece como `"Seção Única Da Caracterização"`, já fundida em um único parágrafo pela recomposição geométrica de parágrafos — não é um par marcador+título separado, então a correção da subtarefa 7.4 (escopada a pares marcador+título) não se aplica a essa ocorrência específica. Nenhuma perda de conteúdo; permanece como texto comum dentro do índice.
 
-## 11. Estado da mudança
+## 11. Quarta rodada de validação (grupo 9 — defeito R01: referência estrutural em prosa bloqueando junção)
 
-Todas as subtarefas 0–8.7 de `tasks.md` estão marcadas `[x]`. Falta apenas o arquivamento (`openspec archive`), que este orquestrador não deve executar sem aprovação humana explícita, conforme `AGENTS.md`.
+Um novo objetivo (rotulado "R01") pediu recomposição determinística de linhas fragmentadas, citando 3 casos reais do Código Civil (Art. 44 §2º, Art. 593, Art. 1.458). Diagnosticados e corrigidos com o mesmo processo (mapeamento → teste primeiro → menor correção → verificação independente), em duas iterações porque a primeira correção introduziu uma regressão detectada pela varredura de resíduos do próprio orquestrador.
+
+### 11.1 Causas raiz e correções
+
+1. **Referência em prosa tratada como cabeçalho** — em `recompose_native_paragraphs`, `formal_structure_pattern` bloqueava a junção sempre que a linha seguinte COMEÇASSE com PARTE/LIVRO/TÍTULO/CAPÍTULO/SEÇÃO/SUBSEÇÃO (maiúscula inicial), mesmo quando a linha era só o final de uma frase citando o termo em prosa: "...são objeto do Livro II da" + "Parte Especial deste Código. (Incluído pela Lei nº 10.825, de 22.12.2003)" (Art. 44 §2º); "...disposições deste" + "Capítulo." (Art. 593); "...pela presente" + "Seção." (Art. 1.458). Confirmadas exatamente 3 ocorrências reais no corpo do texto (as ~380 demais correspondências do padrão no documento são entradas legítimas do ÍNDICE final). **Corrigido** restringindo o bloqueio a quando a linha seguinte for, ela própria, um marcador nu (`bare_structure_pattern`) ou inteiramente maiúscula.
+2. **Regressão intermediária: entradas do índice mescladas** — a correção acima não reconhecia entradas do ÍNDICE no formato "Marcador + numeral romano/qualificador + Título em Title Case" (ex. "Seção I Da Curadoria dos Bens do Ausente"), que não são nuas nem totalmente maiúsculas — 158 entradas foram engolidas em 37 parágrafos indevidamente mesclados. Detectado pela varredura de resíduos do orquestrador antes do fechamento do grupo. **Corrigido** com `qualified_structure_pattern` (marcador imediatamente seguido de numeral romano — com sufixo opcional "-A" — ou qualificador ÚNICO/ÚNICA/COMPLEMENTAR), adicionada como mais uma condição de bloqueio, independente do que vier depois na linha.
+
+### 11.2 Verificação final da quarta rodada
+
+- Suíte completa: **271 passed**, 0 falhas (era 260 ao final da terceira rodada; +11 testes novos: 3 positivos + 4 negativos na primeira iteração, 4 parametrizados na segunda).
+- 186 marcadores `[[Pág. N]]` sequenciais preservados no Código Civil; idempotência confirmada (duas reconversões independentes produzem `output/L10.406_CC_2002.md` byte-idêntico).
+- Os 3 casos do objetivo corrigidos, mais um caso adicional generalizado corretamente (Art. 1.368-F, mesmo padrão "disposições deste Capítulo.").
+- Entradas de índice indevidamente mescladas: 37 parágrafos (158 entradas) → 1 parágulo (2 entradas) remanescente, que é um artefato de extração do PyMuPDF pré-existente (caractere "&gt;" literal entre "Seção II Da Ocupação" e "Seção III Do Achado do Tesouro"), já presente na reconversão de linha de base antes de qualquer alteração desta rodada — não causado pela lógica de junção, fora de escopo (análogo ao "191 6" da segunda rodada).
+- Casos negativos revalidados sem regressão: 202 transições artigo→cabeçalho real; 1.092→1.094 pares de artigos consecutivos (aumento esperado — os 2 casos corrigidos passam a ficar adjacentes ao artigo seguinte); fechamento da lei (Art. 2.046 → promulgação → assinaturas → nota de publicação → `# ÍNDICE`) intacto.
+- AINTARESP, REsp e Inf0024E: reconvertidos sem erro, 0 `[[TEXTO ILEGÍVEL]]`, contagem de páginas inalterada.
+- `openspec validate improve-markdown-cleanup-structuring --strict` → válido (reexecutado ao final).
+
+### 11.3 Arquivos alterados nesta rodada
+
+- `src/pipeline_juridico/cleaner.py`: duas condições novas em `recompose_native_paragraphs` (checagem de marcador nu/maiúsculo; `qualified_structure_pattern` para marcador+numeral/qualificador).
+- `tests/test_cleaner.py`: +11 testes novos (3 positivos, 4 negativos de cobertura, 4 parametrizados para o caso de índice).
+
+### 11.4 Comandos de reprodução (iguais aos da seção 6)
+
+```bash
+uv sync
+uv run pytest tests/ -q
+uv run converter-juridico input/L10.406_CC_2002.pdf --no-ocr --overwrite --log-level WARNING
+uv run converter-juridico input/AINTARESP_1462304-PA.pdf --no-ocr --overwrite --log-level WARNING
+uv run converter-juridico input/REsp_1704551-SP.pdf --no-ocr --overwrite --log-level WARNING
+uv run converter-juridico input/Inf0024E.pdf --no-ocr --overwrite --log-level WARNING
+openspec validate improve-markdown-cleanup-structuring --strict
+```
+
+## 12. Casos encaminhados para revisão humana (atualizado após a quarta rodada)
+
+Além dos itens já listados na seção 10 (ainda pendentes: ordinal solto sem âncora, cabeçalho/rodapé técnico do AINTARESP/REsp, "Seção Única" já fundida no índice), adiciona-se:
+
+4. **"Seção II Da Ocupação >Seção III Do Achado do Tesouro"** (índice do Código Civil): caractere "&gt;" literal entre duas entradas de índice, presente desde a linha de base original (antes de qualquer alteração desta ou de rodadas anteriores) — artefato de extração do PyMuPDF (possível link/anotação malformado), não causado pela lógica de recomposição de parágrafos. Fora de escopo do defeito R01; registrado para eventual investigação futura da camada de extração.
+
+## 13. Estado da mudança
+
+Todas as subtarefas 0–9.5 de `tasks.md` estão marcadas `[x]`. Falta apenas o arquivamento (`openspec archive`), que este orquestrador não deve executar sem aprovação humana explícita, conforme `AGENTS.md`.
