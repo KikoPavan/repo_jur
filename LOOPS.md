@@ -2,7 +2,7 @@
 
 Mudança ativa:
 
-Nenhuma. `openspec/changes/` não contém mudanças pendentes no momento.
+`fix-jurisprudence-precedent-fusion` — corrige a fusão indevida entre dois precedentes jurisprudenciais consecutivos em `recompose_native_paragraphs`, detectada em `AINTARESP_1462304-PA.pdf` após o R01. Aberta em 2026-07-30, não arquivar sem aprovação humana explícita.
 
 Histórico:
 
