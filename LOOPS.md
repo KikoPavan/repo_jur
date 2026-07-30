@@ -2,11 +2,14 @@
 
 Mudança ativa:
 
-`improve-markdown-cleanup-structuring`
+Nenhuma. `openspec/changes/` não contém mudanças pendentes no momento.
 
-Histórico: `establish-juridical-pdf-conversion-pipeline` foi concluída e arquivada em 2026-07-27.
+Histórico:
 
-Regra específica desta mudança: todas as reconversões do corpus de regressão usam `converter-juridico --no-ocr`. Este objetivo não altera nem exercita o caminho de OCR; página que exigir OCR sob `--no-ocr` é regressão de roteamento ou caso BLOQUEADO, nunca resolvido chamando a API Gemini.
+- `establish-juridical-pdf-conversion-pipeline` foi concluída e arquivada em 2026-07-27.
+- `improve-markdown-cleanup-structuring` foi concluída (grupos 0–9, incluindo o defeito R01 de recomposição determinística de parágrafos) e arquivada em 2026-07-30 (`openspec/changes/archive/2026-07-30-improve-markdown-cleanup-structuring/`). Detalhes e métricas de cada rodada de validação em `RELATORIO_FINAL.md` dentro dessa pasta.
+
+Regra geral do corpus de regressão (válida para qualquer mudança futura sobre esses 4 PDFs, não só a arquivada acima): todas as reconversões usam `converter-juridico --no-ocr`. Nenhuma mudança sobre este corpus deve alterar ou exercitar o caminho de OCR; página que exigir OCR sob `--no-ocr` é regressão de roteamento ou caso BLOQUEADO, nunca resolvido chamando a API Gemini.
 
 Fluxo:
 
