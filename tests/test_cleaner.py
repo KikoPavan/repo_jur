@@ -516,6 +516,108 @@ def test_recompose_native_paragraphs_joins_art_129_lowercase_parte() -> None:
     assert result == f"{first_line} {second_line}"
 
 
+def test_recompose_native_paragraphs_joins_livro_reference_with_parte_prose() -> None:
+    first_line = (
+        "Art. 44. § 2º As disposições concernentes às associações aplicam-se "
+        "subsidiariamente às sociedades que são objeto do Livro II da"
+    )
+    second_line = (
+        "Parte Especial deste Código. (Incluído pela Lei nº 10.825, de "
+        "22.12.2003)"
+    )
+    content = f"{first_line}\n{second_line}"
+    blocks = [
+        (10.0, 21.0, first_line),
+        (22.0, 33.0, second_line),
+    ]
+
+    result = recompose_native_paragraphs(content, blocks)
+
+    assert result == f"{first_line} {second_line}"
+
+
+def test_recompose_native_paragraphs_joins_capitulo_reference_in_prose() -> None:
+    first_line = "Art. 593. A prestação de serviço reger-se-á pelas disposições deste"
+    second_line = "Capítulo."
+    content = f"{first_line}\n{second_line}"
+    blocks = [
+        (10.0, 21.0, first_line),
+        (22.0, 33.0, second_line),
+    ]
+
+    result = recompose_native_paragraphs(content, blocks)
+
+    assert result == f"{first_line} {second_line}"
+
+
+def test_recompose_native_paragraphs_joins_secao_reference_in_prose() -> None:
+    first_line = "Art. 1.458. Aplicam-se à sociedade em comandita simples as normas da"
+    first_line += " sociedade em nome coletivo, no que forem compatíveis com as"
+    first_line += " disposições estabelecidas pela presente"
+    second_line = "Seção."
+    content = f"{first_line}\n{second_line}"
+    blocks = [
+        (10.0, 21.0, first_line),
+        (22.0, 33.0, second_line),
+    ]
+
+    result = recompose_native_paragraphs(content, blocks)
+
+    assert result == f"{first_line} {second_line}"
+
+
+@pytest.mark.parametrize(
+    "heading",
+    [
+        "CAPÍTULO II — DAS ASSOCIAÇÕES",
+        "TÍTULO III",
+    ],
+)
+def test_recompose_native_paragraphs_does_not_join_article_to_structure_heading(
+    heading: str,
+) -> None:
+    article = "Art. 44. São pessoas jurídicas de direito privado:"
+    content = f"{article}\n{heading}"
+    blocks = [
+        (10.0, 21.0, article),
+        (22.0, 33.0, heading),
+    ]
+
+    result = recompose_native_paragraphs(content, blocks)
+
+    assert result == f"{article}\n\n{heading}"
+
+
+def test_recompose_native_paragraphs_does_not_join_consecutive_articles() -> None:
+    first_article = "Art. 593. A prestação de serviço será contratada."
+    second_article = "Art. 594. Toda a espécie de serviço pode ser contratada."
+    content = f"{first_article}\n{second_article}"
+    blocks = [
+        (10.0, 21.0, first_article),
+        (22.0, 33.0, second_article),
+    ]
+
+    result = recompose_native_paragraphs(content, blocks)
+
+    assert result == f"{first_article}\n\n{second_article}"
+
+
+def test_recompose_native_paragraphs_does_not_join_across_page_marker() -> None:
+    first_line = "Texto simples antes da mudança de página."
+    marker = "[[Pág. 2]]"
+    second_line = "Texto simples depois da mudança de página."
+    content = f"{first_line}\n{marker}\n{second_line}"
+    blocks = [
+        (10.0, 21.0, first_line),
+        (22.0, 33.0, marker),
+        (50.0, 61.0, second_line),
+    ]
+
+    result = recompose_native_paragraphs(content, blocks)
+
+    assert result == f"{first_line}\n\n{marker}\n\n{second_line}"
+
+
 def test_recompose_native_paragraphs_separates_federal_law_closing() -> None:
     article = (
         "Art. 2.046. Todas as remissões, em diplomas legislativos, aos "
