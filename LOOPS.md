@@ -2,12 +2,13 @@
 
 Mudança ativa:
 
-`fix-jurisprudence-precedent-fusion` — corrige a fusão indevida entre dois precedentes jurisprudenciais consecutivos em `recompose_native_paragraphs`, detectada em `AINTARESP_1462304-PA.pdf` após o R01. Aberta em 2026-07-30, não arquivar sem aprovação humana explícita.
+Nenhuma. `openspec/changes/` não contém mudanças pendentes no momento.
 
 Histórico:
 
 - `establish-juridical-pdf-conversion-pipeline` foi concluída e arquivada em 2026-07-27.
 - `improve-markdown-cleanup-structuring` foi concluída (grupos 0–9, incluindo o defeito R01 de recomposição determinística de parágrafos) e arquivada em 2026-07-30 (`openspec/changes/archive/2026-07-30-improve-markdown-cleanup-structuring/`). Detalhes e métricas de cada rodada de validação em `RELATORIO_FINAL.md` dentro dessa pasta.
+- `fix-jurisprudence-precedent-fusion` foi concluída e arquivada em 2026-07-31 (commit de arquivamento `ff850e4`, `openspec/changes/archive/2026-07-31-fix-jurisprudence-precedent-fusion/`). Causa raiz: ausência de proteção contra fusão entre o fechamento de uma citação jurisprudencial e o início em caixa alta do precedente seguinte. Correção: verificação do parágrafo acumulado por regex antes da decisão de junção. Ocorrências corrigidas: `AINTARESP_1462304-PA.pdf` e `REsp_1704551-SP.pdf`. Validação: suíte `272/272`, quatro PDFs reconvertidos com `--no-ocr`, marcadores `[[Pág. N]]` preservados, `openspec validate --all --strict`: 1 passed, 0 failed.
 
 Regra geral do corpus de regressão (válida para qualquer mudança futura sobre esses 4 PDFs, não só a arquivada acima): todas as reconversões usam `converter-juridico --no-ocr`. Nenhuma mudança sobre este corpus deve alterar ou exercitar o caminho de OCR; página que exigir OCR sob `--no-ocr` é regressão de roteamento ou caso BLOQUEADO, nunca resolvido chamando a API Gemini.
 
