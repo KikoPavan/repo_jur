@@ -119,6 +119,13 @@ def recompose_native_paragraphs(
         r"\s*\d{1,2}\s*o?\s*de\s+[a-zà-ú]+\s+de\s+\d{4}"
     )
     publication_note_pattern = re.compile(r"não substitui o publicado")
+    jurisprudence_closing_pattern = re.compile(
+        r"(?:"
+        r"DJe\s*\d{1,2}/\d{1,2}/\d{4}\)|"
+        r"\([^)]*\b(?:TURMA|SE[CÇ][AÃ]O|CORTE ESPECIAL)\b[^)]*\)"
+        r")\.?(?:\s*\([^)]*\)\.?)?\s*$",
+        flags=re.IGNORECASE,
+    )
     paragraphs = [lines[0][2]]
     previous_y0, previous_y1, previous_text = lines[0]
     for current_y0, current_y1, current_text in lines[1:]:
@@ -143,6 +150,10 @@ def recompose_native_paragraphs(
             and not promulgation_line_pattern.match(current_text)
             and not promulgation_line_pattern.match(previous_text)
             and not publication_note_pattern.search(current_text)
+            and not (
+                jurisprudence_closing_pattern.search(previous_text)
+                and current_text.isupper()
+            )
             and current_text.strip() != "ÍNDICE"
             and gap <= previous_height * 1.2
         )
