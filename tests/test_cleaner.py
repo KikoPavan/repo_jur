@@ -612,6 +612,27 @@ def test_recompose_native_paragraphs_does_not_join_article_to_structure_heading(
     assert result == f"{article}\n\n{heading}"
 
 
+def test_recompose_native_paragraphs_does_not_join_across_jurisprudence_closing() -> None:
+    previous_text = (
+        "VII - Agravo Interno improvido. (AgInt no REsp 1739440/SP, Rel. "
+        "Ministra REGINA HELENA COSTA, PRIMEIRA TURMA, julgado em 08/11/2018, "
+        "DJe 26/11/2018) (Grifos acrescidos)."
+    )
+    current_text = (
+        "RECURSO ESPECIAL. INDENIZACAO POR DANO MORAL. VALOR DA CAUSA. "
+        "CRITERIO DE FIXACAO."
+    )
+    content = f"{previous_text}\n{current_text}"
+    blocks = [
+        (10.0, 21.0, previous_text),
+        (22.0, 33.0, current_text),
+    ]
+
+    result = recompose_native_paragraphs(content, blocks)
+
+    assert result == f"{previous_text}\n\n{current_text}"
+
+
 def test_recompose_native_paragraphs_does_not_join_consecutive_articles() -> None:
     first_article = "Art. 593. A prestação de serviço será contratada."
     second_article = "Art. 594. Toda a espécie de serviço pode ser contratada."
