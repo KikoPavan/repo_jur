@@ -151,7 +151,7 @@ def recompose_native_paragraphs(
             and not promulgation_line_pattern.match(previous_text)
             and not publication_note_pattern.search(current_text)
             and not (
-                jurisprudence_closing_pattern.search(previous_text)
+                jurisprudence_closing_pattern.search(paragraphs[-1])
                 and current_text.isupper()
             )
             and current_text.strip() != "ÍNDICE"
