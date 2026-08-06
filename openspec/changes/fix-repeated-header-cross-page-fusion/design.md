@@ -22,8 +22,10 @@ Ocorrências equivalentes confirmadas por inspeção de todas as primeiras/últi
 | `Inf0024E.pdf` | "ÁUDIO DO TEXTO" | rodapé | 9 (todas isoladas) | 29 | 18 | Abaixo do limiar — preservado |
 | `REsp_1704551-SP.pdf` | "RECURSO ESPECIAL Nº 1.704.551 - SP (2017/0091244-2)" | topo | 4 (todas isoladas) | 14 | 9 | Abaixo do limiar — preservado |
 | `REsp_1704551-SP.pdf` | "CERTIDÃO DE JULGAMENTO" | topo | 2 (todas isoladas) | 14 | 9 | Abaixo do limiar — preservado |
-| `REsp_1704551-SP.pdf` | "Documento: 1807307 - Inteiro Teor do Acórdão..." | rodapé | 12 (todas isoladas) | 14 | 9 | Remover |
+| `REsp_1704551-SP.pdf` | "Documento: 1807307 - Inteiro Teor do Acórdão..." | rodapé | ver nota¹ | 14 | 9 | Abaixo do limiar — preservado |
 | `L10.406_CC_2002.pdf` | (nenhum candidato repetido) | — | — | 186 | — | Sem alteração |
+
+¹ Análise inicial (sobre o Markdown final já publicado) contou 12/14 páginas com esse rodapé isolado, sugerindo remoção. Instrumentando o pipeline real para capturar o `raw_markdown` exatamente como chega a `remove_repetitive_margins` (antes desta correção), constatou-se que esse rodapé aparece fundido, na mesma linha, ao contador de página "Página N de 6" em apenas 6 das 14 páginas (as outras 8 têm o contador como linha final separada, com o rodapé em uma linha anterior — fora do escopo posicional desta ou de qualquer correção existente). A etapa já existente de remoção do contador de página processa essas 6 páginas primeiro; após ela, o texto do rodapé sozinho ocorre em apenas 6/14 páginas (43%), abaixo do limiar de 60%, e por isso corretamente NÃO é removido por esta correção. Não se trata de uma regressão nem de uma falha desta correção: é o comportamento conservador esperado quando a evidência de repetição não atinge o mesmo limiar estatístico já exigido dos demais padrões.
 
 ## Decisão
 
