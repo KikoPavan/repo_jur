@@ -2,7 +2,7 @@
 
 Mudança ativa:
 
-`fix-repeated-header-cross-page-fusion` (`openspec/changes/fix-repeated-header-cross-page-fusion/`) — diagnóstico concluído (causa raiz: `remove_repetitive_margins` só reconhece 4 padrões fixos de margem, sem cobrir cabeçalho/rodapé textual repetido verbatim). Em andamento.
+`fix-repeated-header-cross-page-fusion` (`openspec/changes/fix-repeated-header-cross-page-fusion/`) — todas as 4 subtarefas concluídas e verificadas (1.1 testes de regressão, 1.2 implementação, 1.3 suíte completa, 1.4 reconversão do corpus). Aguardando aprovação humana para arquivamento (não arquivar nem fazer push sem aprovação explícita).
 
 Histórico:
 
