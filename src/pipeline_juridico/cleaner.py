@@ -280,6 +280,48 @@ def remove_repetitive_margins(markdown: str) -> str:
                         last_line[:current_match.start()].rstrip()
                     )
 
+    first_lines = {
+        first: removals.get(first, lines[first])
+        for _, _, first, _ in pages
+    }
+    last_lines = {
+        last: removals.get(last, lines[last])
+        for _, _, _, last in pages
+    }
+
+    def remove_verbatim_margins(position_lines: dict[int, str]) -> None:
+        candidates = Counter(
+            line for line in position_lines.values() if line
+        )
+        resolved: set[int] = set()
+        for candidate in sorted(
+            (
+                text
+                for text, occurrences in candidates.items()
+                if occurrences >= 2
+            ),
+            key=len,
+            reverse=True,
+        ):
+            prefix = f"{candidate} "
+            matching = {
+                index
+                for index, line in position_lines.items()
+                if index not in resolved
+                and (line == candidate or line.startswith(prefix))
+            }
+            if len(matching) < minimum_occurrences:
+                continue
+            for index in matching:
+                line = position_lines[index]
+                removals[index] = (
+                    "" if line == candidate else line[len(prefix):]
+                )
+            resolved.update(matching)
+
+    remove_verbatim_margins(first_lines)
+    remove_verbatim_margins(last_lines)
+
     processed_lines = [
         removals.get(index, line)
         for index, line in enumerate(lines)
