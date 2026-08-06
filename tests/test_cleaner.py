@@ -283,6 +283,28 @@ def test_build_legislative_headings_builds_mixed_case_section_heading() -> None:
     )
 
 
+def test_build_legislative_headings_separates_subtitle_from_title() -> None:
+    content = (
+        "TÍTULO I\n\n"
+        "Do Direito Pessoal\n\n"
+        "SUBTÍTULO I\n\n"
+        "Do Casamento"
+    )
+
+    result = build_legislative_headings(content)
+
+    assert result == (
+        "### TÍTULO I — Do Direito Pessoal\n\n"
+        "#### SUBTÍTULO I — Do Casamento"
+    )
+
+
+def test_build_legislative_headings_preserves_single_line_subtitle_index() -> None:
+    content = "SUBTÍTULO I DA SOCIEDADE NÃO PERSONIFICADA"
+
+    assert build_legislative_headings(content) == content
+
+
 def test_build_legislative_headings_preserves_complete_single_line_part() -> None:
     content = "PARTE GERAL"
 
@@ -493,6 +515,75 @@ def test_recompose_native_paragraphs_joins_nearby_plain_lines() -> None:
     result = recompose_native_paragraphs(content, blocks)
 
     assert result == "Este texto continua na linha seguinte."
+
+
+def test_recompose_native_paragraphs_does_not_join_subtitle_to_article() -> None:
+    article = (
+        "Art. 985. A sociedade adquire personalidade jurídica com a "
+        "inscrição, no registro próprio e na forma da lei, dos seus atos "
+        "constitutivos (arts. 45 e 1.150)."
+    )
+    subtitle = "SUBTÍTULO I"
+    denomination = "Da Sociedade Não Personificada"
+    content = f"{article}\n{subtitle}\n{denomination}"
+    blocks = [
+        (10.0, 21.0, article),
+        (22.0, 33.0, subtitle),
+        (34.0, 45.0, denomination),
+    ]
+
+    result = recompose_native_paragraphs(content, blocks)
+
+    assert result == f"{article}\n\n{subtitle}\n\n{denomination}"
+
+
+def test_recompose_native_paragraphs_does_not_join_subtitle_to_unique_paragraph() -> None:
+    paragraph = (
+        "Parágrafo único. Havendo mais de um sócio ostensivo, as respectivas "
+        "contas serão prestadas e julgadas no mesmo processo."
+    )
+    subtitle = "SUBTÍTULO II"
+    content = f"{paragraph}\n{subtitle}"
+    blocks = [
+        (10.0, 21.0, paragraph),
+        (22.0, 33.0, subtitle),
+    ]
+
+    result = recompose_native_paragraphs(content, blocks)
+
+    assert result == f"{paragraph}\n\n{subtitle}"
+
+
+def test_recompose_native_paragraphs_does_not_join_subtitle_to_item() -> None:
+    item = (
+        "IV - os bens que aos filhos couberem na herança, quando os pais "
+        "forem excluídos da sucessão."
+    )
+    subtitle = "SUBTÍTULO III"
+    content = f"{item}\n{subtitle}"
+    blocks = [
+        (10.0, 21.0, item),
+        (22.0, 33.0, subtitle),
+    ]
+
+    result = recompose_native_paragraphs(content, blocks)
+
+    assert result == f"{item}\n\n{subtitle}"
+
+
+def test_recompose_native_paragraphs_joins_lowercase_subtitle_in_prose() -> None:
+    first_line = "A nota explica por que"
+    second_line = "o subtítulo do capítulo foi escolhido."
+    content = f"{first_line}\n{second_line}"
+    blocks = [
+        (10.0, 21.0, first_line),
+        (22.0, 33.0, second_line),
+    ]
+
+    result = recompose_native_paragraphs(content, blocks)
+
+    assert result == f"{first_line} {second_line}"
+    assert build_legislative_headings(result) == result
 
 
 def test_recompose_native_paragraphs_joins_art_129_lowercase_parte() -> None:
