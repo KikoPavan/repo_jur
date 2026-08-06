@@ -2,7 +2,7 @@
 
 Mudança ativa:
 
-Nenhuma. `openspec/changes/` não contém mudanças pendentes no momento.
+`fix-subtitulo-structural-boundaries` (`openspec/changes/fix-subtitulo-structural-boundaries/`) — todas as 4 subtarefas concluídas e verificadas (1.1 testes de regressão, 1.2 implementação, 1.3 suíte completa, 1.4 reconversão do corpus). Aguardando aprovação humana para arquivamento (não arquivar nem fazer push sem aprovação explícita).
 
 Histórico:
 
