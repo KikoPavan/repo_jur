@@ -451,8 +451,12 @@ def test_build_legislative_headings_preserves_unknown_letter_spaced_suffix() -> 
     assert build_legislative_headings(content) == content
 
 
-def test_remove_repetitive_margins_preserves_repeated_legal_header() -> None:
+def test_remove_repetitive_margins_removes_repeated_textual_header_fused_to_continuation() -> None:
     legal_header = "Superior Tribunal de Justiça"
+    continuation = (
+        "agravada, pois demonstrado o rebate do fundamento da falta de "
+        "interesse recursal em impugnar o valor da causa."
+    )
     pages = [
         (
             f"[[Pág. {page_number}]]\n"
@@ -460,18 +464,126 @@ def test_remove_repetitive_margins_preserves_repeated_legal_header() -> None:
             f"{legal_header}\n"
             f"Conteúdo jurídico exclusivo da página {page_number}."
         )
+        for page_number in range(1, 4)
+    ]
+    pages.extend(
+        [
+            (
+                "[[Pág. 4]]\n"
+                "<!-- método: texto_nativo -->\n"
+                "6. A decisão recorrida deve ser"
+            ),
+            (
+                "[[Pág. 5]]\n"
+                "<!-- método: texto_nativo -->\n"
+                f"{legal_header} {continuation}"
+            ),
+        ]
+    )
+
+    result = remove_repetitive_margins("\n".join(pages))
+
+    assert legal_header not in result
+    assert (
+        "[[Pág. 5]]\n<!-- método: texto_nativo -->\n"
+        f"{continuation}"
+    ) in result
+    for page_number in range(1, 4):
+        assert f"Conteúdo jurídico exclusivo da página {page_number}." in result
+        assert f"[[Pág. {page_number}]]" in result
+
+
+def test_remove_repetitive_margins_removes_isolated_recognized_header_without_affecting_content() -> None:
+    repeated_header = "https://tribunal.example/documento"
+    pages = [
+        (
+            f"[[Pág. {page_number}]]\n"
+            "<!-- método: texto_nativo -->\n"
+            f"{repeated_header}\n"
+            f"Conteúdo preservado da página {page_number}."
+        )
+        for page_number in range(1, 4)
+    ]
+    pages.extend(
+        [
+            "[[Pág. 4]]\n<!-- método: texto_nativo -->\nQuarta página intacta.",
+            "[[Pág. 5]]\n<!-- método: texto_nativo -->\nQuinta página intacta.",
+        ]
+    )
+
+    result = remove_repetitive_margins("\n".join(pages))
+
+    assert repeated_header not in result
+    for page_number in range(1, 4):
+        assert f"Conteúdo preservado da página {page_number}." in result
+        assert f"[[Pág. {page_number}]]" in result
+    assert "Quarta página intacta." in result
+    assert "Quinta página intacta." in result
+
+
+def test_remove_repetitive_margins_preserves_textual_header_mentioned_in_body() -> None:
+    legal_header = "Superior Tribunal de Justiça"
+    pages = [
+        (
+            f"[[Pág. {page_number}]]\n"
+            "<!-- método: texto_nativo -->\n"
+            f"Abertura exclusiva da página {page_number}.\n"
+            f"O precedente do {legal_header} orienta este julgamento.\n"
+            f"Fechamento exclusivo da página {page_number}."
+        )
         for page_number in range(1, 6)
     ]
 
     result = remove_repetitive_margins("\n".join(pages))
 
     assert result.count(legal_header) == len(pages)
-    for page_number in range(1, 6):
-        page = result.split(f"[[Pág. {page_number}]]", maxsplit=1)[1]
-        assert (
-            f"<!-- método: texto_nativo -->\n{legal_header}\n"
-            in page
+
+
+def test_remove_repetitive_margins_preserves_normal_cross_page_continuation() -> None:
+    pages = [
+        (
+            f"[[Pág. {page_number}]]\n"
+            "<!-- método: texto_nativo -->\n"
+            f"Continuação própria da página {page_number}."
         )
+        for page_number in range(1, 6)
+    ]
+    markdown = "\n".join(pages)
+
+    assert remove_repetitive_margins(markdown) == markdown
+
+
+def test_remove_repetitive_margins_preserves_textual_candidate_below_threshold() -> None:
+    legal_header = "Superior Tribunal de Justiça"
+    pages = [
+        (
+            f"[[Pág. {page_number}]]\n"
+            "<!-- método: texto_nativo -->\n"
+            + (f"{legal_header}\n" if page_number <= 2 else "")
+            + f"Conteúdo exclusivo da página {page_number}."
+        )
+        for page_number in range(1, 6)
+    ]
+
+    result = remove_repetitive_margins("\n".join(pages))
+
+    assert result.count(legal_header) == 2
+
+
+def test_remove_repetitive_margins_preserves_textual_candidate_only_seen_fused() -> None:
+    legal_header = "Superior Tribunal de Justiça"
+    pages = [
+        (
+            f"[[Pág. {page_number}]]\n"
+            "<!-- método: texto_nativo -->\n"
+            f"{legal_header} continuação exclusiva da página {page_number}."
+        )
+        for page_number in range(1, 6)
+    ]
+
+    result = remove_repetitive_margins("\n".join(pages))
+
+    assert result.count(legal_header) == len(pages)
 
 
 def test_illegible_text_marker_constant_value() -> None:
