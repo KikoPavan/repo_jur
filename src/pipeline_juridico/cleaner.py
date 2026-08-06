@@ -9,7 +9,7 @@ ILLEGIBLE_TEXT_MARKER = "[[TEXTO ILEGÍVEL]]"
 _PAGE_MARKER_PATTERN = re.compile(r"^\[\[Pág\. \d+\]\]$")
 _METHOD_COMMENT_PATTERN = re.compile(r"^<!-- método: .+ -->$")
 _LEGISLATIVE_MARKER_PATTERN = re.compile(
-    r"^(PARTE|LIVRO|TÍTULO|TITULO|CAPÍTULO|CAPITULO|"
+    r"^(PARTE|LIVRO|TÍTULO|TITULO|SUBTÍTULO|SUBTITULO|CAPÍTULO|CAPITULO|"
     r"SEÇÃO|SECAO|SUBSEÇÃO|SUBSECAO)\b\s*"
     r"(?:[IVXLCDM]+(?:-A)?|ÚNIC[OA]|UNIC[OA]|COMPLEMENTAR)?"
     r"(?:\s*\([^)]*\))*\s*$",
@@ -91,17 +91,17 @@ def recompose_native_paragraphs(
         r")"
     )
     formal_structure_pattern = re.compile(
-        r"^(?:PARTE|LIVRO|TÍTULO|TITULO|CAPÍTULO|CAPITULO|"
+        r"^(?:PARTE|LIVRO|TÍTULO|TITULO|SUBTÍTULO|SUBTITULO|CAPÍTULO|CAPITULO|"
         r"SEÇÃO|SECAO|SUBSEÇÃO|SUBSECAO)\b",
         flags=re.IGNORECASE,
     )
     bare_structure_pattern = re.compile(
-        r"^(?:PARTE|LIVRO|TÍTULO|TITULO|CAPÍTULO|CAPITULO|"
+        r"^(?:PARTE|LIVRO|TÍTULO|TITULO|SUBTÍTULO|SUBTITULO|CAPÍTULO|CAPITULO|"
         r"SEÇÃO|SECAO|SUBSEÇÃO|SUBSECAO)\b\s*[\wºª°]*\s*$",
         flags=re.IGNORECASE,
     )
     qualified_structure_pattern = re.compile(
-        r"^(?:PARTE|LIVRO|TÍTULO|TITULO|CAPÍTULO|CAPITULO|"
+        r"^(?:PARTE|LIVRO|TÍTULO|TITULO|SUBTÍTULO|SUBTITULO|CAPÍTULO|CAPITULO|"
         r"SEÇÃO|SECAO|SUBSEÇÃO|SUBSECAO)\b\s+"
         r"(?:[IVXLCDM]+(?:-A)?|ÚNICO|ÚNICA|UNICO|UNICA|COMPLEMENTAR)\b",
         flags=re.IGNORECASE,
@@ -348,6 +348,8 @@ def build_legislative_headings(markdown: str) -> str:
         "livro": 2,
         "título": 3,
         "titulo": 3,
+        "subtítulo": 4,
+        "subtitulo": 4,
         "capítulo": 4,
         "capitulo": 4,
         "seção": 5,
