@@ -2,7 +2,7 @@
 
 Mudança ativa:
 
-Nenhuma. `openspec/changes/` não contém mudanças pendentes no momento.
+`fix-repeated-header-cross-page-fusion` (`openspec/changes/fix-repeated-header-cross-page-fusion/`) — diagnóstico concluído (causa raiz: `remove_repetitive_margins` só reconhece 4 padrões fixos de margem, sem cobrir cabeçalho/rodapé textual repetido verbatim). Em andamento.
 
 Histórico:
 
