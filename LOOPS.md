@@ -2,7 +2,9 @@
 
 Mudança ativa:
 
-Nenhuma. `openspec/changes/` não contém mudanças pendentes no momento.
+`fix-vertical-fragmented-text-recomposition` (proposta em 2026-08-07). Causa raiz: em `recompose_native_paragraphs` (`src/pipeline_juridico/cleaner.py`), `native_label_pattern` bloqueia a junção de qualquer linha inteiramente em maiúsculas/sem pontuação, sem checar se essa linha é a primeira do seu bloco geométrico de origem (PyMuPDF `get_text("blocks")`) — protegendo corretamente rótulos de campo reais, mas também bloqueando indevidamente palavras/fragmentos no meio de um bloco já em fluxo (ementas e campos temáticos fragmentados palavra a palavra). Ocorrências: `AINTARESP_1462304-PA.pdf` p.7 e p.9, `Inf0024E.pdf` p.4, `REsp_1704551-SP.pdf` p.12. Escopo restrito a essa proteção; ver tasks.md.
+
+**Achado pendente fora de escopo** (não corrigir nesta mudança, registrar para mudança futura): `recompose_native_paragraphs` tem um early-return no topo (`if any(line.strip().startswith(":") ...): return content`) que desativa a recomposição geométrica da **página inteira** sempre que qualquer bloco contém uma linha iniciada por `:` (formato "Rótulo\n: Valor" de campos como RELATOR/AGRAVANTE/ADVOGADOS). Causa técnica distinta da acima (bypass de página inteira vs. decisão de junção incorreta) — por isso tratada separadamente por decisão do usuário em 2026-08-07. Páginas observadas sem nenhuma recomposição geométrica por esse motivo: `AINTARESP_1462304-PA.pdf` p.1, 4, 11; `REsp_1704551-SP.pdf` p.1, 3, 4, 6, 7, 14. Risco: alterar esse guard pode afetar campos legítimos "Rótulo / : Valor" já protegidos; recomenda-se tratar em mudança OpenSpec independente, com TDD e análise específica da geometria desses blocos antes de qualquer alteração.
 
 Histórico:
 
