@@ -650,6 +650,96 @@ def test_recompose_native_paragraphs_joins_uppercase_words_fragmented_within_blo
     )
 
 
+def test_recompose_native_paragraphs_recomposes_unrelated_block_when_page_has_colon_label(
+) -> None:
+    fields = (
+        "RELATOR\n"
+        ": MINISTRO GURGEL DE FARIA\n"
+        "AGRAVANTE \n"
+        ": NORTE ENERGIA S.A. \n"
+        "ADVOGADOS\n"
+        ": PRISCILA SANTOS ARTIGAS  - PR022529 \n"
+    )
+    summary = (
+        "PROCESSUAL CIVIL. DEMANDA INDENIZATÓRIA. \n"
+        "VALOR \n"
+        "DA \n"
+        "CAUSA. \n"
+        "PROVEITO \n"
+        "ECONÔMICO \n"
+        "PERSEGUIDO. \n"
+    )
+    content = f"{fields}\n{summary}"
+    blocks = [
+        (74.2, 143.1, fields),
+        (331.4, 413.4, summary),
+    ]
+
+    result = recompose_native_paragraphs(content, blocks)
+
+    assert (
+        "PROCESSUAL CIVIL. DEMANDA INDENIZATÓRIA. VALOR DA CAUSA. "
+        "PROVEITO ECONÔMICO PERSEGUIDO."
+    ) in result
+    assert "RELATOR : MINISTRO GURGEL DE FARIA" not in result
+
+
+def test_recompose_native_paragraphs_recomposes_unrelated_block_resp_case() -> None:
+    fields = (
+        "RECORRENTE\n"
+        ": DAIBY S/A \n"
+        "ADVOGADO\n"
+        ": JOÃO JOAQUIM MARTINELLI  - SP175215A\n"
+    )
+    excerpt = (
+        "Cuida-se \n"
+        "de \n"
+        "recurso \n"
+        "especial \n"
+        "interposto \n"
+        "por \n"
+        "DAIBY \n"
+        "S/A, \n"
+    )
+    content = f"{fields}\n{excerpt}"
+    blocks = [
+        (90.6, 140.6, fields),
+        (391.2, 405.2, excerpt),
+    ]
+
+    result = recompose_native_paragraphs(content, blocks)
+
+    assert "Cuida-se de recurso especial interposto por DAIBY S/A," in result
+    assert "RECORRENTE : DAIBY S/A" not in result
+
+
+def test_recompose_native_paragraphs_preserves_colon_label_pair_within_block(
+) -> None:
+    block_text = "RELATOR\n: MINISTRO GURGEL DE FARIA\n"
+    blocks = [(74.2, 97.2, block_text)]
+
+    result = recompose_native_paragraphs(block_text, blocks)
+
+    assert "RELATOR : MINISTRO GURGEL DE FARIA" not in result
+
+
+def test_recompose_native_paragraphs_preserves_multiple_consecutive_colon_fields(
+) -> None:
+    block_text = (
+        "AGRAVANTE \n"
+        ": NORTE ENERGIA S.A. \n"
+        "ADVOGADOS\n"
+        ": PRISCILA SANTOS ARTIGAS  - PR022529 \n"
+    )
+    blocks = [(97.2, 143.1, block_text)]
+
+    result = recompose_native_paragraphs(block_text, blocks)
+
+    assert "AGRAVANTE : NORTE ENERGIA S.A." not in result
+    assert ": NORTE ENERGIA S.A. ADVOGADOS" not in result
+    assert "ADVOGADOS : PRISCILA SANTOS ARTIGAS" not in result
+
+
 def test_recompose_native_paragraphs_joins_thematic_field_value_fragmented_within_label_block(
 ) -> None:
     block_text = (
@@ -1180,7 +1270,8 @@ def test_recompose_native_paragraphs_preserves_uppercase_label_and_value() -> No
 
     result = recompose_native_paragraphs(content, blocks)
 
-    assert result == content
+    # A proteção é por bloco, não um no-op da página; rótulo e valor não se fundem.
+    assert result == "RELATOR\n\n: MINISTRO FULANO"
 
 
 def test_recompose_native_paragraphs_preserves_markdown_table() -> None:
