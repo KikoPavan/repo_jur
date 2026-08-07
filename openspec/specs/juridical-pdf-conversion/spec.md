@@ -238,6 +238,8 @@ O sistema SHALL NOT unir o bloco atual ao próximo quando o próximo bloco inici
 
 O sistema SHALL NOT unir o bloco atual ao próximo quando o bloco atual terminar em uma referência jurisprudencial de fechamento (citação de julgamento com turma/seção/órgão julgador e data de publicação no `DJe`, opcionalmente seguida de anotação como "(Grifos acrescidos).") e o próximo bloco for uma linha inteiramente em caixa alta.
 
+O sistema SHALL NOT unir o bloco atual ao próximo quando o bloco atual for inteiramente em maiúsculas, sem dígito ou pontuação, e for a primeira linha física do seu bloco geométrico de origem no PDF — comportamento que protege rótulos de campo (por exemplo "PROCESSO", "RAMO DO DIREITO", "TEMA", "DESTAQUE") de serem fundidos ao valor que os segue. O sistema SHALL permitir a união quando essa mesma forma textual (linha inteiramente em maiúsculas, sem dígito ou pontuação) ocorrer no meio de um bloco geométrico já em fluxo — ou seja, não for a primeira linha física do bloco — desde que as demais condições de junção geométrica e estrutural sejam satisfeitas, mesmo que a linha seja curta ou formada por uma única palavra.
+
 #### Scenario: Parágrafo fragmentado é recomposto
 
 - **WHEN** um artigo como "Art. 2º A personalidade civil da pessoa começa do nascimento com vida; mas a lei põe a salvo, desde a concepção, os" é seguido, no mesmo bloco de página, por "direitos do nascituro."
@@ -257,6 +259,22 @@ O sistema SHALL NOT unir o bloco atual ao próximo quando o bloco atual terminar
 
 - **WHEN** um bloco termina com uma citação de julgamento como "(AgInt no REsp 1739440/SP, Rel. Ministra REGINA HELENA COSTA, PRIMEIRA TURMA, julgado em 08/11/2018, DJe 26/11/2018) (Grifos acrescidos)." e o bloco seguinte, no mesmo grupo geométrico, é uma linha inteiramente em caixa alta como "RECURSO ESPECIAL. INDENIZAÇÃO POR DANO MORAL. ..."
 - **THEN** os dois blocos permanecem separados por quebra de parágrafo no Markdown final, sem fundir os dois precedentes em um único parágrafo
+
+#### Scenario: Rótulo de campo real permanece separado do valor que o segue
+
+- **WHEN** uma linha como "TEMA", "PROCESSO", "RAMO DO DIREITO" ou "DESTAQUE" é a primeira linha física do seu bloco geométrico de origem e é seguida por linhas de conteúdo do respectivo campo
+- **THEN** a linha-rótulo permanece separada, como parágrafo próprio, do conteúdo do campo no Markdown final
+
+#### Scenario: Título ou ementa fragmentado em palavras isoladas é recomposto
+
+- **WHEN** uma ementa ou título em caixa alta é extraído do PDF como sequência de linhas de uma ou poucas palavras cada (por exemplo "PROVEITO" / "ECONÔMICO" / "DA" / "DEMANDA." em sequência), e nenhuma dessas linhas é a primeira linha física do seu bloco geométrico
+- **THEN** essas linhas são recompostas em um único parágrafo de texto corrido no Markdown final, sem perda, adição ou reordenação de tokens
+
+#### Scenario: Campo temático fragmentado em palavras isoladas é recomposto
+
+- **WHEN** o valor de um campo temático como "RAMO DO DIREITO" é extraído do PDF, dentro do mesmo bloco geométrico do rótulo, como sequência de linhas de uma ou poucas palavras cada (por exemplo "DIREITO" / "PROCESSUAL" / "PENAL," / "DIREITO" / "DA" / "PESSOA" / "COM" / "DEFICIÊNCIA")
+- **THEN** a linha-rótulo permanece separada como parágrafo próprio
+- **AND** as linhas do valor, por não serem a primeira linha física do bloco, são recompostas em um único parágrafo de texto corrido, sem perda, adição ou reordenação de tokens
 
 ### Requirement: Remoção de cabeçalhos e rodapés repetitivos
 
