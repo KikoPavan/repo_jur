@@ -692,18 +692,29 @@ def test_recompose_native_paragraphs_preserves_field_label_as_first_line_of_own_
 def test_recompose_native_paragraphs_joins_single_word_lines_interspersed_with_multi_word_lines(
 ) -> None:
     block_text = (
-        "PRETENSÃO\n"
-        "DE\n"
-        "NATUREZA\n"
-        "DECLARATÓRIA E MANDAMENTAL, COM PEDIDO CONDENATÓRIO"
+        "AGRAVO INTERNO NO RECURSO ESPECIAL. IMPUGNAÇÃO AO VALOR \n"
+        "DA \n"
+        "CAUSA. \n"
+        "PRETENSÃO \n"
+        "DE \n"
+        "NATUREZA \n"
+        "DECLARATÓRIA \n"
+        "E \n"
+        "MANDAMENTAL, COM PEDIDO CONDENATÓRIO DE OBRIGAÇÃO DE \n"
+        "FAZER. CONTEÚDO ECONÔMICO DA CAUSA. AUSÊNCIA. FIXAÇÃO EM \n"
+        "CARÁTER ESTIMATIVO. RAZOABILIDADE E PROPORCIONALIDADE. SÚM \n"
+        "7 DO STJ."
     )
     blocks = [(0.0, 40.0, block_text)]
 
     result = recompose_native_paragraphs(block_text, blocks)
 
     assert result == (
-        "PRETENSÃO DE NATUREZA DECLARATÓRIA E MANDAMENTAL, "
-        "COM PEDIDO CONDENATÓRIO"
+        "AGRAVO INTERNO NO RECURSO ESPECIAL. IMPUGNAÇÃO AO VALOR DA CAUSA. "
+        "PRETENSÃO DE NATUREZA DECLARATÓRIA E MANDAMENTAL, COM PEDIDO "
+        "CONDENATÓRIO DE OBRIGAÇÃO DE FAZER. CONTEÚDO ECONÔMICO DA CAUSA. "
+        "AUSÊNCIA. FIXAÇÃO EM CARÁTER ESTIMATIVO. RAZOABILIDADE E "
+        "PROPORCIONALIDADE. SÚM 7 DO STJ."
     )
 
 
