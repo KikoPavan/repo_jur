@@ -629,6 +629,104 @@ def test_recompose_native_paragraphs_joins_nearby_plain_lines() -> None:
     assert result == "Este texto continua na linha seguinte."
 
 
+def test_recompose_native_paragraphs_joins_uppercase_words_fragmented_within_block(
+) -> None:
+    block_text = (
+        "PROCESSUAL CIVIL. DEMANDA INDENIZATÓRIA. \n"
+        "VALOR \n"
+        "DA \n"
+        "CAUSA. \n"
+        "PROVEITO \n"
+        "ECONÔMICO \n"
+        "PERSEGUIDO. \n"
+    )
+    blocks = [(0.0, 70.0, block_text)]
+
+    result = recompose_native_paragraphs(block_text, blocks)
+
+    assert result == (
+        "PROCESSUAL CIVIL. DEMANDA INDENIZATÓRIA. VALOR DA CAUSA. "
+        "PROVEITO ECONÔMICO PERSEGUIDO."
+    )
+
+
+def test_recompose_native_paragraphs_joins_thematic_field_value_fragmented_within_label_block(
+) -> None:
+    block_text = (
+        "RAMO DO DIREITO\n"
+        "DIREITO\n"
+        " PROCESSUAL\n"
+        " PENAL,\n"
+        " DIREITO\n"
+        " DA\n"
+        " PESSOA\n"
+        " COM\n"
+        "DEFICIÊNCIA\n"
+    )
+    blocks = [(0.0, 90.0, block_text)]
+
+    result = recompose_native_paragraphs(block_text, blocks)
+
+    assert result == (
+        "RAMO DO DIREITO\n\n"
+        "DIREITO PROCESSUAL PENAL, DIREITO DA PESSOA COM DEFICIÊNCIA"
+    )
+
+
+@pytest.mark.parametrize("label", ["TEMA", "PROCESSO", "DESTAQUE"])
+def test_recompose_native_paragraphs_preserves_field_label_as_first_line_of_own_block(
+    label: str,
+) -> None:
+    value = "Valor descritivo do campo"
+    content = f"{label}\n{value}"
+    blocks = [
+        (0.0, 10.0, label),
+        (11.0, 21.0, value),
+    ]
+
+    result = recompose_native_paragraphs(content, blocks)
+
+    assert result == f"{label}\n\n{value}"
+
+
+def test_recompose_native_paragraphs_joins_single_word_lines_interspersed_with_multi_word_lines(
+) -> None:
+    block_text = (
+        "PRETENSÃO\n"
+        "DE\n"
+        "NATUREZA\n"
+        "DECLARATÓRIA E MANDAMENTAL, COM PEDIDO CONDENATÓRIO"
+    )
+    blocks = [(0.0, 40.0, block_text)]
+
+    result = recompose_native_paragraphs(block_text, blocks)
+
+    assert result == (
+        "PRETENSÃO DE NATUREZA DECLARATÓRIA E MANDAMENTAL, "
+        "COM PEDIDO CONDENATÓRIO"
+    )
+
+
+def test_recompose_native_paragraphs_joins_resp_1704551_sp_fragmented_value_of_claim(
+) -> None:
+    block_text = (
+        "RECURSO ESPECIAL. AÇÃO DECLARATÓRIA. \n"
+        "CONTROVÉRSIA SOBRE A COMPETÊNCIA. \n"
+        "VALOR\n"
+        "DA\n"
+        "CAUSA.\n"
+        "CONTEÚDO ECONÔMICO PRETENDIDO."
+    )
+    blocks = [(0.0, 60.0, block_text)]
+
+    result = recompose_native_paragraphs(block_text, blocks)
+
+    assert result == (
+        "RECURSO ESPECIAL. AÇÃO DECLARATÓRIA. CONTROVÉRSIA SOBRE A "
+        "COMPETÊNCIA. VALOR DA CAUSA. CONTEÚDO ECONÔMICO PRETENDIDO."
+    )
+
+
 def test_recompose_native_paragraphs_does_not_join_subtitle_to_article() -> None:
     article = (
         "Art. 985. A sociedade adquire personalidade jurídica com a "
