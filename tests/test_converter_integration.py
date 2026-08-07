@@ -113,8 +113,11 @@ def test_convert_document_preserves_native_label_value_reading_order(
     )
 
     assert relatorio.pages[0].method == Metodo.texto_nativo
-    assert "RELATOR\n: MINISTRO GURGEL DE FARIA\nAGRAVANTE" in markdown
-    assert "AGRAVANTE\n: NORTE ENERGIA S.A.\nADVOGADOS" in markdown
+    # A proteção do padrão ":" agora é por bloco geométrico, não mais um
+    # bypass de página inteira; rótulo e valor continuam nunca fundidos em
+    # uma única linha, mas passam a ficar em parágrafos separados.
+    assert "RELATOR\n\n: MINISTRO GURGEL DE FARIA\n\nAGRAVANTE" in markdown
+    assert "AGRAVANTE\n\n: NORTE ENERGIA S.A.\n\nADVOGADOS" in markdown
 
 
 def test_convert_aintaresp_preserves_repeated_legal_header(tmp_path) -> None:
@@ -156,7 +159,8 @@ def test_convert_document_replaces_fabricated_native_tables(
     )
 
     assert not any(line.startswith("|") for line in markdown.splitlines())
-    assert "RELATORA\n: MINISTRA NANCY ANDRIGHI" in markdown
+    # Ver comentário equivalente em test_convert_document_preserves_native_label_value_reading_order.
+    assert "RELATORA\n\n: MINISTRA NANCY ANDRIGHI" in markdown
     assert relatorio.pages[0].method == Metodo.texto_nativo
 
 

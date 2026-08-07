@@ -55,14 +55,7 @@ def recompose_native_paragraphs(
         line.strip().startswith("|") for line in content.splitlines()
     ):
         return content
-    if any(
-        line.strip().startswith(":")
-        for _, _, block_text in blocks
-        for line in block_text.split("\n")
-    ):
-        return content
-
-    lines: list[tuple[float, float, str, bool]] = []
+    lines: list[tuple[float, float, str, bool, bool]] = []
     for y0, y1, block_text in blocks:
         physical_lines = [
             re.sub(r"\s+", " ", line).strip()
@@ -71,11 +64,20 @@ def recompose_native_paragraphs(
         ]
         if not physical_lines:
             continue
+        block_has_colon_line = any(
+            line.strip().startswith(":") for line in physical_lines
+        )
         line_height = (y1 - y0) / len(physical_lines)
         for index, line in enumerate(physical_lines):
             line_y0 = y0 + index * line_height
             lines.append(
-                (line_y0, line_y0 + line_height, line, index == 0)
+                (
+                    line_y0,
+                    line_y0 + line_height,
+                    line,
+                    index == 0,
+                    block_has_colon_line,
+                )
             )
 
     if not lines:
@@ -129,8 +131,20 @@ def recompose_native_paragraphs(
         flags=re.IGNORECASE,
     )
     paragraphs = [lines[0][2]]
-    previous_y0, previous_y1, previous_text, previous_is_first = lines[0]
-    for current_y0, current_y1, current_text, current_is_first in lines[1:]:
+    (
+        previous_y0,
+        previous_y1,
+        previous_text,
+        previous_is_first,
+        previous_belongs_to_colon_block,
+    ) = lines[0]
+    for (
+        current_y0,
+        current_y1,
+        current_text,
+        current_is_first,
+        current_belongs_to_colon_block,
+    ) in lines[1:]:
         gap = current_y0 - previous_y1
         previous_height = previous_y1 - previous_y0
         should_join = (
@@ -152,6 +166,10 @@ def recompose_native_paragraphs(
                 native_label_pattern.match(previous_text)
                 and previous_is_first
             )
+            and not (
+                previous_belongs_to_colon_block
+                or current_belongs_to_colon_block
+            )
             and not promulgation_line_pattern.match(current_text)
             and not promulgation_line_pattern.match(previous_text)
             and not publication_note_pattern.search(current_text)
@@ -168,11 +186,18 @@ def recompose_native_paragraphs(
             )
         else:
             paragraphs.append(current_text)
-        previous_y0, previous_y1, previous_text, previous_is_first = (
+        (
+            previous_y0,
+            previous_y1,
+            previous_text,
+            previous_is_first,
+            previous_belongs_to_colon_block,
+        ) = (
             current_y0,
             current_y1,
             current_text,
             current_is_first,
+            current_belongs_to_colon_block,
         )
 
     geometric_text = "\n\n".join(paragraphs)
