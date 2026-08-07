@@ -539,11 +539,18 @@ def mark_final_index(markdown: str) -> str:
     """Mark a structurally dense final index after the document's last article."""
     paragraphs = re.split(r"\n\n", markdown)
     article_pattern = re.compile(r"^Art\.?\s*\d+")
+    heading_pattern = re.compile(r"^(#{1,6})(\s)")
     structural_pattern = re.compile(
         r"^(?:#{1,6}\s|"
         r"(?:PARTE|LIVRO|TÍTULO|TITULO|CAPÍTULO|CAPITULO|"
         r"SEÇÃO|SECAO|SUBSEÇÃO|SUBSECAO)\b)"
     )
+
+    def demote_headings_after(start: int) -> None:
+        for index in range(start, len(paragraphs)):
+            match = heading_pattern.match(paragraphs[index])
+            if match and len(match.group(1)) < 6:
+                paragraphs[index] = f"#{paragraphs[index]}"
 
     last_article_index = None
     for index in range(len(paragraphs) - 1, -1, -1):
@@ -578,6 +585,7 @@ def mark_final_index(markdown: str) -> str:
     for index in range(insertion_index, len(paragraphs)):
         if paragraphs[index].strip() == "ÍNDICE":
             paragraphs[index] = "# ÍNDICE"
+            demote_headings_after(index + 1)
             return "\n\n".join(paragraphs)
 
     for index in range(insertion_index, len(paragraphs)):
@@ -586,6 +594,7 @@ def mark_final_index(markdown: str) -> str:
             break
 
     paragraphs.insert(insertion_index, "# ÍNDICE")
+    demote_headings_after(insertion_index + 1)
     return "\n\n".join(paragraphs)
 
 
