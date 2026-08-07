@@ -239,6 +239,140 @@ def test_mark_final_index_replaces_isolated_terminal_index_paragraph() -> None:
     ) in result
 
 
+def test_mark_final_index_demotes_heading_after_promoted_index() -> None:
+    markdown = (
+        "# PARTE GERAL\n\n"
+        "Art. 2.046. Todas as remissões consideram-se feitas às disposições "
+        "correspondentes deste Código.\n\n"
+        "ÍNDICE\n\n"
+        "LIVRO I DAS PESSOAS\n\n"
+        "[[Pág. 42]]\n"
+        "<!-- método: texto_nativo -->\n\n"
+        "# PARTE GERAL\n\n"
+        "TÍTULO I DAS PESSOAS NATURAIS\n\n"
+        "CAPÍTULO I DA PERSONALIDADE"
+    )
+
+    result = mark_final_index(markdown)
+
+    assert result.count("# ÍNDICE") == 1
+    assert "# ÍNDICE\n\nLIVRO I DAS PESSOAS" in result
+    assert "\n\n## PARTE GERAL\n\n" in result
+
+
+def test_mark_final_index_demotes_heading_after_inserted_index() -> None:
+    markdown = (
+        "Art. 2.046. Todas as remissões consideram-se feitas às disposições "
+        "correspondentes deste Código.\n\n"
+        "Este texto não substitui o publicado no DOU — consulte o ÍNDICE\n\n"
+        "# PARTE GERAL\n\n"
+        "LIVRO I DAS PESSOAS\n\n"
+        "TÍTULO I DAS PESSOAS NATURAIS\n\n"
+        "CAPÍTULO I DA PERSONALIDADE"
+    )
+
+    result = mark_final_index(markdown)
+
+    assert (
+        "Este texto não substitui o publicado no DOU — consulte o ÍNDICE\n\n"
+        "# ÍNDICE\n\n## PARTE GERAL"
+    ) in result
+
+
+def test_mark_final_index_demotes_all_headings_inside_index() -> None:
+    markdown = (
+        "Art. 2.046. Esta Lei entra em vigor na data de sua publicação.\n\n"
+        "ÍNDICE\n\n"
+        "# PARTE GERAL\n\n"
+        "LIVRO I DAS PESSOAS\n\n"
+        "TÍTULO I DAS PESSOAS NATURAIS\n\n"
+        "# PARTE ESPECIAL"
+    )
+
+    result = mark_final_index(markdown)
+
+    assert "\n\n## PARTE GERAL\n\n" in result
+    assert result.endswith("\n\n## PARTE ESPECIAL")
+
+
+def test_mark_final_index_preserves_heading_before_index() -> None:
+    markdown = (
+        "# PARTE GERAL\n\n"
+        "Art. 2.046. Esta Lei entra em vigor na data de sua publicação.\n\n"
+        "ÍNDICE\n\n"
+        "LIVRO I DAS PESSOAS\n\n"
+        "TÍTULO I DAS PESSOAS NATURAIS\n\n"
+        "CAPÍTULO I DA PERSONALIDADE"
+    )
+
+    result = mark_final_index(markdown)
+
+    assert result.startswith("# PARTE GERAL\n\nArt. 2.046.")
+
+
+def test_mark_final_index_preserves_sparse_tail_with_heading_byte_for_byte() -> None:
+    markdown = (
+        "# PARTE GERAL\n\n"
+        "Art. 99. Esta Lei entra em vigor na data de sua publicação.\n\n"
+        "ÍNDICE\n\n"
+        "# PARTE ESPECIAL\n\n"
+        "LIVRO I"
+    )
+
+    assert mark_final_index(markdown) == markdown
+
+
+def test_mark_final_index_preserves_plain_text_inside_index() -> None:
+    markdown = (
+        "Art. 2.046. Esta Lei entra em vigor na data de sua publicação.\n\n"
+        "ÍNDICE\n\n"
+        "LIVRO I DAS PESSOAS\n\n"
+        "TÍTULO I DAS PESSOAS NATURAIS\n\n"
+        "CAPÍTULO I DA PERSONALIDADE"
+    )
+
+    result = mark_final_index(markdown)
+
+    assert "# ÍNDICE\n\nLIVRO I DAS PESSOAS\n\n" in result
+    assert "# LIVRO I DAS PESSOAS" not in result
+
+
+def test_mark_final_index_preserves_page_markers_around_and_inside_index() -> None:
+    marker_before = "[[Pág. 41]]\n<!-- método: texto_nativo -->"
+    marker_inside = "[[Pág. 42]]\n<!-- método: texto_nativo -->"
+    markdown = (
+        f"{marker_before}\n\n"
+        "Art. 2.046. Esta Lei entra em vigor na data de sua publicação.\n\n"
+        "ÍNDICE\n\n"
+        "LIVRO I DAS PESSOAS\n\n"
+        f"{marker_inside}\n\n"
+        "TÍTULO I DAS PESSOAS NATURAIS\n\n"
+        "CAPÍTULO I DA PERSONALIDADE"
+    )
+
+    result = mark_final_index(markdown)
+
+    assert marker_before in result
+    assert marker_inside in result
+    assert result.count("<!-- método: texto_nativo -->") == 2
+
+
+def test_mark_final_index_preserves_level_six_heading_inside_index() -> None:
+    markdown = (
+        "Art. 2.046. Esta Lei entra em vigor na data de sua publicação.\n\n"
+        "ÍNDICE\n\n"
+        "LIVRO I DAS PESSOAS\n\n"
+        "TÍTULO I DAS PESSOAS NATURAIS\n\n"
+        "CAPÍTULO I DA PERSONALIDADE\n\n"
+        "###### DISPOSIÇÕES FINAIS"
+    )
+
+    result = mark_final_index(markdown)
+
+    assert result.endswith("\n\n###### DISPOSIÇÕES FINAIS")
+    assert "####### DISPOSIÇÕES FINAIS" not in result
+
+
 def test_build_legislative_headings_builds_book_heading() -> None:
     result = build_legislative_headings("LIVRO I\n\nDAS PESSOAS")
 
