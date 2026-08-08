@@ -41,17 +41,17 @@ GABGF09 corretamente; uma terceira chamada não altera mais nada (ponto fixo em 
 
 ## 4. Validação do corpus
 
-- [ ] 4.1 Rodar `uv run pytest tests/` (suíte completa) e registrar o resultado.
-- [ ] 4.2 Rodar `openspec validate --all --strict` e registrar o resultado.
-- [ ] 4.3 Reconverter os 4 PDFs do corpus (`AINTARESP_1462304-PA.pdf`, `REsp_1704551-SP.pdf`, `Inf0024E.pdf`, `L10.406_CC_2002.pdf`) com `converter-juridico --no-ocr` e confirmar que nenhuma página exigiu OCR.
-- [ ] 4.4 Confirmar as 8 ocorrências técnicas de `AINTARESP_1462304-PA.pdf` e as 3 ocorrências de `REsp_1704551-SP.pdf` corrigidas (antes/depois de cada uma), sem perda de token.
-- [ ] 4.5 Confirmar que `Inf0024E.pdf` e `L10.406_CC_2002.pdf` (R01, 8 SUBTÍTULO, índice) permanecem sem alterações inesperadas.
-- [ ] 4.6 Confirmar marcadores `[[Pág. N]]` únicos e sequenciais em todos os 4 arquivos.
-- [ ] 4.7 Reconverter novamente e confirmar idempotência (segunda reconversão byte-idêntica à primeira).
-- [ ] 4.8 Produzir e explicar o diff completo do corpus (todos os arquivos alterados e por quê).
+- [x] 4.1 Rodar `uv run pytest tests/` (suíte completa) e registrar o resultado. Resultado: 311/311 passed.
+- [x] 4.2 Rodar `openspec validate --all --strict` e registrar o resultado. Resultado: 2 passed, 0 failed.
+- [x] 4.3 Reconverter os 4 PDFs do corpus (`AINTARESP_1462304-PA.pdf`, `REsp_1704551-SP.pdf`, `Inf0024E.pdf`, `L10.406_CC_2002.pdf`) com `converter-juridico --no-ocr` e confirmar que nenhuma página exigiu OCR. Resultado: todas as páginas dos 4 arquivos roteadas como `texto_nativo`; nenhuma OCR.
+- [x] 4.4 Confirmar as 8 ocorrências técnicas de `AINTARESP_1462304-PA.pdf` e as 3 ocorrências de `REsp_1704551-SP.pdf` corrigidas (antes/depois de cada uma), sem perda de token. Resultado: `GABGF09` e `Documento: 1807307` com 0 ocorrências residuais; diff contra uma reconversão com o código anterior a esta mudança mostra apenas remoção do texto do rodapé (144 tokens em AINT, 36 em REsp), 0 tokens adicionados, 0 tokens de conteúdo jurídico removidos.
+- [x] 4.5 Confirmar que `Inf0024E.pdf` e `L10.406_CC_2002.pdf` (R01, 8 SUBTÍTULO, índice) permanecem sem alterações inesperadas. Resultado: 8 SUBTÍTULO, `# ÍNDICE` e os 4 marcadores R01 (Art. 44, Art. 593, Art. 1.458, Art. 1.368-F) presentes; nenhum dos dois arquivos contém o padrão de rodapé desta mudança (não acionam o mecanismo alterado).
+- [x] 4.6 Confirmar marcadores `[[Pág. N]]` únicos e sequenciais em todos os 4 arquivos. Resultado: AINT=12, REsp=14, Inf0024E=29, CC=186, todos únicos e sequenciais.
+- [x] 4.7 Reconverter novamente e confirmar idempotência (segunda reconversão byte-idêntica à primeira). Resultado: os 4 arquivos byte-idênticos entre a primeira e a segunda reconversão.
+- [x] 4.8 Produzir e explicar o diff completo do corpus (todos os arquivos alterados e por quê). Resultado: apenas `AINTARESP_1462304-PA.pdf` e `REsp_1704551-SP.pdf` mudam (remoção do rodapé técnico, isolado e fundido); `Inf0024E.pdf` e `L10.406_CC_2002.pdf` inalterados (não contêm o padrão).
 
 ## 5. Encerramento do ciclo
 
-- [ ] 5.1 Claude revisa o diff, reexecuta os testes e valida o OpenSpec de forma independente antes de aprovar.
-- [ ] 5.2 Commit local (sem push) após aprovação explícita de cada subtarefa aprovada pelo Codex.
+- [x] 5.1 Claude revisa o diff, reexecuta os testes e valida o OpenSpec de forma independente antes de aprovar. Feito em cada subtarefa (commits `96b91cc`, `96c4f1c`, `d255d6f`, `633b8a0`).
+- [x] 5.2 Commit local (sem push) após aprovação explícita de cada subtarefa aprovada pelo Codex. Feito.
 - [ ] 5.3 Atualizar `LOOPS.md` com o resultado desta mudança (sem arquivar sem aprovação humana).

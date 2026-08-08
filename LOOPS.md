@@ -2,7 +2,44 @@
 
 Mudança ativa:
 
-Nenhuma. `openspec/changes/` não contém mudanças pendentes no momento.
+`fix-technical-footer-paragraph-contamination` — implementação e validação concluídas (todas as
+subtarefas de `tasks.md` marcadas, exceto o registro final neste arquivo). Corrige a permanência e
+fusão de rodapés técnicos do STJ (`GABGF09 AREsp 1462304 Petição : ...` em
+`AINTARESP_1462304-PA.pdf`, 8 ocorrências; `Documento: 1807307 - Inteiro Teor do Acórdão - Site
+certificado - DJe: 04/04/2019` em `REsp_1704551-SP.pdf`, 3 ocorrências fundidas de 14 totais),
+defeito independente do achado pendente `Papel/Nome` (ver "Histórico" abaixo), que permanece
+intocado. Causa raiz em duas camadas, ambas em `remove_repetitive_margins`
+(`src/pipeline_juridico/cleaner.py`), nenhuma delas na extração, no roteamento, no OCR ou em
+`recompose_native_paragraphs`:
+
+1. `remove_verbatim_margins` só reconhecia um candidato recorrente como linha inteira ou como
+   **prefixo** de uma linha maior (caso já corrigido por `fix-repeated-header-cross-page-fusion`,
+   rodapé colado ao início da página seguinte); faltava o caso simétrico de **sufixo** (rodapé
+   colado ao final da página anterior — a geometria real de um rodapé). Corrigido adicionando
+   correspondência por sufixo, cortando só o trecho do candidato.
+2. Mesmo com o sufixo corrigido, `AINTARESP_1462304-PA.pdf` continuava com as 8 ocorrências
+   intactas: toda página com o rodapé GABGF09 também tem, mais perto da margem, um bloco de
+   assinatura eletrônica legítimo que também satisfaz o critério de recorrência já aprovado (mesmo
+   hash de controle repetido em 8 das 12 páginas, por ser a assinatura de uma única decisão que
+   ocupa 8 páginas). `remove_repetitive_margins` só examinava a última linha de conteúdo da página,
+   calculada uma única vez a partir do texto original — removia a assinatura (a mais externa) mas
+   nunca chegava a examinar o GABGF09, "preso" logo abaixo dela. Corrigido fazendo a função
+   reaplicar sua própria lógica (mesmo critério, recalculado a cada rodada) até um ponto fixo (2
+   passagens no caso real), sem introduzir vocabulário, listas fixas ou nova heurística.
+
+Ocorrências corrigidas: as 8 de `AINTARESP_1462304-PA.pdf` (4 isoladas, 4 fundidas ao final de um
+parágrafo) e as 3 de `REsp_1704551-SP.pdf` (as 11 restantes das 14 totais já eram removidas antes
+desta mudança); caso crítico "Paulo de" / rodapé / "Tarso Sanseverino" entre páginas confirmado
+corrigido, com a página anterior terminando em "Paulo de" e a seguinte inalterada a partir de
+"Tarso Sanseverino" (sem recompor o nome entre páginas — fora de escopo, ver `design.md`).
+Validação: suíte `311/311` (306 pré-existentes + 5 novos), diff contra uma reconversão com o código
+anterior mostra só remoção de texto de rodapé (144 tokens em AINT, 36 em REsp), 0 tokens
+adicionados, 0 tokens de conteúdo jurídico removidos; `Inf0024E.pdf` e `L10.406_CC_2002.pdf` byte-
+idênticos entre o código anterior e o atual (R01, 8 SUBTÍTULO e índice reverificados intactos);
+quatro PDFs reconvertidos com `--no-ocr` (nenhuma página exigiu OCR, marcadores `[[Pág. N]]`
+únicos/sequenciais, idempotência confirmada em segunda reconversão — os 4 arquivos byte-idênticos);
+`openspec validate --all --strict`: 2 passed, 0 failed. Commits locais (sem push):
+`96b91cc`, `96c4f1c`, `d255d6f`, `633b8a0`. Aguardando aprovação humana para arquivamento.
 
 **Achado pendente — NÃO RESOLVIDO** (originado ao validar o corpus de `fix-colon-label-pagewide-recomposition-bypass` em 2026-08-07; diagnóstico aprofundado em duas rodadas e documentado em `openspec/changes/archive/2026-08-07-fix-role-name-list-cross-block-fusion/` — `proposal.md`/`design.md`/`tasks.md`, commit `6fba378`). Esse arquivamento é um **fechamento administrativo**, não uma correção: nenhum critério seguro foi encontrado, nenhum código de produção foi alterado, e as tarefas de TDD/implementação permanecem marcadas `BLOQUEADO`. Uma **nova mudança OpenSpec própria** precisará ser criada para qualquer tentativa futura (esta pasta arquivada é só o registro do diagnóstico, não deve ser reaberta como "mudança ativa"):
 
