@@ -28,16 +28,16 @@ empiricamente: uma segunda chamada da mesma função, sobre o resultado da prime
 GABGF09 corretamente; uma terceira chamada não altera mais nada (ponto fixo em 2 passagens). Ver
 `design.md`, seção "Achado adicional durante a validação do corpus".
 
-- [ ] 3.1 Adicionar teste: página com duas margens recorrentes empilhadas na mesma borda (uma
+- [x] 3.1 Adicionar teste: página com duas margens recorrentes empilhadas na mesma borda (uma
   assinatura eletrônica recorrente como última linha, um rodapé técnico recorrente logo acima)
   tem AMBAS removidas em uma única chamada de `remove_repetitive_margins`, preservando o conteúdo
   jurídico substantivo anterior. Confirmar que esse teste falha (red) contra o código atual.
-- [ ] 3.2 Fazer `remove_repetitive_margins` reaplicar sua própria lógica (recálculo de páginas,
+- [x] 3.2 Fazer `remove_repetitive_margins` reaplicar sua própria lógica (recálculo de páginas,
   quorum e candidatos a cada rodada) sobre o resultado da rodada anterior, até que uma rodada não
   produza nenhuma alteração (ponto fixo), com um teto de segurança de iterações. Não alterar o
   critério de recorrência, o cálculo de quorum, nem introduzir vocabulário ou listas fixas.
-- [ ] 3.3 Rodar a suíte completa e confirmar que o teste novo passa (green) e nenhum teste
-  existente regride.
+- [x] 3.3 Rodar a suíte completa e confirmar que o teste novo passa (green) e nenhum teste
+  existente regride. Resultado: 311/311 passed (verificado de forma independente pelo orquestrador).
 
 ## 4. Validação do corpus
 

@@ -869,6 +869,39 @@ def test_remove_repetitive_margins_removes_footer_fused_immediately_before_page_
     ]
 
 
+def test_remove_repetitive_margins_removes_stacked_recurring_footers() -> None:
+    technical_footer = (
+        "GABGF09 AREsp 1462304 Petição : 592169/2020 "
+        "C542506155;0029089584@ Documento"
+    )
+    electronic_signature = (
+        "Documento eletrônico VDA27282965 assinado eletronicamente. "
+        "Código de Controle do Documento: 0123456789abcdef"
+    )
+    substantive_text = "A decisão recorrida deve ser integralmente mantida."
+    page_contents = [
+        f"{substantive_text}\n{technical_footer}\n{electronic_signature}",
+        technical_footer,
+        technical_footer,
+        electronic_signature,
+        electronic_signature,
+    ]
+    pages = [
+        (
+            f"[[Pág. {page_number}]]\n"
+            "<!-- método: texto_nativo -->\n"
+            f"{page_content}"
+        )
+        for page_number, page_content in enumerate(page_contents, start=1)
+    ]
+
+    result = remove_repetitive_margins("\n".join(pages))
+
+    assert technical_footer not in result
+    assert electronic_signature not in result
+    assert substantive_text in result
+
+
 def test_remove_repetitive_margins_preserves_low_frequency_electronic_signature() -> None:
     signature = (
         "Documento eletrônico VDA27282965 assinado eletronicamente nos termos "

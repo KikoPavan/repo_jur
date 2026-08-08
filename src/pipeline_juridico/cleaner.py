@@ -220,6 +220,18 @@ def recompose_native_paragraphs(
 
 def remove_repetitive_margins(markdown: str) -> str:
     """Remove only recognized headers and footers repeated across pages."""
+    result = markdown
+    # Bound iterations defensively in case future margin rules oscillate.
+    for _ in range(10):
+        previous_result = result
+        result = _remove_repetitive_margins_once(previous_result)
+        if result == previous_result:
+            break
+    return result
+
+
+def _remove_repetitive_margins_once(markdown: str) -> str:
+    """Apply one complete pass of repetitive-margin removal."""
     if not markdown:
         return markdown
 
