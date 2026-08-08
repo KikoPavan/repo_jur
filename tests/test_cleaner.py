@@ -720,6 +720,223 @@ def test_remove_repetitive_margins_preserves_textual_candidate_only_seen_fused()
     assert result.count(legal_header) == len(pages)
 
 
+def test_remove_repetitive_margins_removes_isolated_technical_footer_with_varying_page_counter() -> None:
+    footer = (
+        "GABGF09 AREsp 1462304 Petição : 592169/2020 "
+        "C542506155;0029089584@ Documento"
+    )
+    pages = [
+        (
+            f"[[Pág. {page_number}]]\n"
+            "<!-- método: texto_nativo -->\n"
+            f"Conteúdo exclusivo da página {page_number}.\n"
+            f"{footer} Página {page_number} de 8"
+        )
+        for page_number in range(1, 4)
+    ]
+    pages.extend(
+        (
+            f"[[Pág. {page_number}]]\n"
+            "<!-- método: texto_nativo -->\n"
+            f"Conteúdo exclusivo da página {page_number}. "
+            f"{footer} Página {page_number} de 8"
+        )
+        for page_number in range(4, 6)
+    )
+
+    result = remove_repetitive_margins("\n".join(pages))
+
+    assert "GABGF09 AREsp 1462304 Petição" not in result
+    for page_number in range(1, 6):
+        assert f"Conteúdo exclusivo da página {page_number}." in result
+        assert f"[[Pág. {page_number}]]" in result
+
+
+def test_remove_repetitive_margins_removes_technical_footer_fused_to_paragraph_end() -> None:
+    footer = (
+        "GABGF09 AREsp 1462304 Petição : 592169/2020 "
+        "C542506155;0029089584@ Documento"
+    )
+    legal_sentence = (
+        "6. Afastado o óbice da Súmula 283 do STF, empregado na decisão"
+    )
+    pages = [
+        (
+            f"[[Pág. {page_number}]]\n"
+            "<!-- método: texto_nativo -->\n"
+            f"Conteúdo jurídico exclusivo da página {page_number}.\n"
+            f"{footer} Página {page_number} de 8"
+        )
+        for page_number in range(1, 4)
+    ]
+    pages.extend(
+        [
+            (
+                "[[Pág. 4]]\n"
+                "<!-- método: texto_nativo -->\n"
+                f"{legal_sentence} {footer} Página 4 de 8"
+            ),
+            "[[Pág. 5]]\n<!-- método: texto_nativo -->\nPágina final intacta.",
+        ]
+    )
+
+    result = remove_repetitive_margins("\n".join(pages))
+
+    assert legal_sentence in result
+    assert f"{legal_sentence}\n[[Pág. 5]]" in result
+    assert footer not in result
+
+
+def test_remove_repetitive_margins_removes_footer_interrupting_name_across_page_break() -> None:
+    footer = (
+        "Documento: 1807307 - Inteiro Teor do Acórdão - Site certificado - "
+        "DJe: 04/04/2019"
+    )
+    pages = [
+        (
+            f"[[Pág. {page_number}]]\n"
+            "<!-- método: texto_nativo -->\n"
+            f"Conteúdo exclusivo da página {page_number}.\n"
+            f"{footer} Página {page_number} de 6"
+        )
+        for page_number in range(1, 4)
+    ]
+    pages.extend(
+        [
+            (
+                "[[Pág. 4]]\n"
+                "<!-- método: texto_nativo -->\n"
+                f"Votaram com o Sr. Ministro Relator os Srs. Ministros Paulo de "
+                f"{footer} Página 4 de 6"
+            ),
+            (
+                "[[Pág. 5]]\n"
+                "<!-- método: texto_nativo -->\n"
+                "Tarso Sanseverino, Nancy Andrighi e Ricardo Villas Bôas Cueva."
+            ),
+        ]
+    )
+
+    result = remove_repetitive_margins("\n".join(pages))
+
+    assert "Ministros Paulo de\n[[Pág. 5]]" in result
+    assert (
+        "[[Pág. 5]]\n<!-- método: texto_nativo -->\n"
+        "Tarso Sanseverino, Nancy Andrighi e Ricardo Villas Bôas Cueva."
+    ) in result
+    assert "Documento: 1807307 - Inteiro Teor do Acórdão" not in result
+
+
+def test_remove_repetitive_margins_removes_footer_fused_immediately_before_page_marker() -> None:
+    footer = (
+        "Documento: 1807307 - Inteiro Teor do Acórdão - Site certificado - "
+        "DJe: 04/04/2019"
+    )
+    pages = [
+        (
+            f"[[Pág. {page_number}]]\n"
+            "<!-- método: texto_nativo -->\n"
+            f"Conteúdo exclusivo da página {page_number}.\n"
+            f"{footer} Página {page_number} de 6"
+        )
+        for page_number in range(1, 4)
+    ]
+    substantive_text = "A decisão recorrida deve ser integralmente mantida."
+    pages.extend(
+        [
+            (
+                "[[Pág. 4]]\n"
+                "<!-- método: texto_nativo -->\n"
+                f"{substantive_text} {footer} Página 4 de 6"
+            ),
+            "[[Pág. 5]]\n<!-- método: texto_nativo -->\nPágina seguinte intacta.",
+        ]
+    )
+
+    result = remove_repetitive_margins("\n".join(pages))
+
+    assert f"{substantive_text}\n[[Pág. 5]]" in result
+    assert "Documento: 1807307 - Inteiro Teor do Acórdão" not in result
+    assert (
+        "[[Pág. 5]]\n<!-- método: texto_nativo -->\nPágina seguinte intacta."
+    ) in result
+    assert re.findall(r"\[\[Pág\. (\d+)\]\]", result) == [
+        "1",
+        "2",
+        "3",
+        "4",
+        "5",
+    ]
+
+
+def test_remove_repetitive_margins_preserves_low_frequency_electronic_signature() -> None:
+    signature = (
+        "Documento eletrônico VDA27282965 assinado eletronicamente nos termos "
+        "do Art.1º §2º inciso III da Lei 11.419/2006"
+    )
+    pages = [
+        (
+            f"[[Pág. {page_number}]]\n"
+            "<!-- método: texto_nativo -->\n"
+            f"Conteúdo exclusivo da página {page_number}."
+            + (f"\n{signature}" if page_number <= 2 else "")
+        )
+        for page_number in range(1, 6)
+    ]
+    markdown = "\n".join(pages)
+
+    assert remove_repetitive_margins(markdown) == markdown
+
+
+def test_remove_repetitive_margins_preserves_non_recurring_citation_with_similar_words() -> None:
+    citations = [
+        "Documento citado na Página 12 do processo, juntado em 03/05/2020.",
+        "A Página 19 do Documento registra julgamento em 14/06/2021.",
+        "Segundo o Documento de fls. 31, o DJe ocorreu em 22/08/2022.",
+        "A data do Documento referido na Página 44 é 09/11/2023.",
+        "Consulte a Página 57 do Documento protocolado em 10/01/2024.",
+    ]
+    pages = [
+        (
+            f"[[Pág. {page_number}]]\n"
+            "<!-- método: texto_nativo -->\n"
+            f"{citation}"
+        )
+        for page_number, citation in enumerate(citations, start=1)
+    ]
+    markdown = "\n".join(pages)
+
+    assert remove_repetitive_margins(markdown) == markdown
+
+
+def test_remove_repetitive_margins_preserves_r01_subtitulo_and_index_examples() -> None:
+    repeated_legal_text = "Art. 44 §2º — subtítulo do índice sistemático"
+    pages = [
+        (
+            f"[[Pág. {page_number}]]\n"
+            "<!-- método: texto_nativo -->\n"
+            f"Abertura exclusiva {page_number}.\n"
+            f"{repeated_legal_text}\n"
+            f"Fechamento exclusivo {page_number}."
+        )
+        for page_number in range(1, 6)
+    ]
+    markdown = "\n".join(pages)
+
+    assert remove_repetitive_margins(markdown) == markdown
+
+
+def test_remove_repetitive_margins_does_not_alter_papel_nome_style_fusion() -> None:
+    markdown = (
+        "[[Pág. 1]]\n"
+        "<!-- método: texto_nativo -->\n"
+        "Papel\n"
+        "Nome"
+    )
+
+    assert remove_repetitive_margins(markdown) == markdown
+
+
 def test_illegible_text_marker_constant_value() -> None:
     assert ILLEGIBLE_TEXT_MARKER == "[[TEXTO ILEGÍVEL]]"
 
