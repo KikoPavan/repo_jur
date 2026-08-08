@@ -13,8 +13,8 @@
 
 ## 2. Implementação
 
-- [ ] 2.1 Estender `remove_verbatim_margins` (dentro de `remove_repetitive_margins`, `src/pipeline_juridico/cleaner.py`) para reconhecer um candidato recorrente também como sufixo (`linha.endswith(" " + candidato)`) de uma linha de conteúdo, além dos casos já existentes de igualdade e prefixo, removendo apenas o trecho correspondente ao candidato.
-- [ ] 2.2 Rodar a suíte completa e confirmar que os testes novos e existentes passam (green).
+- [x] 2.1 Estender `remove_verbatim_margins` (dentro de `remove_repetitive_margins`, `src/pipeline_juridico/cleaner.py`) para reconhecer um candidato recorrente também como sufixo (`linha.endswith(" " + candidato)`) de uma linha de conteúdo, além dos casos já existentes de igualdade e prefixo, removendo apenas o trecho correspondente ao candidato.
+- [x] 2.2 Rodar a suíte completa e confirmar que os testes novos e existentes passam (green). Resultado: 310/310 passed (verificado de forma independente pelo orquestrador).
 
 ## 3. Validação do corpus
 

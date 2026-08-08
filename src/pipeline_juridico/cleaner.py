@@ -335,19 +335,27 @@ def remove_repetitive_margins(markdown: str) -> str:
             reverse=True,
         ):
             prefix = f"{candidate} "
+            suffix = f" {candidate}"
             matching = {
                 index
                 for index, line in position_lines.items()
                 if index not in resolved
-                and (line == candidate or line.startswith(prefix))
+                and (
+                    line == candidate
+                    or line.startswith(prefix)
+                    or line.endswith(suffix)
+                )
             }
             if len(matching) < minimum_occurrences:
                 continue
             for index in matching:
                 line = position_lines[index]
-                removals[index] = (
-                    "" if line == candidate else line[len(prefix):]
-                )
+                if line == candidate:
+                    removals[index] = ""
+                elif line.startswith(prefix):
+                    removals[index] = line[len(prefix):]
+                else:
+                    removals[index] = line[:-len(suffix)]
             resolved.update(matching)
 
     remove_verbatim_margins(first_lines)
