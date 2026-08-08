@@ -291,7 +291,7 @@ O sistema SHALL NOT unir duas linhas físicas quando qualquer uma das duas perte
 
 ### Requirement: Remoção de cabeçalhos e rodapés repetitivos
 
-O sistema SHALL remover, de cada bloco de página, apenas linhas marginais comprovadamente repetitivas entre páginas e com posição semelhante (topo ou rodapé do bloco), limitadas a: data e hora de impressão; nome técnico do arquivo de origem; URL repetida; contador de página no formato "N/total"; e texto de cabeçalho ou rodapé repetido verbatim (byte-idêntico), confirmado por aparecer isolado como linha de conteúdo completa em pelo menos duas páginas e por atingir, em frequência total, o mesmo limiar estatístico usado para os demais padrões. O sistema SHALL remover apenas o trecho correspondente ao cabeçalho/rodapé repetido quando este estiver fundido ao início do conteúdo textual real da página seguinte, preservando integralmente esse conteúdo. O sistema SHALL preservar o marcador `[[Pág. N]]` em todas as páginas e SHALL NOT remover conteúdo jurídico apenas por ele se repetir entre páginas.
+O sistema SHALL remover, de cada bloco de página, apenas linhas marginais comprovadamente repetitivas entre páginas e com posição semelhante (topo ou rodapé do bloco), limitadas a: data e hora de impressão; nome técnico do arquivo de origem; URL repetida; contador de página no formato "N/total"; e texto de cabeçalho ou rodapé repetido verbatim (byte-idêntico), confirmado por aparecer isolado como linha de conteúdo completa em pelo menos duas páginas e por atingir, em frequência total, o mesmo limiar estatístico usado para os demais padrões. O sistema SHALL remover apenas o trecho correspondente ao cabeçalho/rodapé repetido quando este estiver fundido ao início do conteúdo textual real da página seguinte, preservando integralmente esse conteúdo. O sistema SHALL remover apenas o trecho correspondente ao cabeçalho/rodapé repetido quando este estiver fundido ao final do conteúdo textual real da página anterior, preservando integralmente esse conteúdo. Quando mais de uma margem recorrente distinta estiver empilhada na mesma borda de uma página (ex. uma assinatura eletrônica legítima recorrente acima de um rodapé técnico também recorrente), o sistema SHALL remover cada uma delas, reaplicando o mesmo critério de recorrência e limiar até que nenhuma margem adicional seja identificada, preservando integralmente o conteúdo jurídico substantivo entre elas. O sistema SHALL preservar o marcador `[[Pág. N]]` em todas as páginas e SHALL NOT remover conteúdo jurídico apenas por ele se repetir entre páginas, e SHALL NOT remover uma linha apenas por conter palavras isoladas semelhantes a um padrão marginal conhecido (ex. "Documento", "Página", data) sem que o texto correspondente já satisfaça o critério de recorrência verbatim exigido neste requisito.
 
 #### Scenario: Rodapé técnico é removido
 
@@ -304,10 +304,30 @@ O sistema SHALL remover, de cada bloco de página, apenas linhas marginais compr
 - **WHEN** um cabeçalho institucional (ex. "Superior Tribunal de Justiça") aparece isolado, como linha de conteúdo completa, em pelo menos duas páginas, e em outra página aparece fundido ao início do conteúdo textual real que continua um dispositivo iniciado na página anterior (ex. "Superior Tribunal de Justiça agravada, pois demonstrado o rebate do fundamento...")
 - **THEN** o cabeçalho é removido e o conteúdo textual real permanece, iniciando corretamente pela continuação (ex. "agravada, pois demonstrado o rebate do fundamento...")
 
+#### Scenario: Rodapé técnico fundido ao final de um parágrafo é separado
+
+- **WHEN** um rodapé técnico (ex. "GABGF09 AREsp 1462304 Petição : 592169/2020 ... Documento") aparece isolado, como linha de conteúdo completa, em pelo menos duas páginas, e em outra página aparece fundido ao final do conteúdo textual real de um parágrafo que termina naquela página (ex. "6. Afastado o óbice da Súmula 283 do STF, empregado na decisão GABGF09 AREsp 1462304 Petição : 592169/2020 ... Documento")
+- **THEN** o rodapé é removido e o conteúdo textual real permanece, terminando corretamente no ponto em que o parágrafo real termina (ex. "6. Afastado o óbice da Súmula 283 do STF, empregado na decisão")
+
+#### Scenario: Rodapé técnico fundido interrompe um nome entre páginas
+
+- **WHEN** um rodapé técnico (ex. "Documento: 1807307 - Inteiro Teor do Acórdão - Site certificado - DJe: 04/04/2019") aparece isolado, como linha de conteúdo completa, em pelo menos duas páginas, e em outra página aparece fundido entre o final de um nome próprio iniciado antes do rodapé (ex. "Os Srs. Ministros Paulo de") e o marcador `[[Pág. N]]` seguinte, cujo conteúdo continua o mesmo nome (ex. "Tarso Sanseverino...")
+- **THEN** o rodapé é removido, a página anterior termina corretamente no ponto em que o nome é interrompido (ex. "Os Srs. Ministros Paulo de") e a página seguinte permanece inalterada, iniciando por sua continuação (ex. "Tarso Sanseverino...")
+
+#### Scenario: Margens recorrentes empilhadas são removidas em conjunto
+
+- **WHEN** uma página termina com duas margens recorrentes distintas empilhadas (ex. um rodapé técnico recorrente imediatamente seguido, mais abaixo, por uma assinatura eletrônica legítima que também se repete verbatim em frequência suficiente), de modo que a assinatura ocupa a posição de última linha de conteúdo e o rodapé técnico fica na posição imediatamente anterior
+- **THEN** tanto a assinatura quanto o rodapé técnico são removidos, e o conteúdo jurídico substantivo que os precede permanece intacto, terminando corretamente no ponto em que o texto real termina
+
 #### Scenario: Cabeçalho ou rodapé abaixo do limiar de frequência é preservado
 
 - **WHEN** uma linha repetida na posição de topo ou rodapé do bloco não atinge o limiar estatístico de frequência já usado para as demais margens, ou nunca aparece isolada como linha de conteúdo completa em pelo menos duas páginas
 - **THEN** essa linha permanece inalterada em todas as páginas em que aparece
+
+#### Scenario: Assinatura eletrônica legítima não recorrente é preservada
+
+- **WHEN** uma linha de assinatura eletrônica legítima (ex. "Documento eletrônico VDA... assinado eletronicamente...") aparece em menos ocorrências do que o limiar estatístico de frequência total exigido para remoção de margens
+- **THEN** essa linha permanece inalterada, mesmo contendo palavras como "Documento" ou datas
 
 #### Scenario: Conteúdo jurídico repetido é preservado
 

@@ -54,4 +54,4 @@ GABGF09 corretamente; uma terceira chamada não altera mais nada (ponto fixo em 
 
 - [x] 5.1 Claude revisa o diff, reexecuta os testes e valida o OpenSpec de forma independente antes de aprovar. Feito em cada subtarefa (commits `96b91cc`, `96c4f1c`, `d255d6f`, `633b8a0`).
 - [x] 5.2 Commit local (sem push) após aprovação explícita de cada subtarefa aprovada pelo Codex. Feito.
-- [ ] 5.3 Atualizar `LOOPS.md` com o resultado desta mudança (sem arquivar sem aprovação humana).
+- [x] 5.3 Atualizar `LOOPS.md` com o resultado desta mudança (sem arquivar sem aprovação humana). Feito (commit `5466a6f`); aprovação humana para arquivamento recebida em seguida.
