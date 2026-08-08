@@ -19,10 +19,54 @@
 
 O texto marginal já precisa satisfazer, antes de qualquer remoção, o critério de recorrência **verbatim** já aprovado (aparecer, byte-idêntico, como candidato ≥ 2 vezes e atingir o mesmo limiar estatístico de frequência total já usado por todos os outros padrões de margem). A única lacuna é posicional: o candidato pode aparecer colado como **prefixo** (já tratado) ou como **sufixo** (não tratado) de uma linha de conteúdo maior, e ambos os casos devem remover apenas o trecho correspondente ao candidato, preservando o restante da linha. Nenhuma parte do critério depende do texto específico do rodapé (não há lista de números de processo/documento, nem checagem de palavras como "Documento", "Página", "DJe" ou "GABGF09" isoladamente) — a assinatura é puramente recorrência + posição de borda (início/fim de linha na borda superior/inferior da página).
 
+### Achado adicional durante a validação do corpus (rodada 2 do diagnóstico)
+
+Após implementar a correspondência por sufixo (item acima) e reconverter os 4 PDFs reais com
+`converter-juridico --no-ocr`, `REsp_1704551-SP.pdf` ficou com **0** ocorrências residuais de
+`Documento: 1807307 - ...` (as 14, isoladas e fundidas, corretamente removidas em uma única
+passagem) e idempotente. `AINTARESP_1462304-PA.pdf`, porém, continuou com as **8** ocorrências de
+`GABGF09 ...` intactas — a correção por sufixo, sozinha, não teve efeito nenhum nesse arquivo.
+
+Inspecionando os blocos PyMuPDF de cada página do AINT (não apenas os blocos que contêm
+"GABGF09", como na primeira rodada, mas TODOS os blocos da página, em ordem de leitura),
+descobriu-se um terceiro bloco, abaixo do rodapé GABGF09, presente em **todas** as páginas do
+documento: um bloco de assinatura eletrônica legítimo (`Documento eletrônico VDA... assinado
+eletronicamente nos termos do Art.1º §2º inciso III da Lei 11.419/2006 Signatário(a): ... Código
+de Controle do Documento: <hash>`), com bbox constante `y0≈804.5, y1≈830.1` — ou seja, ainda mais
+próximo da margem inferior da página do que o próprio GABGF09 (`y0≈765.5-793.5` quando isolado, ou
+fundido ao bloco do parágrafo quando o PyMuPDF já os agrupa). Esse bloco de assinatura é, ele
+próprio, um candidato legítimo à remoção por recorrência: seu hash de controle se repete
+identicamente em até 8 das 12 páginas do documento (uma assinatura por decisão que ocupa várias
+páginas), atingindo o mesmo limiar de quorum já usado para todos os outros padrões marginais.
+
+`remove_repetitive_margins` calcula a "última linha de conteúdo" de cada página uma única vez, a
+partir das posições do texto original, e processa apenas essa linha extrema. Como o bloco de
+assinatura é sempre o bloco mais baixo da página, é ELE que ocupa a posição de "última linha" —
+não o GABGF09, que fica estruturalmente "preso" na posição intermediária, entre o corpo do texto e
+a assinatura. Confirmado experimentalmente: rodando `remove_repetitive_margins` uma primeira vez
+sobre o `raw_markdown` real (capturado diretamente da execução do pipeline via instrumentação),
+apenas o bloco de assinatura é removido (por já satisfazer o critério de recorrência verbatim já
+aprovado, sem qualquer relação com a correção de sufixo desta mudança); isso faz o GABGF09 se
+tornar a nova "última linha" de cada página. Rodando a função uma **segunda vez** sobre esse
+resultado, o GABGF09 agora é reconhecido e removido (pela correção de sufixo desta mudança, para os
+casos fundidos, e pelo caminho de igualdade/prefixo já existente, para os isolados). Uma terceira
+execução não produz mais nenhuma alteração (ponto fixo).
+
+Ou seja: o mecanismo de recorrência em si (regex + verbatim, com ou sem a correção de sufixo) já é
+capaz de reconhecer e remover corretamente o GABGF09 — o que falta é permitir que o mecanismo
+enxergue mais de uma camada de margem empilhada na borda da página em uma única execução do
+pipeline, em vez de aplicar a lógica de "primeira/última linha" apenas uma vez sobre a posição
+original. Isso não é um novo critério (nenhum vocabulário, nenhuma lista, nenhuma mudança de
+posição/estrutura) — é fazer a MESMA lógica já aprovada convergir até um ponto fixo, exatamente
+como qualquer transformação de limpeza idempotente deste pipeline já deveria fazer. Nenhuma
+mudança em `recompose_native_paragraphs`, no extrator, no roteamento ou na arquitetura de página
+isolada é necessária.
+
 ## Goals / Non-Goals
 
 **Goals:**
 - Reconhecer e remover um rodapé/cabeçalho técnico recorrente quando ele aparece como sufixo colado ao final da última linha de conteúdo de uma página, simetricamente ao prefixo já tratado.
+- Fazer a remoção de margens recorrentes convergir a um ponto fixo dentro de uma única execução do pipeline, para o caso de múltiplas margens recorrentes empilhadas na mesma borda da página (ex. assinatura eletrônica legítima acima de um rodapé técnico).
 - Preservar 100% do texto substantivo anterior ao rodapé, sem perda de tokens.
 - Manter o critério livre de listas fixas de processo/documento/código e de remoção por palavra-chave isolada.
 
@@ -36,12 +80,14 @@ O texto marginal já precisa satisfazer, antes de qualquer remoção, o critéri
 - **Onde corrigir:** dentro de `remove_verbatim_margins` (função interna de `remove_repetitive_margins`, `cleaner.py`), adicionando um modo de correspondência por sufixo (`line.endswith(" " + candidato)`) simétrico ao já existente por prefixo, aplicado tanto a `first_lines` quanto a `last_lines` (mesma função é reusada para ambos os conjuntos hoje). Alternativa descartada: tornar `recompose_native_paragraphs` ciente de recorrência entre páginas — exigiria processar múltiplas páginas juntas, contrariando a arquitetura de página isolada already usada por todo o pipeline (rule "não alterar arquitetura").
 - **Critério de correspondência:** um candidato já estabelecido pela contagem verbatim existente (`Counter`, ≥ 2 ocorrências) passa a casar com uma linha também quando `linha == candidato`, `linha.startswith(candidato + " ")` (já existente) ou `linha.endswith(" " + candidato)` (novo). A remoção, no caso de sufixo, corta exatamente `len(" " + candidato)` caracteres do final da linha, preservando o restante. Isso não introduz nenhuma dependência de vocabulário específico do documento.
 - **Quorum inalterado:** o limiar estatístico (`minimum_occurrences`) permanece o mesmo já aprovado; o novo modo de correspondência apenas amplia quais linhas contam como instância do mesmo candidato recorrente, sem afrouxar o limiar em si.
+- **Convergência a ponto fixo:** `remove_repetitive_margins` passa a reaplicar sua própria lógica (recalculando páginas, quorum e candidatos a cada rodada) sobre o resultado da rodada anterior, até que uma rodada não produza nenhuma alteração, com um teto de segurança de iterações (evita, em tese, um laço infinito; na prática nunca deveria ser atingido, pois cada rodada só remove texto, nunca adiciona, e o documento é finito). Alternativa descartada: tentar identificar de antemão "quantas camadas" de margem existem por página (ex. examinar 2 ou 3 linhas a partir da borda) — mais frágil e arbitrário do que simplesmente reaplicar o critério já aprovado até estabilizar, que se generaliza automaticamente para qualquer número de margens empilhadas sem introduzir um novo parâmetro mágico.
 
 ## Risks / Trade-offs
 
 - [Risco] Um candidato de sufixo poderia, em teoria, coincidir com o final de uma citação jurídica legítima não recorrente. → Mitigação: o candidato só existe se já ocorrer ≥ 2 vezes verbatim e atingir o mesmo quorum de frequência total já usado para todas as margens; uma citação não recorrente nunca vira candidato.
 - [Risco] Uma linha poderia coincidir simultaneamente com prefixo e sufixo do mesmo candidato. → Mitigação: ordem determinística de checagem (igualdade → prefixo → sufixo) evita ambiguidade; nenhum dos casos reais do corpus atual aciona essa condição.
 - [Trade-off] Nomes/frases legitimamente cortados por uma quebra de página não são recompostos nesta mudança — ver Non-Goals. Isso é aceito como comportamento consistente com o resto do pipeline (qualquer texto que naturalmente atravesse `[[Pág. N]]` já fica em fragmentos separados).
+- [Risco] A convergência a ponto fixo poderia, em tese, remover mais camadas do que o pretendido se conteúdo jurídico legítimo por acaso formar uma cadeia de linhas recorrentes na borda da página. → Mitigação: cada rodada usa exatamente o mesmo critério de recorrência + quorum já aprovado (nenhum afrouxamento); os testes negativos (assinatura de baixa frequência, citação não recorrente, R01/SUBTÍTULO/índice, Papel/Nome) são reexecutados após a mudança para confirmar que nada além das margens genuinamente recorrentes é afetado.
 
 ## Migration Plan
 

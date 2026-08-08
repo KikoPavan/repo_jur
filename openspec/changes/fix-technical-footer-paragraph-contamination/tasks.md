@@ -16,19 +16,42 @@
 - [x] 2.1 Estender `remove_verbatim_margins` (dentro de `remove_repetitive_margins`, `src/pipeline_juridico/cleaner.py`) para reconhecer um candidato recorrente também como sufixo (`linha.endswith(" " + candidato)`) de uma linha de conteúdo, além dos casos já existentes de igualdade e prefixo, removendo apenas o trecho correspondente ao candidato.
 - [x] 2.2 Rodar a suíte completa e confirmar que os testes novos e existentes passam (green). Resultado: 310/310 passed (verificado de forma independente pelo orquestrador).
 
-## 3. Validação do corpus
+## 3. Correção adicional — margens recorrentes empilhadas (achado da validação de corpus)
 
-- [ ] 3.1 Rodar `uv run pytest tests/` (suíte completa) e registrar o resultado.
-- [ ] 3.2 Rodar `openspec validate --all --strict` e registrar o resultado.
-- [ ] 3.3 Reconverter os 4 PDFs do corpus (`AINTARESP_1462304-PA.pdf`, `REsp_1704551-SP.pdf`, `Inf0024E.pdf`, `L10.406_CC_2002.pdf`) com `converter-juridico --no-ocr` e confirmar que nenhuma página exigiu OCR.
-- [ ] 3.4 Confirmar as 8 ocorrências técnicas de `AINTARESP_1462304-PA.pdf` e as 3 ocorrências de `REsp_1704551-SP.pdf` corrigidas (antes/depois de cada uma), sem perda de token.
-- [ ] 3.5 Confirmar que `Inf0024E.pdf` e `L10.406_CC_2002.pdf` (R01, 8 SUBTÍTULO, índice) permanecem sem alterações inesperadas.
-- [ ] 3.6 Confirmar marcadores `[[Pág. N]]` únicos e sequenciais em todos os 4 arquivos.
-- [ ] 3.7 Reconverter novamente e confirmar idempotência (segunda reconversão byte-idêntica à primeira).
-- [ ] 3.8 Produzir e explicar o diff completo do corpus (todos os arquivos alterados e por quê).
+Achado durante a primeira rodada de validação (seção 4): em `AINTARESP_1462304-PA.pdf`, toda
+página com o rodapé GABGF09 também tem, ainda mais próxima da margem, uma assinatura eletrônica
+legítima que também se repete o suficiente para satisfazer o critério de recorrência já aprovado.
+`remove_repetitive_margins` só examina a última linha de conteúdo da página (calculada uma única
+vez, a partir do texto original), então remove a assinatura (a mais externa) mas nunca chega a
+examinar o GABGF09 (que fica "preso" logo abaixo dela) na mesma execução. Confirmado
+empiricamente: uma segunda chamada da mesma função, sobre o resultado da primeira, remove o
+GABGF09 corretamente; uma terceira chamada não altera mais nada (ponto fixo em 2 passagens). Ver
+`design.md`, seção "Achado adicional durante a validação do corpus".
 
-## 4. Encerramento do ciclo
+- [ ] 3.1 Adicionar teste: página com duas margens recorrentes empilhadas na mesma borda (uma
+  assinatura eletrônica recorrente como última linha, um rodapé técnico recorrente logo acima)
+  tem AMBAS removidas em uma única chamada de `remove_repetitive_margins`, preservando o conteúdo
+  jurídico substantivo anterior. Confirmar que esse teste falha (red) contra o código atual.
+- [ ] 3.2 Fazer `remove_repetitive_margins` reaplicar sua própria lógica (recálculo de páginas,
+  quorum e candidatos a cada rodada) sobre o resultado da rodada anterior, até que uma rodada não
+  produza nenhuma alteração (ponto fixo), com um teto de segurança de iterações. Não alterar o
+  critério de recorrência, o cálculo de quorum, nem introduzir vocabulário ou listas fixas.
+- [ ] 3.3 Rodar a suíte completa e confirmar que o teste novo passa (green) e nenhum teste
+  existente regride.
 
-- [ ] 4.1 Claude revisa o diff, reexecuta os testes e valida o OpenSpec de forma independente antes de aprovar.
-- [ ] 4.2 Commit local (sem push) após aprovação explícita de cada subtarefa aprovada pelo Codex.
-- [ ] 4.3 Atualizar `LOOPS.md` com o resultado desta mudança (sem arquivar sem aprovação humana).
+## 4. Validação do corpus
+
+- [ ] 4.1 Rodar `uv run pytest tests/` (suíte completa) e registrar o resultado.
+- [ ] 4.2 Rodar `openspec validate --all --strict` e registrar o resultado.
+- [ ] 4.3 Reconverter os 4 PDFs do corpus (`AINTARESP_1462304-PA.pdf`, `REsp_1704551-SP.pdf`, `Inf0024E.pdf`, `L10.406_CC_2002.pdf`) com `converter-juridico --no-ocr` e confirmar que nenhuma página exigiu OCR.
+- [ ] 4.4 Confirmar as 8 ocorrências técnicas de `AINTARESP_1462304-PA.pdf` e as 3 ocorrências de `REsp_1704551-SP.pdf` corrigidas (antes/depois de cada uma), sem perda de token.
+- [ ] 4.5 Confirmar que `Inf0024E.pdf` e `L10.406_CC_2002.pdf` (R01, 8 SUBTÍTULO, índice) permanecem sem alterações inesperadas.
+- [ ] 4.6 Confirmar marcadores `[[Pág. N]]` únicos e sequenciais em todos os 4 arquivos.
+- [ ] 4.7 Reconverter novamente e confirmar idempotência (segunda reconversão byte-idêntica à primeira).
+- [ ] 4.8 Produzir e explicar o diff completo do corpus (todos os arquivos alterados e por quê).
+
+## 5. Encerramento do ciclo
+
+- [ ] 5.1 Claude revisa o diff, reexecuta os testes e valida o OpenSpec de forma independente antes de aprovar.
+- [ ] 5.2 Commit local (sem push) após aprovação explícita de cada subtarefa aprovada pelo Codex.
+- [ ] 5.3 Atualizar `LOOPS.md` com o resultado desta mudança (sem arquivar sem aprovação humana).
