@@ -130,6 +130,15 @@ def recompose_native_paragraphs(
         r")\.?(?:\s*\([^)]*\)\.?)?\s*$",
         flags=re.IGNORECASE,
     )
+    in_saiba_mais_span: list[bool] = []
+    saiba_mais_active = False
+    for _, _, text, is_first, _ in lines:
+        if is_first and native_label_pattern.match(text):
+            saiba_mais_active = text == "SAIBA MAIS"
+            in_saiba_mais_span.append(False)
+            continue
+        in_saiba_mais_span.append(saiba_mais_active)
+
     paragraphs = [lines[0][2]]
     (
         previous_y0,
@@ -139,12 +148,15 @@ def recompose_native_paragraphs(
         previous_belongs_to_colon_block,
     ) = lines[0]
     for (
-        current_y0,
-        current_y1,
-        current_text,
-        current_is_first,
-        current_belongs_to_colon_block,
-    ) in lines[1:]:
+        (
+            current_y0,
+            current_y1,
+            current_text,
+            current_is_first,
+            current_belongs_to_colon_block,
+        ),
+        current_in_saiba_mais_span,
+    ) in zip(lines[1:], in_saiba_mais_span[1:]):
         gap = current_y0 - previous_y1
         previous_height = previous_y1 - previous_y0
         should_join = (
@@ -165,6 +177,10 @@ def recompose_native_paragraphs(
             and not (
                 native_label_pattern.match(previous_text)
                 and previous_is_first
+            )
+            and not (
+                current_in_saiba_mais_span
+                and current_is_first
             )
             and not (
                 previous_belongs_to_colon_block
