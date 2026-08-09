@@ -15,9 +15,9 @@
 
 ## 2. Implementação
 
-- [ ] 2.1 Adicionar em `src/pipeline_juridico/cleaner.py` uma função determinística (ex. `normalize_thin_space_entities`) que substitui o padrão `[ \t]*&(?:#8201|#[xX]2009|thinsp);[ \t]*` (case-insensitive) por um único espaço ASCII, sem tocar nenhuma outra entidade HTML nem caracteres de quebra de linha.
-- [ ] 2.2 Chamar a nova função em `src/pipeline_juridico/converter.py` sobre o `raw_markdown` já composto, antes de `remove_repetitive_margins` (ou em outro ponto do mesmo grupo de transformações textuais, desde que a ordem não afete o resultado — justificar a escolha no diff).
-- [ ] 2.3 Rodar a suíte completa e confirmar que os testes novos e existentes passam (green).
+- [x] 2.1 Adicionar em `src/pipeline_juridico/cleaner.py` uma função determinística (ex. `normalize_thin_space_entities`) que substitui o padrão `[ \t]*&(?:#8201|#[xX]2009|thinsp);[ \t]*` (case-insensitive) por um único espaço ASCII, sem tocar nenhuma outra entidade HTML nem caracteres de quebra de linha. Implementado (commit `771078a`).
+- [x] 2.2 Chamar a nova função em `src/pipeline_juridico/converter.py` sobre o `raw_markdown` já composto, antes de `remove_repetitive_margins` (ou em outro ponto do mesmo grupo de transformações textuais, desde que a ordem não afete o resultado — justificar a escolha no diff). Implementado: `raw_markdown = normalize_thin_space_entities(raw_markdown)` logo após `compose_document(blocks)`, primeiro passo do grupo de normalizações textuais.
+- [x] 2.3 Rodar a suíte completa e confirmar que os testes novos e existentes passam (green). Resultado: 323/323 passed (verificado de forma independente pelo orquestrador).
 
 ## 3. Validação do corpus
 
