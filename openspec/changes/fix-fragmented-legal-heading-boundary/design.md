@@ -138,3 +138,23 @@ Um candidato mais amplo — remover ou enfraquecer de forma geral a condição `
 - Critério exato: exigir que as demais linhas físicas do mesmo bloco de origem tenham x0 predominantemente diferente do x0 da linha-rótulo para que a proteção continue ativa.
 - Blast radius: 2 de 241 páginas do corpus, exatamente as 2 ocorrências reais do defeito, 0 falsos positivos, 0 falsos negativos, 0 perda/adição de token.
 - Proposta mínima futura (não implementada nesta mudança): estender `_sorted_native_text_blocks` para carregar x0 por linha física, e usar esse dado em `recompose_native_paragraphs` para refinar exclusivamente essa condição do guard de rótulo, sem alterar mais nada da função.
+
+## Decisão aprovada e limiar geométrico formalizado
+
+Aprovado para TDD/implementação. O limiar de decisão precisa ser um valor único e explícito — não a comparação qualitativa "0–23% vs. 81%" usada no diagnóstico. Formalização:
+
+**Amostra completa de frações observadas no corpus** (fração das linhas físicas do bloco, além da linha-rótulo, cujo x0 fica a menos de 2pt do x0 da própria linha-rótulo — a mesma tolerância já usada no diagnóstico, escolhida por ser uma ordem de grandeza menor que qualquer recuo de coluna "rótulo: valor" observado no corpus, que nunca é menor que ~50pt):
+
+| Grupo | Casos | Fração observada |
+| --- | --- | --- |
+| Rótulo genuíno (`PROCESSO`, `TEMA`, `RAMO DO DIREITO` em `Inf0024E.pdf`, 44 blocos) | 44 | 0% |
+| Rótulo genuíno (`RECORRENTE` em `REsp_1704551-SP.pdf` p.3/p.14) | 2 | 23% |
+| Falso positivo (`RECURSO` em `REsp_1704551-SP.pdf` p.1/p.6) | 2 | 81% |
+
+Não há nenhum caso no corpus entre 23% e 81% — uma lacuna de 58 pontos percentuais sem nenhuma ocorrência. O limiar é fixado em **50%** (maioria simples: mais da metade das linhas seguintes do bloco compartilham a margem da linha-rótulo), por ficar exatamente no centro dessa lacuna, com margem de 27 pontos percentuais para o lado do maior caso genuíno (23%) e 31 pontos percentuais para o lado do menor caso defeituoso (81%) — não é um valor ajustado a um único caso, é o ponto médio de uma separação binária real e larga observada em todo o corpus disponível.
+
+**Regra completa**: a proteção de rótulo (`native_label_pattern.match(previous_text) and previous_is_first`) só é desativada (permitindo a junção) quando:
+1. o bloco de origem da linha-rótulo tem pelo menos uma outra linha física além dela (sem isso, não há base de comparação — mantém o comportamento atual, protegido); **e**
+2. mais da metade (`> 50%`) dessas outras linhas têm x0 a menos de 2pt do x0 da própria linha-rótulo.
+
+Quando qualquer uma dessas condições não se aplica (bloco sem outras linhas, ou outras linhas predominantemente recuadas), a proteção permanece exatamente como hoje.

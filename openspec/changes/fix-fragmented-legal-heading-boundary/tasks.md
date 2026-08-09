@@ -1,20 +1,53 @@
-> Nota de status: esta mudança é SOMENTE DIAGNÓSTICO. Nenhum código foi alterado, nenhum teste de produção foi criado. Conclusão: **A) CRITÉRIO SEGURO ENCONTRADO** — blast radius de 2/241 páginas, 0 falsos positivos, 0 falsos negativos (ver `design.md`). TDD e implementação aguardam aprovação humana explícita antes de começar.
+> Histórico: esta mudança começou como diagnóstico puro (Seção 0). Conclusão: A) CRITÉRIO SEGURO ENCONTRADO — blast radius previsto de 2/241 páginas, 0 falsos positivos, 0 falsos negativos. Aprovada por decisão humana para TDD/implementação restrita ao critério diagnosticado (recuo x0 das demais linhas do bloco, limiar de 50%, ver `design.md`).
 
-## 1. Diagnóstico
+## 0. Diagnóstico (concluído)
 
-- [x] 1.1 Localizar todas as ocorrências reais do defeito `RECURSO`/`ESPECIAL.` no corpus e inspecionar a estrutura nativa via `page.get_text("dict")` (página, bloco, linha, span, bbox, fonte, tamanho, flags, distância vertical/horizontal, relação com blocos vizinhos). Resultado: 2 ocorrências reais, `REsp_1704551-SP.pdf` páginas 1 e 6, mesmo conteúdo de ementa; documentado em `design.md`, ETAPA 1.
-- [x] 1.2 Determinar se `RECURSO` e `ESPECIAL.` pertencem ao mesmo bloco, linhas diferentes ou blocos distintos. Resultado: mesmo bloco geométrico, mesma coordenada Y exata (339.75/351.75, sem diferença), mas o PyMuPDF já entrega como 7 registros de "linha" separados (um por palavra) devido ao espaçamento largo de texto justificado.
-- [x] 1.3 Rastrear pelo pipeline (extração nativa, `compose_document`, `recompose_native_paragraphs`, cleaners posteriores) e determinar o PRIMEIRO estágio responsável, incluindo se é o PDF (A) ou o pipeline (B) que cria a separação. Resultado: **A** — o PDF, via extração do PyMuPDF, já entrega a estrutura fragmentada; o pipeline apenas deixa de recompor a primeira pseudo-linha, devido ao guard de proteção de rótulo (`native_label_pattern` + `previous_is_first`) em `recompose_native_paragraphs`. Documentado em `design.md`, ETAPA 2.
-- [x] 1.4 Comparar com casos corretos nos 4 PDFs (mesma expressão unida corretamente; o mesmo mecanismo geométrico de base funcionando corretamente em outros contextos). Resultado: controle direto (página 12, mesma ementa, PyMuPDF não fragmenta, união correta); controle de mecanismo (76 ocorrências do mesmo padrão geométrico no corpus, 74 delas sendo o comportamento correto e já validado de proteção de rótulo genuíno). Documentado em `design.md`, ETAPA 3.
-- [x] 1.5 Avaliar sinais estruturais candidatos (sem usar conteúdo jurídico como critério) e medir blast radius de cada um nos 4 PDFs via simulação da função real de produção. Resultado: critério de recuo consistente das linhas seguintes do bloco (x0) discrimina perfeitamente os 46 casos do corpus (44 rótulos genuínos vs. 2 falsos positivos), com blast radius medido de exatamente 2/241 páginas — 0 falsos positivos, 0 falsos negativos. Documentado em `design.md`, ETAPA 4.
-- [x] 1.6 Verificar impacto do candidato em R01, 8 SUBTÍTULO, índice do CC, rodapés técnicos, thin-space, `SAIBA MAIS`, capa editorial e `Papel/Nome`. Resultado: confirmado por decorrência direta da simulação completa nos 4 PDFs — 0 páginas alteradas em `Inf0024E.pdf`, `AINTARESP_1462304-PA.pdf` e `L10.406_CC_2002.pdf`; nenhuma das 74 proteções de rótulo genuíno (incluindo `Papel/Nome`-adjacentes como `RECORRENTE`) foi afetada.
-- [x] 1.7 Classificar a conclusão como A ou B conforme critério de aceitação da tarefa. Resultado: **A) CRITÉRIO SEGURO ENCONTRADO**, com proposta mínima documentada em `design.md`.
-- [x] 1.8 Confirmar que nenhum código de `src/`/`tests/` foi alterado e que `git status --short` permanece limpo além dos artefatos desta mudança.
+- [x] 0.1 Localizar as ocorrências reais e inspecionar a estrutura nativa via `page.get_text("dict")`. Resultado: 2 ocorrências reais, `REsp_1704551-SP.pdf` páginas 1 e 6; documentado em `design.md`, ETAPA 1.
+- [x] 0.2 Rastrear pelo pipeline e determinar o primeiro estágio responsável. Resultado: **A** — o PDF (via PyMuPDF) já entrega a fragmentação; o guard de rótulo em `recompose_native_paragraphs` é quem falha ao recompor. `design.md`, ETAPA 2.
+- [x] 0.3 Comparar com casos corretos e avaliar sinais candidatos, com blast radius medido nos 4 PDFs via simulação da função real. Resultado: recuo x0 das demais linhas do bloco discrimina perfeitamente 44 rótulos genuínos vs. 2 falsos positivos; blast radius de 2/241 páginas. `design.md`, ETAPA 3–4.
+- [x] 0.4 Obter decisão humana explícita aprovando o critério. Resultado: aprovado.
+- [x] 0.5 Formalizar o limiar geométrico (50%) com base na separação observada no corpus (0–23% vs. 81%, lacuna de 58 pontos percentuais), documentado em `design.md`, "Decisão aprovada e limiar geométrico formalizado".
 
-## 2. TDD (aguardando aprovação humana)
+## 1. Testes (TDD, antes de qualquer implementação)
 
-- [ ] 2.1 AGUARDANDO APROVAÇÃO — critério seguro encontrado e documentado (ver `design.md`), mas não autorizado a avançar para TDD sem decisão humana explícita, conforme instrução da tarefa ("Não implemente nada sem nova aprovação").
+- [ ] 1.1 Adicionar teste positivo (página 1 real de `REsp_1704551-SP.pdf`, via `_isolate_first_page`): "RECURSO" e "ESPECIAL. PROCESSUAL CIVIL. ARBITRAGEM. NULIDADE DE COMPROMISSO ARBITRAL..." ficam unidos em um único parágrafo.
+- [ ] 1.2 Adicionar teste positivo equivalente para a página 6.
+- [ ] 1.3 Adicionar teste positivo unitário de `recompose_native_paragraphs`, replicando a geometria real medida (bloco com pseudo-linhas de y0/y1 idênticos, x0 majoritariamente igual ao da linha-rótulo): confirma a união e ausência de perda de token/pontuação.
+- [ ] 1.4 Adicionar teste negativo: `PROCESSO` (label x0=145.6, linhas seguintes x0=218.4, 0% de coincidência) permanece separado do valor.
+- [ ] 1.5 Adicionar teste negativo: `TEMA` (mesmo padrão de `PROCESSO`) permanece separado.
+- [ ] 1.6 Adicionar teste negativo: `RAMO DO DIREITO` permanece separado.
+- [ ] 1.7 Adicionar teste negativo: `AGRAVANTE` (bloco `:`-marcado) permanece separado.
+- [ ] 1.8 Adicionar teste negativo: `AGRAVADO` permanece separado.
+- [ ] 1.9 Adicionar teste negativo: `ASSUNTO` permanece separado.
+- [ ] 1.10 Adicionar teste negativo: `RECORRENTE` (23% de coincidência, abaixo do limiar de 50%) permanece separado — caso mais próximo da fronteira entre os rótulos genuínos do corpus real.
+- [ ] 1.11 Adicionar teste negativo: `VÍDEO DO JULGAMENTO` permanece separado.
+- [ ] 1.12 Adicionar teste negativo: os casos `Papel/Nome` (`AINTARESP_1462304-PA.pdf` p.11, `REsp_1704551-SP.pdf` p.3/p.14 `RECORRENTE`) permanecem exatamente como hoje.
+- [ ] 1.13 Adicionar teste de controle de fronteira: bloco sintético com exatamente 50% das linhas seguintes na mesma margem (não deve desativar a proteção — a regra exige MAIS de 50%, `> 0.5`, não `>=`) e outro com 51% (deve desativar).
+- [ ] 1.14 Adicionar teste negativo: bloco cuja linha-rótulo não tem nenhuma outra linha física (sem dado de x0 para comparar) mantém a proteção ativa, idêntico ao comportamento anterior.
+- [ ] 1.15 Rodar a suíte e confirmar que os novos testes falham (red) antes da implementação.
 
-## 3. Implementação (aguardando aprovação humana)
+## 2. Implementação
 
-- [ ] 3.1 AGUARDANDO APROVAÇÃO — mesma condição do item 2.1.
+- [ ] 2.1 Em `_sorted_native_text_blocks` (`src/pipeline_juridico/converter.py`), adicionar apenas o dado geométrico necessário: x0 por linha física bruta de cada bloco (via `page.get_text("dict")`), sem alterar o extrator, o roteamento ou o OCR.
+- [ ] 2.2 Em `recompose_native_paragraphs` (`src/pipeline_juridico/cleaner.py`), usar esse dado exclusivamente para refinar a condição `native_label_pattern.match(previous_text) and previous_is_first`: desativar a proteção quando o bloco tiver outras linhas físicas E mais da metade delas tiverem x0 a menos de 2pt do x0 da linha-rótulo. Nenhuma outra condição de `should_join` é alterada.
+- [ ] 2.3 Preservar o comportamento atual quando o bloco não tiver outras linhas físicas (sem dado de comparação).
+- [ ] 2.4 Rodar a suíte completa e confirmar que os testes novos e existentes passam (green).
+
+## 3. Validação do corpus
+
+- [ ] 3.1 Rodar `uv run pytest tests/` (suíte completa) e registrar o resultado.
+- [ ] 3.2 Rodar `openspec validate --all --strict` e registrar o resultado.
+- [ ] 3.3 Reconverter os 4 PDFs do corpus com `converter-juridico --no-ocr` e confirmar que nenhuma página exigiu OCR.
+- [ ] 3.4 Confirmar que somente as 2 ocorrências reais (`REsp_1704551-SP.pdf` p.1 e p.6) mudam, com antes/depois.
+- [ ] 3.5 Confirmar que `Inf0024E.md`, `AINTARESP_1462304-PA.md` e `L10.406_CC_2002.md` ficam byte-idênticos à reconversão anterior a esta mudança.
+- [ ] 3.6 Confirmar que nenhuma palavra foi perdida ou adicionada em `REsp_1704551-SP.md` (contagem de tokens antes/depois).
+- [ ] 3.7 Confirmar `Papel/Nome` inalterado, R01 (4/4), 8 SUBTÍTULO, índice do CC, rodapés técnicos, thin-space, `SAIBA MAIS` e capa editorial preservados (decorrência direta de 3.5 para os 3 arquivos inalterados; reverificação direta em `REsp_1704551-SP.md` para os itens que lhe dizem respeito).
+- [ ] 3.8 Confirmar marcadores `[[Pág. N]]` únicos e sequenciais nos 4 arquivos.
+- [ ] 3.9 Reconverter novamente e confirmar idempotência (segunda reconversão byte-idêntica à primeira, byte a byte) nos 4 arquivos.
+- [ ] 3.10 Produzir e explicar o diff completo do corpus.
+
+## 4. Encerramento do ciclo
+
+- [ ] 4.1 Claude revisa o diff, reexecuta os testes e valida o OpenSpec de forma independente antes de aprovar cada subtarefa.
+- [ ] 4.2 Commit local (sem push) após aprovação explícita de cada subtarefa aprovada pelo Codex.
+- [ ] 4.3 Atualizar `LOOPS.md` com o resultado desta mudança (sem arquivar sem aprovação humana).

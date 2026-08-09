@@ -8,11 +8,9 @@ RECURSO
 ESPECIAL. PROCESSUAL CIVIL. ARBITRAGEM. NULIDADE DE COMPROMISSO ARBITRAL E DE SENTENÇA ARBITRAL. OMISSÃO, CONTRADIÇÃO OU ERRO MATERIAL. AUSÊNCIA. VALOR DA CAUSA. IMPUGNAÇÃO. MENSURAÇÃO DO CONTEÚDO ECONÔMICO. CONDENAÇÃO EM SENTENÇA ARBITRAL. POSSIBILIDADE.
 ```
 
-**Esta mudança é SOMENTE DIAGNÓSTICO** — nenhuma correção, teste de produção, arquivamento ou push foi realizado. `git status` permanece limpo além dos artefatos desta mudança.
+## Diagnóstico e decisão (histórico desta mudança)
 
-## Conclusão do diagnóstico
-
-**A) CRITÉRIO SEGURO ENCONTRADO.** Causa raiz comprovada, critério exato definido e validado empiricamente com **blast radius de exatamente 2 em ~241 páginas do corpus — as duas únicas ocorrências reais do defeito, sem nenhum falso positivo e sem nenhum falso negativo** (ver `design.md` para a evidência completa, rastreada estágio a estágio e validada com simulação da função real de produção nos 4 PDFs).
+Esta mudança começou como diagnóstico puro. Conclusão: **A) CRITÉRIO SEGURO ENCONTRADO** — causa raiz comprovada, critério exato definido e validado empiricamente com **blast radius de exatamente 2 em ~241 páginas do corpus — as duas únicas ocorrências reais do defeito, sem nenhum falso positivo e sem nenhum falso negativo** (ver `design.md` para a evidência completa). Aprovado por decisão humana para TDD/implementação, restrita ao critério diagnosticado.
 
 ## Causa raiz (resumo — detalhes completos em `design.md`)
 
@@ -26,11 +24,17 @@ A varredura dos 4 PDFs mostrou que esse mesmo mecanismo de base (PyMuPDF fragmen
 
 O que distingue estruturalmente um rótulo genuíno de um falso positivo como `RECURSO`: nos rótulos genuínos, as demais linhas físicas do MESMO bloco (o "valor" do campo) começam em uma coordenada horizontal (x0) consistentemente DIFERENTE (recuada) da coordenada do próprio rótulo — um recuo estrutural de "rótulo: valor". No caso `RECURSO`, as demais linhas do bloco (a continuação natural do parágrafo/ementa) retornam à MESMA coordenada x0 do próprio bloco — um parágrafo justificado comum, sem coluna de valor recuada.
 
-Medido nos 46 blocos do corpus que têm essa estrutura completa (rótulo + linhas adicionais no mesmo bloco): 44 têm recuo consistentemente diferente (rótulo genuíno, 0% das linhas seguintes compartilham a margem do rótulo); exatamente 2 têm a margem idêntica (81% das linhas seguintes compartilham a margem do "rótulo") — e são precisamente as 2 ocorrências reais do defeito.
+Medido nos 46 blocos do corpus que têm essa estrutura completa (rótulo + linhas adicionais no mesmo bloco): 44 têm recuo consistentemente diferente (rótulo genuíno, 0–23% das linhas seguintes compartilham a margem do rótulo); exatamente 2 têm a margem idêntica (81% das linhas seguintes compartilham a margem do "rótulo") — e são precisamente as 2 ocorrências reais do defeito. Não há nenhum caso do corpus entre 23% e 81% (lacuna de 58 pontos percentuais). O limiar de decisão é fixado em **50%** (maioria simples), o ponto médio dessa lacuna — não um número ajustado a um único caso (justificativa completa em `design.md`, seção "Decisão aprovada e limiar geométrico formalizado").
 
-## Fora do escopo (confirmado, não tocado nesta investigação)
+## What Changes
 
-`Papel/Nome`, thin-space, rodapés técnicos, `SUBTÍTULO`, índice, R01, `SAIBA MAIS`, capa editorial de `Inf0024E.pdf` — nenhum código foi alterado; nenhum teste de produção foi criado. A simulação completa nos 4 PDFs confirma 0 diferenças em `Inf0024E.pdf`, `AINTARESP_1462304-PA.pdf` e `L10.406_CC_2002.pdf` inteiros, e 0 diferenças em qualquer outro trecho de `REsp_1704551-SP.pdf` além das 2 ocorrências-alvo — confirmando que nenhuma das 74 proteções de rótulo genuíno já existentes é afetada. Extrator, roteamento, OCR e dependências não foram tocados nem avaliados para alteração.
+- `src/pipeline_juridico/converter.py`: `_sorted_native_text_blocks` passa a carregar, além de `(y0, y1, texto)` por bloco, o x0 de cada linha física bruta do bloco (dado geométrico já disponível via `page.get_text("dict")`, hoje descartado).
+- `src/pipeline_juridico/cleaner.py`: `recompose_native_paragraphs` usa esse dado exclusivamente para refinar a condição `native_label_pattern.match(previous_text) and previous_is_first` — a proteção de rótulo só permanece ativa quando o bloco de origem não tem outras linhas físicas (comportamento atual preservado) OU quando mais de 50% dessas outras linhas têm x0 a menos de 2pt do x0 da própria linha-rótulo. Nenhuma outra condição de `should_join` é alterada.
+- Nenhum vocabulário jurídico, nome de arquivo, número de página ou processo é usado como critério — apenas geometria (x0) e a estrutura já existente (contagem/posição de linhas físicas).
+
+## Fora do escopo (confirmado)
+
+`Papel/Nome`, thin-space, rodapés técnicos, `SUBTÍTULO`, índice, R01, `SAIBA MAIS`, capa editorial de `Inf0024E.pdf` — nenhum deve ser alterado por esta mudança. Extrator, roteamento, OCR e dependências não são tocados. Nenhuma alteração fora das 2 páginas-alvo de `REsp_1704551-SP.md` é esperada ou aceitável.
 
 ## Capabilities
 
@@ -38,9 +42,10 @@ Medido nos 46 blocos do corpus que têm essa estrutura completa (rótulo + linha
 (nenhuma)
 
 ### Modified Capabilities
-(nenhuma — diagnóstico apenas, nenhuma implementação)
+- `juridical-pdf-conversion`: o requisito "Recomposição geométrica de parágrafos" passa a cobrir também a distinção entre um rótulo de campo genuíno e uma pseudo-linha criada pela fragmentação do PyMuPDF dentro de uma única linha visual justificada, usando o padrão de recuo (x0) das demais linhas físicas do mesmo bloco.
 
 ## Impact
 
-- Nenhum código de `src/` ou `tests/` foi alterado. Todos os scripts de investigação foram executados fora do repositório versionado (`/tmp/.../scratchpad/`).
-- Achado registrado em `LOOPS.md` (após aprovação deste relatório) para que uma futura mudança de implementação não precise refazer esta investigação.
+- Código: `src/pipeline_juridico/cleaner.py` (`recompose_native_paragraphs`), `src/pipeline_juridico/converter.py` (`_sorted_native_text_blocks`). Nenhuma outra função, o extrator, o roteamento, o OCR ou as dependências são tocados.
+- Testes: cobertura das 2 ocorrências reais, dos 8 rótulos genuínos citados na tarefa, de `Papel/Nome` inalterado, de controles próximos ao limiar de 50%, e de blocos sem dado de x0 (comportamento preservado).
+- Corpus de regressão: reconversão `--no-ocr` dos 4 PDFs, diff completo explicado, idempotência confirmada.
