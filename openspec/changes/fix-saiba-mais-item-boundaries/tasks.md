@@ -1,17 +1,17 @@
 ## 1. Testes (TDD, antes de qualquer implementação)
 
-- [ ] 1.1 Adicionar teste positivo (página 14 real): dois itens "Jurisprudência em Teses" originalmente independentes ficam em parágrafos/linhas separados, cada um preservado integralmente.
-- [ ] 1.2 Adicionar teste positivo (página 18 real): um item "Jurisprudência em Teses" e o "Informativo de Jurisprudência" seguinte ficam separados.
-- [ ] 1.3 Adicionar teste positivo (página 4 real): o precedente `CC 159976/SP, ... DJe 16/04/2019` e o "Informativo de Jurisprudência n. 474" seguinte ficam separados; a quebra de linha física interna do próprio precedente ("...julgado em" + "10/04/2019, DJe 16/04/2019") continua unida em uma só linha.
-- [ ] 1.4 Adicionar teste garantindo que os demais itens da mesma seção `SAIBA MAIS` (ex. "Informativo de Jurisprudência n. 135/474/346/174" na página 4) permanecem cada um em seu próprio parágrafo, sem regressão.
-- [ ] 1.5 Adicionar teste negativo: um bloco de 2 linhas físicas fora de qualquer seção `SAIBA MAIS` continua sendo unido ao bloco seguinte pela lógica geométrica normal (sem o novo guard interferir fora do intervalo).
-- [ ] 1.6 Adicionar teste negativo: uma frase jurídica comum contendo as palavras "Informativo", "Jurisprudência", "/", "DJe" ou números, fora de uma seção `SAIBA MAIS`, não é dividida.
-- [ ] 1.7 Adicionar teste negativo: `PROCESSO`, `TEMA`, `DESTAQUE`, `RAMO DO DIREITO`, `INFORMAÇÕES DO INTEIRO TEOR` continuam corretamente separados do conteúdo seguinte (comportamento pré-existente, sem regressão).
-- [ ] 1.8 Adicionar teste negativo: o cabeçalho `SAIBA MAIS` em si permanece em parágrafo próprio, sem ser unido ao primeiro item da lista (comportamento pré-existente via `native_label_pattern`, sem regressão).
-- [ ] 1.9 Adicionar teste negativo: os 4 casos R01, os 8 SUBTÍTULO e o índice do Código Civil permanecem intactos (reexecução dos testes de regressão existentes).
-- [ ] 1.10 Adicionar teste negativo: rodapés técnicos já removidos e a normalização de thin-space permanecem intactos (reexecução dos testes de regressão existentes).
-- [ ] 1.11 Adicionar teste negativo: o defeito `Papel/Nome` permanece inalterado (fora de escopo, não corrigido incidentalmente).
-- [ ] 1.12 Rodar a suíte e confirmar que os novos testes falham (red) antes da implementação.
+- [x] 1.1 Adicionar teste positivo (página 14 real): dois itens "Jurisprudência em Teses" originalmente independentes ficam em parágrafos/linhas separados, cada um preservado integralmente. Implementado em `test_convert_inf0024e_page_14_separates_saiba_mais_items` (commit `c7c75d0`).
+- [x] 1.2 Adicionar teste positivo (página 18 real): um item "Jurisprudência em Teses" e o "Informativo de Jurisprudência" seguinte ficam separados. Implementado em `test_convert_inf0024e_page_18_separates_saiba_mais_items` (commit `c7c75d0`).
+- [x] 1.3 Adicionar teste positivo (página 4 real): o precedente `CC 159976/SP, ... DJe 16/04/2019` e o "Informativo de Jurisprudência n. 474" seguinte ficam separados; a quebra de linha física interna do próprio precedente ("...julgado em" + "10/04/2019, DJe 16/04/2019") continua unida em uma só linha. Implementado em `test_convert_inf0024e_page_4_separates_precedent_from_next_informativo` (commit `c7c75d0`).
+- [x] 1.4 Adicionar teste garantindo que os demais itens da mesma seção `SAIBA MAIS` (ex. "Informativo de Jurisprudência n. 135/474/346/174" na página 4) permanecem cada um em seu próprio parágrafo, sem regressão. Implementado em `test_convert_inf0024e_page_4_saiba_mais_items_remain_separated` (commit `c7c75d0`).
+- [x] 1.5 Adicionar teste negativo: um bloco de 2 linhas físicas fora de qualquer seção `SAIBA MAIS` continua sendo unido ao bloco seguinte pela lógica geométrica normal (sem o novo guard interferir fora do intervalo). Implementado em `test_recompose_native_paragraphs_saiba_mais_guard_does_not_affect_blocks_outside_section` (commit `c7c75d0`).
+- [x] 1.6 Adicionar teste negativo: uma frase jurídica comum contendo as palavras "Informativo", "Jurisprudência", "/", "DJe" ou números, fora de uma seção `SAIBA MAIS`, não é dividida. Implementado em `test_recompose_native_paragraphs_does_not_split_legal_sentence_with_saiba_mais_vocabulary` (commit `fcfb1d9`).
+- [x] 1.7 Adicionar teste negativo: `PROCESSO`, `TEMA`, `DESTAQUE`, `RAMO DO DIREITO`, `INFORMAÇÕES DO INTEIRO TEOR` continuam corretamente separados do conteúdo seguinte (comportamento pré-existente, sem regressão). Coberto pela suíte existente (reexecutada sem regressão nas duas subtarefas de teste).
+- [x] 1.8 Adicionar teste negativo: o cabeçalho `SAIBA MAIS` em si permanece em parágrafo próprio, sem ser unido ao primeiro item da lista (comportamento pré-existente via `native_label_pattern`, sem regressão). Implementado em `test_recompose_native_paragraphs_saiba_mais_label_stays_separate_from_first_item` (commit `c7c75d0`).
+- [x] 1.9 Adicionar teste negativo: os 4 casos R01, os 8 SUBTÍTULO e o índice do Código Civil permanecem intactos (reexecução dos testes de regressão existentes). Confirmado: suíte completa reexecutada sem regressão (326 passed além das 6 falhas RED esperadas).
+- [x] 1.10 Adicionar teste negativo: rodapés técnicos já removidos e a normalização de thin-space permanecem intactos (reexecução dos testes de regressão existentes). Confirmado junto com 1.9.
+- [x] 1.11 Adicionar teste negativo: o defeito `Papel/Nome` permanece inalterado (fora de escopo, não corrigido incidentalmente). Sem teste próprio nesta mudança (comportamento inalterado por construção, já que o guard novo só atua dentro do literal `SAIBA MAIS`); confirmação final via reconversão do corpus na Seção 3.
+- [x] 1.12 Rodar a suíte e confirmar que os novos testes falham (red) antes da implementação. Resultado: 6 falhas (as 3 integrações reais + 2 unitários positivos + 1 de regressão de item da página 4), 326 passed (verificado de forma independente pelo orquestrador, commits `c7c75d0` e `fcfb1d9`).
 
 ## 2. Implementação
 
