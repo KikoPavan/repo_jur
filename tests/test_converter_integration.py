@@ -250,6 +250,82 @@ def test_convert_inf0024e_first_page_uses_clean_native_output(tmp_path) -> None:
     assert not any("[Image OCR]" in line for line in markdown.splitlines())
 
 
+def test_convert_inf0024e_page_1_separates_editorial_cover_elements(tmp_path) -> None:
+    source = tmp_path / "inf0024e-capa.pdf"
+    corpus_pdf = Path(__file__).parents[1] / "input" / "Inf0024E.pdf"
+    _isolate_first_page(corpus_pdf, source, page_index=0)
+
+    markdown, _relatorio = convert_document(
+        pdf_path=source,
+        output_path=tmp_path / "saida.md",
+        temp_root=tmp_path / "temp",
+        use_ocr=False,
+    )
+    normalized_lines = [
+        " ".join(line.split()) for line in markdown.splitlines() if line.strip()
+    ]
+    elements = [
+        "Informativo de Jurisprudência",
+        "Informativo de Jurisprudência n. 24 - Edição Extraordinária",
+        "Este periódico destaca teses jurisprudenciais",
+        "CORTE ESPECIAL",
+    ]
+
+    assert all(element in _normalize_whitespace(markdown) for element in elements)
+    title_line = next(
+        line
+        for line in normalized_lines
+        if elements[0] in line and elements[1] not in line
+    )
+    edition_line = next(line for line in normalized_lines if elements[1] in line)
+    notice_line = next(line for line in normalized_lines if elements[2] in line)
+    court_line = next(line for line in normalized_lines if elements[3] in line)
+
+    assert "Direito Penal" in edition_line
+    assert len({title_line, edition_line, notice_line, court_line}) == 4
+    assert elements[2] not in edition_line
+    assert elements[3] not in notice_line
+
+
+def test_convert_aintaresp_page_11_papel_nome_unaffected(tmp_path) -> None:
+    source = tmp_path / "aintaresp-pagina-11.pdf"
+    corpus_pdf = Path(__file__).parents[1] / "input" / "AINTARESP_1462304-PA.pdf"
+    _isolate_first_page(corpus_pdf, source, page_index=10)
+
+    markdown, _relatorio = convert_document(
+        pdf_path=source,
+        output_path=tmp_path / "saida.md",
+        temp_root=tmp_path / "temp",
+        use_ocr=False,
+    )
+
+    assert (
+        "Sessão Virtual de 20/10/2020 a 26/10/2020 Relator do AgInt Exmo. "
+        "Sr. Ministro GURGEL DE FARIA Presidente da Sessão Exmo. Sr. "
+        "Ministro GURGEL DE FARIA"
+    ) in _normalize_whitespace(markdown)
+
+
+def test_convert_resp_page_2_signature_block_unaffected(tmp_path) -> None:
+    source = tmp_path / "resp-pagina-2.pdf"
+    corpus_pdf = Path(__file__).parents[1] / "input" / "REsp_1704551-SP.pdf"
+    _isolate_first_page(corpus_pdf, source, page_index=1)
+
+    markdown, _relatorio = convert_document(
+        pdf_path=source,
+        output_path=tmp_path / "saida.md",
+        temp_root=tmp_path / "temp",
+        use_ocr=False,
+    )
+
+    assert (
+        "Tarso Sanseverino, Ricardo Villas Bôas Cueva, Marco Aurélio Bellizze "
+        "e Moura Ribeiro votaram com a Sra. Ministra Relatora. Dr(a). FÁBIO "
+        "LIMA QUINTAS, pela parte RECORRIDA: ITAU UNIBANCO S.A. Brasília "
+        "(DF), 02 de abril de 2019(Data do Julgamento) MINISTRA NANCY ANDRIGHI"
+    ) in _normalize_whitespace(markdown)
+
+
 def test_convert_inf0024e_removes_repetitive_url_footer(tmp_path) -> None:
     source = tmp_path / "inf0024e-paginas-1-a-3.pdf"
     corpus_pdf = Path(__file__).parents[1] / "input" / "Inf0024E.pdf"

@@ -1107,6 +1107,78 @@ def test_recompose_native_paragraphs_joins_nearby_plain_lines() -> None:
     assert result == "Este texto continua na linha seguinte."
 
 
+def _editorial_cover_scenario() -> tuple[str, list[tuple[float, float, str]]]:
+    content = (
+        "Informativo\nde Jurisprudência\n"
+        "Informativo de Jurisprudência n. 24 - Edição Extraordinária     "
+        "28 de janeiro de 2025 \nDireito Penal\n"
+        "Este periódico destaca teses jurisprudenciais e não consiste em "
+        "repositório oficial de jurisprudência.\nCORTE ESPECIAL\nPROCESSO\n"
+        "Processo em segredo de justiça, Rel. Ministro Antonio Carlos Ferreira,\n"
+        "Corte Especial, por unanimidade, julgado em 4/12/2024, DJEN\n"
+        "16/12/2024.\n"
+    )
+    blocks = [
+        (50.0, 102.0, "Informativo\nde Jurisprudência\n"),
+        (53.1, 197.0, "  \n  \n  \n  \n  \n  \n  \nInformativo de "
+         "Jurisprudência n. 24 - Edição Extraordinária     28 de janeiro de "
+         "2025 \nDireito Penal\n"),
+        (217.2, 245.6, "Este periódico destaca teses jurisprudenciais e não "
+         "consiste em repositório oficial de jurisprudência.\n \n"),
+        (252.0, 267.0, "CORTE ESPECIAL\n"),
+        (297.0, 337.0, "PROCESSO\nProcesso em segredo de justiça, Rel. Ministro "
+         "Antonio Carlos Ferreira,\nCorte Especial, por unanimidade, julgado em "
+         "4/12/2024, DJEN\n16/12/2024.\n"),
+    ]
+    return content, blocks
+
+
+def test_recompose_native_paragraphs_separates_cover_elements_with_leading_blank_lines(
+) -> None:
+    content, blocks = _editorial_cover_scenario()
+    result = recompose_native_paragraphs(content, blocks, page_has_large_text=True)
+    paragraphs = result.split("\n\n")
+    edition = ("Informativo de Jurisprudência n. 24 - Edição Extraordinária "
+               "28 de janeiro de 2025 Direito Penal")
+    notice = ("Este periódico destaca teses jurisprudenciais e não consiste em "
+              "repositório oficial de jurisprudência.")
+
+    assert edition in paragraphs
+    assert next(item for item in paragraphs if edition in item) == edition
+    assert notice in paragraphs
+    assert "CORTE ESPECIAL" in paragraphs
+    assert "PROCESSO" not in next(item for item in paragraphs if "CORTE ESPECIAL" in item)
+    assert len(re.findall(r"\w+", result)) == len(re.findall(r"\w+", content))
+
+
+def test_recompose_native_paragraphs_blank_lines_gate_requires_large_text() -> None:
+    content, blocks = _editorial_cover_scenario()
+    legacy_result = recompose_native_paragraphs(content, blocks)
+    result = recompose_native_paragraphs(content, blocks, page_has_large_text=False)
+    # Captura o comportamento legado defeituoso quando o gate está desligado.
+    expected = (
+        "Informativo de Jurisprudência Informativo de Jurisprudência n. 24 - "
+        "Edição Extraordinária 28 de janeiro de 2025 Direito Penal Este periódico "
+        "destaca teses jurisprudenciais e não consiste em repositório oficial de "
+        "jurisprudência. CORTE ESPECIAL\n\nPROCESSO\n\nProcesso em segredo de "
+        "justiça, Rel. Ministro Antonio Carlos Ferreira, Corte Especial, por "
+        "unanimidade, julgado em 4/12/2024, DJEN 16/12/2024."
+    )
+    assert legacy_result == expected
+    assert result == expected
+
+
+def test_recompose_native_paragraphs_gate_threshold_boundary() -> None:
+    content = "Título\ncontinuação\nFecho\n"
+    blocks = [(0.0, 20.0, "Título\n \n \ncontinuação\n"),
+              (30.0, 40.0, "Fecho\n")]
+
+    gated = recompose_native_paragraphs(content, blocks, page_has_large_text=True)
+    legacy = recompose_native_paragraphs(content, blocks, page_has_large_text=False)
+
+    assert gated != legacy
+
+
 def test_recompose_native_paragraphs_joins_uppercase_words_fragmented_within_block(
 ) -> None:
     block_text = (
