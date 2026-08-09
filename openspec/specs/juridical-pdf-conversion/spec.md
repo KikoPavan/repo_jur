@@ -242,6 +242,8 @@ O sistema SHALL NOT unir o bloco atual ao próximo quando o bloco atual for inte
 
 O sistema SHALL NOT unir duas linhas físicas quando qualquer uma das duas pertencer a um bloco geométrico de origem que contenha, em qualquer de suas linhas físicas, texto iniciado por `:` (formato de campo estruturado "RÓTULO" seguido de "`: VALOR`", usado por exemplo em RELATOR, AGRAVANTE, AGRAVADO, ADVOGADOS, RECORRENTE, RECORRIDO). Essa proteção SHALL se aplicar apenas às linhas do bloco geométrico que contém o padrão `:`, e SHALL NOT desativar a recomposição geométrica de outros blocos da mesma página que não contenham esse padrão.
 
+O sistema SHALL NOT unir dois blocos geométricos de origem diferentes entre si quando ambos estiverem dentro do intervalo delimitado por um bloco cuja única linha física seja exatamente o rótulo "SAIBA MAIS" (início do intervalo) e o próximo bloco cuja primeira linha física corresponda a um rótulo de campo inteiramente em maiúsculas (fim do intervalo) — preservando cada item editorial de referência (por exemplo um "Informativo de Jurisprudência", um item de "Jurisprudência em Teses" ou um precedente citado) como parágrafo próprio, independentemente de quantas linhas físicas o item ocupe dentro do seu próprio bloco de origem. Essa proteção SHALL NOT se basear no texto específico de cada item (títulos, números de edição, palavras como "Informativo" ou "Jurisprudência", barras `/` ou datas), apenas na origem do bloco geométrico e no rótulo fixo "SAIBA MAIS", e SHALL NOT impedir a recomposição normal das linhas físicas internas de um único item (por exemplo um precedente cuja citação de Relator e data ocupam duas linhas físicas do mesmo bloco).
+
 #### Scenario: Parágrafo fragmentado é recomposto
 
 - **WHEN** um artigo como "Art. 2º A personalidade civil da pessoa começa do nascimento com vida; mas a lei põe a salvo, desde a concepção, os" é seguido, no mesmo bloco de página, por "direitos do nascituro."
@@ -288,6 +290,23 @@ O sistema SHALL NOT unir duas linhas físicas quando qualquer uma das duas perte
 
 - **WHEN** um único bloco geométrico contém vários pares consecutivos de rótulo e valor (por exemplo "AGRAVANTE" / ": NORTE ENERGIA S.A." / "ADVOGADOS" / ": PRISCILA SANTOS ARTIGAS - PR022529")
 - **THEN** nenhum desses rótulos ou valores é fundido com o rótulo, valor ou campo vizinho em uma única linha no Markdown final
+
+#### Scenario: Itens independentes de "SAIBA MAIS" que quebram em duas linhas físicas não são fundidos entre si
+
+- **WHEN** um item de "Jurisprudência em Teses" cujo título quebra em duas linhas físicas do seu próprio bloco geométrico (por exemplo "Jurisprudência em Teses / DIREITO PROCESSUAL PENAL - EDIÇÃO N. 117: INTERCEPTAÇÃO" / "TELEFÔNICA - I") é seguido, na seção "SAIBA MAIS", por outro item independente em um bloco geométrico distinto (por exemplo outro "Jurisprudência em Teses" ou um "Informativo de Jurisprudência n. 751")
+- **THEN** as duas linhas físicas do primeiro item permanecem unidas em uma só linha dentro do mesmo parágrafo
+- **AND** o item seguinte permanece em parágrafo próprio, separado do primeiro item, no Markdown final
+
+#### Scenario: Precedente com Relator e data em duas linhas não funde o "Informativo" seguinte
+
+- **WHEN** um precedente citado dentro de "SAIBA MAIS" tem a citação de Relator e data de julgamento fragmentada em duas linhas físicas do mesmo bloco geométrico (por exemplo "CC 159976/SP, Rel. Ministro ANTONIO SALDANHA PALHEIRO, TERCEIRA SEÇÃO, julgado em" / "10/04/2019, DJe 16/04/2019") e é seguido, em outro bloco geométrico, por um "Informativo de Jurisprudência n. 474"
+- **THEN** a citação do precedente permanece unida em um único parágrafo, incluindo a data
+- **AND** o "Informativo de Jurisprudência n. 474" permanece em parágrafo próprio, separado do precedente
+
+#### Scenario: Fusão entre itens de "SAIBA MAIS" não afeta blocos fora da seção
+
+- **WHEN** um bloco de duas linhas físicas fora de qualquer seção "SAIBA MAIS" é seguido por outro bloco geométrico dentro da distância vertical normalmente exigida para junção
+- **THEN** a decisão de unir ou não esses blocos segue exclusivamente a lógica geométrica e estrutural já existente, sem qualquer efeito do rótulo "SAIBA MAIS"
 
 ### Requirement: Remoção de cabeçalhos e rodapés repetitivos
 
