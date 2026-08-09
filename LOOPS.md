@@ -2,7 +2,40 @@
 
 Mudança ativa:
 
-Nenhuma. `openspec/changes/` não contém mudanças pendentes no momento.
+`fix-html-thin-space-normalization` — implementação e validação concluídas (todas as subtarefas de
+`tasks.md` marcadas, exceto o registro do arquivamento, que exige aprovação humana). Corrige a
+permanência do literal `&#8201;` (entidade HTML decimal do THIN SPACE, U+2009) na saída Markdown —
+21 ocorrências em `output/Inf0024E.md`, sempre coladas entre palavras/tokens sem separação real
+(ex. `apreensão de &#8201;37 gramas`, `Lei n.&#8201;11.343/2006`, `na&#8201;realidade`).
+
+Causa raiz: extração bruta via PyMuPDF (`page.get_text()`) sobre `input/Inf0024E.pdf`, página 9,
+confirmou que o literal `&#8201;` já está embutido no PDF de origem — não é produzido por
+MarkItDown/pdfminer nem por nenhuma função de `src/pipeline_juridico/` (nenhuma delas continha
+lógica de decodificação de entidades HTML antes desta mudança). Hipótese mais provável: o PDF
+passou por uma etapa HTML → PDF em que a entidade (destinada a virar um espaço fino tipográfico)
+nunca foi decodificada antes da renderização. Varredura dos 4 PDFs do corpus por variantes
+equivalentes (`&#x2009;`, `&#X2009;`, `&thinsp;`, caractere Unicode real U+2009) confirmou que
+nenhuma outra ocorre — só `&#8201;` decimal, só em `Inf0024E.pdf`.
+
+Correção: nova função `normalize_thin_space_entities` em `src/pipeline_juridico/cleaner.py`,
+chamada em `converter.py` sobre o `raw_markdown` já composto (primeiro passo do grupo de
+normalizações textuais, antes de `remove_repetitive_margins`). Substitui `&#8201;`/`&#x2009;`
+(case-insensitive)/`&#X2009;`/`&thinsp;`/`&THINSP;` por um único espaço ASCII, absorvendo
+espaço/tab horizontal já adjacente para não duplicar. Nenhuma outra entidade HTML é tocada; a
+extração, o roteamento, o OCR e `recompose_native_paragraphs` não foram alterados.
+
+Validação: suíte `323/323` (311 + 12 testes novos), `openspec validate --all --strict` limpo, os 4
+PDFs reconvertidos com `--no-ocr` (nenhuma página exigiu OCR — as 241 páginas roteadas como
+`texto_nativo`), idempotência confirmada (segunda reconversão byte-idêntica à primeira nos 4
+arquivos). `output/Inf0024E.md`: 0 ocorrências residuais de `&#8201;`/variantes (antes: 21);
+contagem de tokens 9105 → 9084, diferença de exatamente 21 (o fragmento numérico artificial `8201`
+de cada entidade), nenhuma palavra jurídica perdida ou adicionada; nenhum espaço duplicado.
+`AINTARESP_1462304-PA.md`, `REsp_1704551-SP.md` e `L10.406_CC_2002.md` byte-idênticos ao baseline
+pré-mudança (não contêm o padrão) — R01 (4/4), 8 SUBTÍTULO, índice do CC e rodapés técnicos já
+removidos permanecem intactos por decorrência direta. Marcadores `[[Pág. N]]` únicos e sequenciais
+nos 4 arquivos (AINT=12, REsp=14, Inf0024E=29, CC=186). Achados fora de escopo (fusões em "SAIBA
+MAIS", primeira página colapsada do Inf0024E, `RECURSO / ESPECIAL`, `Papel/Nome`) permanecem
+intocados, como previsto.
 
 **Achado pendente — NÃO RESOLVIDO** (originado ao validar o corpus de `fix-colon-label-pagewide-recomposition-bypass` em 2026-08-07; diagnóstico aprofundado em duas rodadas e documentado em `openspec/changes/archive/2026-08-07-fix-role-name-list-cross-block-fusion/` — `proposal.md`/`design.md`/`tasks.md`, commit `6fba378`). Esse arquivamento é um **fechamento administrativo**, não uma correção: nenhum critério seguro foi encontrado, nenhum código de produção foi alterado, e as tarefas de TDD/implementação permanecem marcadas `BLOQUEADO`. Uma **nova mudança OpenSpec própria** precisará ser criada para qualquer tentativa futura (esta pasta arquivada é só o registro do diagnóstico, não deve ser reaberta como "mudança ativa"):
 
