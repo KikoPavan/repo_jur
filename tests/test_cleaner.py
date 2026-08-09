@@ -1107,6 +1107,153 @@ def test_recompose_native_paragraphs_joins_nearby_plain_lines() -> None:
     assert result == "Este texto continua na linha seguinte."
 
 
+RECURSO_HEADING_CONTENT = (
+    "RECURSO \nESPECIAL. \nPROCESSUAL \nCIVIL. \nARBITRAGEM. \nNULIDADE \nDE \n"
+    "COMPROMISSO ARBITRAL E DE SENTENÇA ARBITRAL. OMISSÃO, CONTRADIÇÃO OU \n"
+    "ERRO MATERIAL. AUSÊNCIA. VALOR DA CAUSA. IMPUGNAÇÃO. MENSURAÇÃO DO \n"
+    "CONTEÚDO \nECONÔMICO. \nCONDENAÇÃO \nEM \nSENTENÇA \nARBITRAL. \n"
+    "POSSIBILIDADE.\n"
+)
+RECURSO_HEADING_BLOCKS = [(339.75, 650.0, RECURSO_HEADING_CONTENT)]
+RECURSO_HEADING_LINE_X0S = [[
+    160.1, 220.1, 280.9, 357.45, 398.4, 478.8, 542.7, 160.1,
+    160.1, 160.1, 234.0, 318.1, 405.4, 438.9, 507.2, 160.1,
+]]
+RECURSO_HEADING_EXPECTED = (
+    "RECURSO ESPECIAL. PROCESSUAL CIVIL. ARBITRAGEM. NULIDADE DE "
+    "COMPROMISSO ARBITRAL E DE SENTENÇA ARBITRAL. OMISSÃO, CONTRADIÇÃO OU "
+    "ERRO MATERIAL. AUSÊNCIA. VALOR DA CAUSA. IMPUGNAÇÃO. MENSURAÇÃO DO "
+    "CONTEÚDO ECONÔMICO. CONDENAÇÃO EM SENTENÇA ARBITRAL. POSSIBILIDADE."
+)
+
+
+def test_recompose_native_paragraphs_unifies_recurso_especial_with_x0_signal() -> None:
+    result = recompose_native_paragraphs(
+        RECURSO_HEADING_CONTENT,
+        RECURSO_HEADING_BLOCKS,
+        line_x0s=RECURSO_HEADING_LINE_X0S,
+    )
+
+    assert RECURSO_HEADING_EXPECTED in result.split("\n\n")
+    assert len(re.findall(r"\w+", result)) == len(
+        re.findall(r"\w+", RECURSO_HEADING_CONTENT)
+    )
+    assert result.count(".") == RECURSO_HEADING_CONTENT.count(".")
+
+
+def _assert_native_label_separated(
+    content, blocks, line_x0s, label, value_start, *, legacy_fallback=False
+):
+    try:
+        result = recompose_native_paragraphs(content, blocks, line_x0s=line_x0s)
+    except TypeError as error:
+        if not legacy_fallback or "unexpected keyword argument 'line_x0s'" not in str(error):
+            raise
+        result = recompose_native_paragraphs(content, blocks)
+    assert label in result.split("\n\n")
+    assert f"{label} {value_start}" not in result
+
+
+def test_recompose_native_paragraphs_keeps_processo_label_separated() -> None:
+    _assert_native_label_separated(
+            "PROCESSO\nProcesso em segredo de justiça, Rel. Ministro Antonio Carlos Ferreira,\n"
+            "Corte Especial, por unanimidade, julgado em 4/12/2024, DJEN\n16/12/2024.\n",
+            [(297.0, 337.0, "PROCESSO\nProcesso em segredo de justiça, Rel. Ministro Antonio Carlos Ferreira,\nCorte Especial, por unanimidade, julgado em 4/12/2024, DJEN\n16/12/2024.\n")],
+            [[145.6, 218.4, 218.4, 218.4]],
+            "PROCESSO",
+            "Processo em segredo",
+            legacy_fallback=True,
+    )
+
+
+def test_recompose_native_paragraphs_keeps_tema_label_separated() -> None:
+    _assert_native_label_separated(
+            "TEMA\nAção penal privada subsidiária da pública. Ausência de inércia do\nMinistério Público. Discordância do querelante quanto à tipificação\ndos fatos dada pelo Ministério Público não autoriza a propositura de\nqueixa-crime. Crimes contra a honra de servidor público. Preclusão\nda via da ação penal privada.\n",
+            [(387.0, 457.0, "TEMA\nAção penal privada subsidiária da pública. Ausência de inércia do\nMinistério Público. Discordância do querelante quanto à tipificação\ndos fatos dada pelo Ministério Público não autoriza a propositura de\nqueixa-crime. Crimes contra a honra de servidor público. Preclusão\nda via da ação penal privada.\n")],
+            [[171.8, 218.4, 218.4, 218.4, 218.4, 218.4]],
+            "TEMA",
+            "Ação penal privada",
+    )
+
+
+def test_recompose_native_paragraphs_keeps_ramo_do_direito_label_separated() -> None:
+    _assert_native_label_separated(
+            "RAMO DO DIREITO\nDIREITO PENAL, DIREITO PROCESSUAL PENAL\n",
+            [(357.0, 367.0, "RAMO DO DIREITO\nDIREITO PENAL, DIREITO PROCESSUAL PENAL\n")],
+            [[108.6, 218.4]],
+            "RAMO DO DIREITO",
+            "DIREITO PENAL",
+    )
+
+
+def test_recompose_native_paragraphs_keeps_recorrente_label_separated() -> None:
+    content = (
+        "RECORRENTE\n: DAIBY S/A \nADVOGADO\n: JOÃO JOAQUIM MARTINELLI  - SP175215A\n"
+        "RECORRIDO \n: ITAU UNIBANCO S.A \nADVOGADOS\n: FÁBIO LIMA QUINTAS  - DF017721 \n"
+        " LUIZ CARLOS STURZENEGGER  - DF001942A\n RICARDO CHIAVEGATTI  - SP183217 \n"
+        " MARCOS CAVALCANTE DE OLIVEIRA  - SP244461 \n"
+        " MARINA PEREIRA ANTUNES DE FREITAS E OUTRO(S) - DF037075 \n"
+        " LUCAS FOSSALUSSA LISSE E OUTRO(S) - SP317353 \n BRUNO SANTIN FERREIRA  - DF047090 \n"
+        " LEONARDO VASCONCELOS LINS FONSECA  - DF040094 \n"
+    )
+    blocks = [(429.93, 562.93, content)]
+    line_x0s = [[
+        104.25, 203.4, 104.25, 203.4, 104.25, 203.4, 104.25,
+        203.4, 203.4, 203.4, 203.4, 203.4, 203.4, 203.4,
+    ]]
+
+    try:
+        result = recompose_native_paragraphs(content, blocks, line_x0s=line_x0s)
+    except TypeError as error:
+        if "unexpected keyword argument 'line_x0s'" not in str(error):
+            raise
+        result = recompose_native_paragraphs(content, blocks)
+
+    assert "RECORRENTE" in result.split("\n\n")
+    assert "RECORRENTE : DAIBY S/A" not in result
+
+
+def test_recompose_native_paragraphs_boundary_exactly_fifty_percent_keeps_protection() -> None:
+    content = "RÓTULO\ncontinuação na mesma margem\ncontinuação deslocada.\n"
+    blocks = [(10.0, 30.0, content)]
+
+    result = recompose_native_paragraphs(
+        content, blocks, line_x0s=[[100.0, 101.0, 120.0]]
+    )
+
+    assert "RÓTULO" in result.split("\n\n")
+
+
+def test_recompose_native_paragraphs_boundary_above_fifty_percent_disables_protection() -> None:
+    content = "RÓTULO\nprimeira continuação\nsegunda continuação\nfecho deslocado.\n"
+    blocks = [(10.0, 40.0, content)]
+
+    result = recompose_native_paragraphs(
+        content, blocks, line_x0s=[[100.0, 100.5, 101.0, 120.0]]
+    )
+
+    assert result.startswith("RÓTULO primeira continuação")
+
+
+def test_recompose_native_paragraphs_block_without_extra_lines_keeps_protection() -> None:
+    content = "RÓTULO\nvalor em outro bloco.\n"
+    blocks = [(10.0, 20.0, "RÓTULO\n"), (21.0, 31.0, "valor em outro bloco.\n")]
+
+    result = recompose_native_paragraphs(
+        content, blocks, line_x0s=[[100.0], [100.0]]
+    )
+
+    assert "RÓTULO" in result.split("\n\n")
+
+
+def test_recompose_native_paragraphs_without_x0_parameter_preserves_legacy_behavior() -> None:
+    result = recompose_native_paragraphs(
+        RECURSO_HEADING_CONTENT, RECURSO_HEADING_BLOCKS
+    )
+
+    assert result == f"RECURSO\n\n{RECURSO_HEADING_EXPECTED.removeprefix('RECURSO ')}"
+
+
 def _editorial_cover_scenario() -> tuple[str, list[tuple[float, float, str]]]:
     content = (
         "Informativo\nde Jurisprudência\n"

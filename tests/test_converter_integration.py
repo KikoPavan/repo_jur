@@ -192,6 +192,91 @@ def test_convert_resp_removes_repetitive_page_counters(tmp_path) -> None:
     assert "RECURSO ESPECIAL" in markdown
 
 
+def _assert_convert_resp_unifies_recurso_especial_heading(tmp_path, page_index):
+    source = tmp_path / f"resp-pagina-{page_index + 1}.pdf"
+    corpus_pdf = Path(__file__).parents[1] / "input" / "REsp_1704551-SP.pdf"
+    _isolate_first_page(corpus_pdf, source, page_index=page_index)
+
+    markdown, _relatorio = convert_document(
+        pdf_path=source,
+        output_path=tmp_path / "saida.md",
+        temp_root=tmp_path / "temp",
+        use_ocr=False,
+    )
+    normalized_lines = [
+        " ".join(line.split()) for line in markdown.splitlines() if line.strip()
+    ]
+    heading = (
+        "RECURSO ESPECIAL. PROCESSUAL CIVIL. ARBITRAGEM. NULIDADE DE "
+        "COMPROMISSO ARBITRAL E DE SENTENÇA ARBITRAL. OMISSÃO, CONTRADIÇÃO OU "
+        "ERRO MATERIAL. AUSÊNCIA. VALOR DA CAUSA. IMPUGNAÇÃO. MENSURAÇÃO DO "
+        "CONTEÚDO ECONÔMICO. CONDENAÇÃO EM SENTENÇA ARBITRAL. POSSIBILIDADE."
+    )
+
+    assert heading in normalized_lines
+    assert "RECURSO" not in normalized_lines
+
+
+def test_convert_resp_page_1_unifies_recurso_especial_heading(tmp_path) -> None:
+    _assert_convert_resp_unifies_recurso_especial_heading(tmp_path, page_index=0)
+
+
+def test_convert_resp_page_6_unifies_recurso_especial_heading(tmp_path) -> None:
+    _assert_convert_resp_unifies_recurso_especial_heading(tmp_path, page_index=5)
+
+
+def test_convert_aintaresp_page_11_agravante_agravado_assunto_unaffected(
+    tmp_path,
+) -> None:
+    source = tmp_path / "aintaresp-pagina-11-campos.pdf"
+    corpus_pdf = Path(__file__).parents[1] / "input" / "AINTARESP_1462304-PA.pdf"
+    _isolate_first_page(corpus_pdf, source, page_index=10)
+
+    markdown, _relatorio = convert_document(
+        pdf_path=source,
+        output_path=tmp_path / "saida.md",
+        temp_root=tmp_path / "temp",
+        use_ocr=False,
+    )
+    normalized_lines = [
+        " ".join(line.split()) for line in markdown.splitlines() if line.strip()
+    ]
+
+    for label in ("AGRAVANTE", "AGRAVADO", "ASSUNTO"):
+        assert label in normalized_lines
+    assert "NORTE ENERGIA" not in next(
+        line for line in normalized_lines if line == "AGRAVANTE"
+    )
+
+
+def _assert_convert_resp_recorrente_unaffected(tmp_path, page_index):
+    source = tmp_path / f"resp-pagina-{page_index + 1}-recorrente.pdf"
+    corpus_pdf = Path(__file__).parents[1] / "input" / "REsp_1704551-SP.pdf"
+    _isolate_first_page(corpus_pdf, source, page_index=page_index)
+
+    markdown, _relatorio = convert_document(
+        pdf_path=source,
+        output_path=tmp_path / "saida.md",
+        temp_root=tmp_path / "temp",
+        use_ocr=False,
+    )
+    normalized_lines = [
+        " ".join(line.split()) for line in markdown.splitlines() if line.strip()
+    ]
+
+    assert "RECORRENTE" in normalized_lines
+    assert ": DAIBY S/A" in normalized_lines
+    assert "RECORRENTE : DAIBY S/A" not in normalized_lines
+
+
+def test_convert_resp_page_3_recorrente_unaffected(tmp_path) -> None:
+    _assert_convert_resp_recorrente_unaffected(tmp_path, page_index=2)
+
+
+def test_convert_resp_page_14_recorrente_unaffected(tmp_path) -> None:
+    _assert_convert_resp_recorrente_unaffected(tmp_path, page_index=13)
+
+
 def test_convert_aintaresp_does_not_add_final_index(tmp_path) -> None:
     source = tmp_path / "aintaresp-sem-indice-final.pdf"
     corpus_pdf = (
