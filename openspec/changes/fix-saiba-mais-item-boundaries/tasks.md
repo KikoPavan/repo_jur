@@ -21,17 +21,17 @@
 
 ## 3. Validação do corpus
 
-- [ ] 3.1 Rodar `uv run pytest tests/` (suíte completa) e registrar o resultado.
-- [ ] 3.2 Rodar `openspec validate --all --strict` e registrar o resultado.
-- [ ] 3.3 Reconverter os 4 PDFs do corpus com `converter-juridico --no-ocr` e confirmar que nenhuma página exigiu OCR.
-- [ ] 3.4 Confirmar que os 3 casos reais de `SAIBA MAIS` identificados no diagnóstico ficam separados em `output/Inf0024E.md`, com antes/depois de cada um.
-- [ ] 3.5 Confirmar que nenhuma palavra ou referência foi perdida (contagem de tokens antes/depois, restrita às linhas alteradas de `Inf0024E.md`).
-- [ ] 3.6 Confirmar que `AINTARESP_1462304-PA.md`, `REsp_1704551-SP.md` e `L10.406_CC_2002.md` ficam byte-idênticos à reconversão anterior a esta mudança (nenhum contém `SAIBA MAIS`).
-- [ ] 3.7 Confirmar que a primeira página do Inf0024E permanece fora de escopo (sem alteração inesperada) e que `Papel/Nome` continua inalterado.
-- [ ] 3.8 Confirmar R01 (4/4), 8 SUBTÍTULO, índice do CC, rodapés técnicos e thin-space preservados em `Inf0024E.md`/`L10.406_CC_2002.md`.
-- [ ] 3.9 Confirmar marcadores `[[Pág. N]]` únicos e sequenciais nos 4 arquivos.
-- [ ] 3.10 Reconverter novamente e confirmar idempotência (segunda reconversão byte-idêntica à primeira) nos 4 arquivos.
-- [ ] 3.11 Produzir e explicar o diff completo do corpus (todos os arquivos alterados e por quê).
+- [x] 3.1 Rodar `uv run pytest tests/` (suíte completa) e registrar o resultado. Resultado: 332/332 passed.
+- [x] 3.2 Rodar `openspec validate --all --strict` e registrar o resultado. Resultado: 2 passed, 0 failed (`change/fix-saiba-mais-item-boundaries`, `spec/juridical-pdf-conversion`).
+- [x] 3.3 Reconverter os 4 PDFs do corpus com `converter-juridico --no-ocr` e confirmar que nenhuma página exigiu OCR. Resultado: 241 páginas (12+29+186+14) roteadas como `texto_nativo`; `ocr.enabled: false` e `status: sucesso` nos 4 relatórios.
+- [x] 3.4 Confirmar que os 3 casos reais de `SAIBA MAIS` identificados no diagnóstico ficam separados em `output/Inf0024E.md`, com antes/depois de cada um. Resultado: página 4 (precedente CC / Informativo n. 474), página 14 (2× Jurisprudência em Teses / Informativo n. 751), página 18 (Jurisprudência em Teses / Informativo n. 388) — os 3 casos agora em parágrafos separados por linha em branco.
+- [x] 3.5 Confirmar que nenhuma palavra ou referência foi perdida (contagem de tokens antes/depois, restrita às linhas alteradas de `Inf0024E.md`). Resultado: 9084 → 9084 tokens (`\w+`), diferença zero — a correção apenas insere quebras de parágrafo, nenhum token perdido ou adicionado.
+- [x] 3.6 Confirmar que `AINTARESP_1462304-PA.md`, `REsp_1704551-SP.md` e `L10.406_CC_2002.md` ficam byte-idênticos à reconversão anterior a esta mudança (nenhum contém `SAIBA MAIS`). Resultado: os 3 arquivos com MD5 idêntico ao baseline pré-mudança.
+- [x] 3.7 Confirmar que a primeira página do Inf0024E permanece fora de escopo (sem alteração inesperada) e que `Papel/Nome` continua inalterado. Resultado: diff do corpus mostra só 3 blocos alterados (páginas 4, 14, 18), nada na primeira página; `Papel/Nome` só ocorre em AINTARESP/REsp, que ficaram byte-idênticos.
+- [x] 3.8 Confirmar R01 (4/4), 8 SUBTÍTULO, índice do CC, rodapés técnicos e thin-space preservados em `Inf0024E.md`/`L10.406_CC_2002.md`. Resultado: `L10.406_CC_2002.md` byte-idêntico (R01/SUBTÍTULO/índice trivialmente preservados); rodapés técnicos (`GABGF09`, `Documento: 1807307`) continuam em 0 ocorrências; thin-space (`&#8201;`/variantes) continua em 0 ocorrências em `Inf0024E.md`.
+- [x] 3.9 Confirmar marcadores `[[Pág. N]]` únicos e sequenciais nos 4 arquivos. Resultado: AINT=12, REsp=14, Inf0024E=29, CC=186, todos únicos e sequenciais.
+- [x] 3.10 Reconverter novamente e confirmar idempotência (segunda reconversão byte-idêntica à primeira) nos 4 arquivos. Resultado: os 4 arquivos byte-idênticos entre a 1ª e a 2ª reconversão.
+- [x] 3.11 Produzir e explicar o diff completo do corpus (todos os arquivos alterados e por quê). Resultado: único arquivo alterado é `output/Inf0024E.md` (3 blocos, páginas 4/14/18, cada um separando itens de `SAIBA MAIS` antes fundidos); os outros 3 arquivos byte-idênticos ao baseline pré-mudança.
 
 ## 4. Encerramento do ciclo
 
