@@ -2,7 +2,49 @@
 
 Mudança ativa:
 
-Nenhuma. `openspec/changes/` não contém mudanças pendentes no momento.
+`fix-editorial-cover-structural-boundaries` — implementação e validação concluídas (todas as
+subtarefas de `tasks.md` marcadas, exceto o registro do arquivamento, que exige aprovação humana).
+Corrige o colapso estrutural da primeira página editorial de `output/Inf0024E.md`, onde título
+estilizado, linha de edição/data, aviso editorial e cabeçalho de câmara julgadora ("CORTE
+ESPECIAL") apareciam fundidos em uma única linha.
+
+Causa raiz: `recompose_native_paragraphs` (`src/pipeline_juridico/cleaner.py`) estima a posição de
+cada linha física de um bloco PyMuPDF dividindo a altura do bloco pelo número de linhas
+NÃO-VAZIAS, sem ajustar para o espaço das linhas em branco descartadas. No bloco de edição/data
+desta página (7 linhas em branco + 2 reais, medido via `page.get_text("dict")`), isso produzia um
+gap de junção NEGATIVO entre o título e a linha seguinte — a fusão era matematicamente inevitável,
+não apenas provável. Mesma classe de mecanismo já identificada na investigação de `SAIBA MAIS`,
+aqui mais severa.
+
+Um primeiro candidato de correção (interpolar sobre o total de linhas físicas, sem gate) tinha
+blast radius de 3/241 páginas, mas 2 delas (`AINTARESP_1462304-PA.pdf` p.11, `REsp_1704551-SP.pdf`
+p.2) pertencem ao achado pendente `Papel/Nome`, já fechado duas vezes sem critério seguro
+(`openspec/changes/archive/2026-08-07-fix-role-name-list-cross-block-fusion/`). Três alternativas
+foram comparadas empiricamente contra os 4 PDFs (aceitar o efeito colateral; sinal estrutural
+adicional; deferir para futura investigação de `Papel/Nome`); a aprovada por decisão humana foi um
+gate por página: a correção de interpolação só é permitida em páginas com pelo menos um bloco de
+texto ≥20pt. Limiar justificado por evidência tipográfica, não número mágico: medição de ~13.500
+spans nos 4 PDFs mostra uma lacuna real de 10.5pt entre o maior rótulo estrutural do corpus inteiro
+(15.0pt — `SAIBA MAIS`, `INFORMAÇÕES DO INTEIRO TEOR`, `CORTE ESPECIAL` etc.) e o menor elemento de
+masthead observado (25.5pt — banner "Superior Tribunal de Justiça" do AINTARESP, presente em 8
+páginas sem o defeito, confirmando que o sinal generaliza e que sua presença sozinha não altera
+nada quando não há linhas em branco intercaladas). Implementação: novo parâmetro
+`page_has_large_text: bool = False` em `recompose_native_paragraphs` (fora desse modo, o cálculo
+existente é preservado byte a byte) e nova função `_page_has_large_text` em `converter.py`, via
+`page.get_text("dict")`. Extrator, roteamento, OCR e a interpolação para páginas sem fonte grande
+não foram tocados.
+
+Validação: suíte `339/339`, `openspec validate --all --strict` limpo, quatro PDFs reconvertidos com
+`--no-ocr` (241 páginas roteadas como `texto_nativo`, zero OCR), idempotência confirmada. Único
+arquivo alterado no corpus: `output/Inf0024E.md`, página 1 (4 elementos editoriais separados em
+parágrafos distintos), contagem de tokens 9084 → 9084 (diferença zero). `AINTARESP_1462304-PA.md`,
+`REsp_1704551-SP.md` e `L10.406_CC_2002.md` byte-idênticos ao baseline pré-mudança — `Papel/Nome`
+(AINTARESP p.11 continua fundido exatamente como antes), R01 4/4, 8 SUBTÍTULO, índice do CC,
+rodapés técnicos e `SAIBA MAIS` preservados por decorrência direta ou reverificação direta.
+Marcadores `[[Pág. N]]` únicos e sequenciais nos 4 arquivos. Achado documentado, fora de escopo: a
+correção geral da interpolação de altura de linha permanece um defeito de precisão geométrica
+compartilhado; as 44 decisões de junção identificadas na investigação de `SAIBA MAIS` continuam sem
+correção geral aprovada.
 
 **Achado pendente — NÃO RESOLVIDO** (originado ao validar o corpus de `fix-colon-label-pagewide-recomposition-bypass` em 2026-08-07; diagnóstico aprofundado em duas rodadas e documentado em `openspec/changes/archive/2026-08-07-fix-role-name-list-cross-block-fusion/` — `proposal.md`/`design.md`/`tasks.md`, commit `6fba378`). Esse arquivamento é um **fechamento administrativo**, não uma correção: nenhum critério seguro foi encontrado, nenhum código de produção foi alterado, e as tarefas de TDD/implementação permanecem marcadas `BLOQUEADO`. Uma **nova mudança OpenSpec própria** precisará ser criada para qualquer tentativa futura (esta pasta arquivada é só o registro do diagnóstico, não deve ser reaberta como "mudança ativa"):
 
