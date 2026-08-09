@@ -301,6 +301,129 @@ def test_convert_inf0024e_preserves_repeated_legal_title(tmp_path) -> None:
     )
 
 
+def test_convert_inf0024e_page_14_separates_saiba_mais_items(tmp_path) -> None:
+    source = tmp_path / "inf0024e-pagina-14.pdf"
+    corpus_pdf = Path(__file__).parents[1] / "input" / "Inf0024E.pdf"
+    _isolate_first_page(corpus_pdf, source, page_index=13)
+
+    markdown, _relatorio = convert_document(
+        pdf_path=source,
+        output_path=tmp_path / "saida.md",
+        temp_root=tmp_path / "temp",
+        use_ocr=False,
+    )
+    normalized_lines = [
+        " ".join(line.split()) for line in markdown.splitlines() if line.strip()
+    ]
+    items = [
+        "Jurisprudência em Teses / DIREITO PROCESSUAL PENAL - EDIÇÃO N. 117: "
+        "INTERCEPTAÇÃO TELEFÔNICA - I",
+        "Jurisprudência em Teses / DIREITO PROCESSUAL PENAL - EDIÇÃO N. 69",
+        "Informativo de Jurisprudência n. 751",
+    ]
+
+    assert all(item in _normalize_whitespace(markdown) for item in items)
+    for item in items:
+        item_line = next(line for line in normalized_lines if item in line)
+        assert all(other not in item_line for other in items if other != item)
+
+
+def test_convert_inf0024e_page_18_separates_saiba_mais_items(tmp_path) -> None:
+    source = tmp_path / "inf0024e-pagina-18.pdf"
+    corpus_pdf = Path(__file__).parents[1] / "input" / "Inf0024E.pdf"
+    _isolate_first_page(corpus_pdf, source, page_index=17)
+
+    markdown, _relatorio = convert_document(
+        pdf_path=source,
+        output_path=tmp_path / "saida.md",
+        temp_root=tmp_path / "temp",
+        use_ocr=False,
+    )
+    normalized_lines = [
+        " ".join(line.split()) for line in markdown.splitlines() if line.strip()
+    ]
+    thesis = (
+        "Jurisprudência em Teses / DIREITO PENAL - EDIÇÃO N. 57: CRIMES "
+        "CONTRA A ADMINISTRAÇÃO PÚBLICA"
+    )
+    informativo = "Informativo de Jurisprudência n. 388"
+
+    assert thesis in _normalize_whitespace(markdown)
+    assert informativo in _normalize_whitespace(markdown)
+    thesis_line = next(line for line in normalized_lines if thesis in line)
+    informativo_line = next(
+        line for line in normalized_lines if informativo in line
+    )
+    assert informativo not in thesis_line
+    assert thesis not in informativo_line
+
+
+def test_convert_inf0024e_page_4_separates_precedent_from_next_informativo(
+    tmp_path,
+) -> None:
+    source = tmp_path / "inf0024e-pagina-4.pdf"
+    corpus_pdf = Path(__file__).parents[1] / "input" / "Inf0024E.pdf"
+    _isolate_first_page(corpus_pdf, source, page_index=3)
+
+    markdown, _relatorio = convert_document(
+        pdf_path=source,
+        output_path=tmp_path / "saida.md",
+        temp_root=tmp_path / "temp",
+        use_ocr=False,
+    )
+    normalized_lines = [
+        " ".join(line.split()) for line in markdown.splitlines() if line.strip()
+    ]
+    precedent = (
+        "CC 159976/SP, Rel. Ministro ANTONIO SALDANHA PALHEIRO, TERCEIRA "
+        "SEÇÃO, julgado em 10/04/2019, DJe 16/04/2019"
+    )
+    informativos = [
+        "Informativo de Jurisprudência n. 135",
+        "Informativo de Jurisprudência n. 474",
+        "Informativo de Jurisprudência n. 346",
+        "Informativo de Jurisprudência n. 174",
+    ]
+
+    precedent_line = next(line for line in normalized_lines if precedent in line)
+    assert "Informativo de Jurisprudência n. 474" not in precedent_line
+    for item in informativos:
+        item_line = next(line for line in normalized_lines if item in line)
+        assert all(other not in item_line for other in informativos if other != item)
+
+
+def test_convert_inf0024e_page_4_saiba_mais_items_remain_separated(
+    tmp_path,
+) -> None:
+    source = tmp_path / "inf0024e-pagina-4.pdf"
+    corpus_pdf = Path(__file__).parents[1] / "input" / "Inf0024E.pdf"
+    _isolate_first_page(corpus_pdf, source, page_index=3)
+
+    markdown, _relatorio = convert_document(
+        pdf_path=source,
+        output_path=tmp_path / "saida.md",
+        temp_root=tmp_path / "temp",
+        use_ocr=False,
+    )
+    normalized_lines = [
+        " ".join(line.split()) for line in markdown.splitlines() if line.strip()
+    ]
+    items = [
+        "Informativo de Jurisprudência n. 135",
+        "CC 159976/SP, Rel. Ministro ANTONIO SALDANHA PALHEIRO, TERCEIRA "
+        "SEÇÃO, julgado em 10/04/2019, DJe 16/04/2019",
+        "Informativo de Jurisprudência n. 474",
+        "Informativo de Jurisprudência n. 346",
+        "Informativo de Jurisprudência n. 174",
+    ]
+
+    item_line_indexes = [
+        next(index for index, line in enumerate(normalized_lines) if item in line)
+        for item in items
+    ]
+    assert len(set(item_line_indexes)) == len(items)
+
+
 def test_convert_cc_2002_page_1_recomposes_art_2_paragraph(tmp_path) -> None:
     source = tmp_path / "codigo-civil-pagina-1.pdf"
     _isolate_first_page(

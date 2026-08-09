@@ -1776,6 +1776,128 @@ def test_recompose_native_paragraphs_preserves_content_with_empty_blocks() -> No
     assert result == content
 
 
+def test_recompose_native_paragraphs_separates_saiba_mais_items_after_two_line_block(
+) -> None:
+    content = (
+        "SAIBA MAIS\n"
+        "Informativo de Jurisprudência n. 135\n"
+        "CC 159976/SP, Rel. Ministro ANTONIO SALDANHA PALHEIRO, TERCEIRA SEÇÃO, julgado em\n"
+        "10/04/2019, DJe 16/04/2019\n"
+        "Informativo de Jurisprudência n. 474\n"
+        "Informativo de Jurisprudência n. 346\n"
+        "Informativo de Jurisprudência n. 174\n"
+        "VÍDEO DO JULGAMENTO"
+    )
+    blocks = [
+        (55.0, 70.0, "SAIBA MAIS"),
+        (85.0, 95.0, "Informativo de Jurisprudência n. 135"),
+        (
+            110.0,
+            135.0,
+            "CC 159976/SP, Rel. Ministro ANTONIO SALDANHA PALHEIRO, "
+            "TERCEIRA SEÇÃO, julgado em\n10/04/2019, DJe 16/04/2019",
+        ),
+        (150.0, 160.0, "Informativo de Jurisprudência n. 474"),
+        (175.0, 185.0, "Informativo de Jurisprudência n. 346"),
+        (200.0, 210.0, "Informativo de Jurisprudência n. 174"),
+        (284.0, 292.0, "VÍDEO DO JULGAMENTO"),
+    ]
+
+    result = recompose_native_paragraphs(content, blocks)
+    precedent = (
+        "CC 159976/SP, Rel. Ministro ANTONIO SALDANHA PALHEIRO, TERCEIRA "
+        "SEÇÃO, julgado em 10/04/2019, DJe 16/04/2019"
+    )
+    items = [
+        "Informativo de Jurisprudência n. 135",
+        precedent,
+        "Informativo de Jurisprudência n. 474",
+        "Informativo de Jurisprudência n. 346",
+        "Informativo de Jurisprudência n. 174",
+    ]
+
+    assert precedent in result.splitlines()
+    assert "Informativo de Jurisprudência n. 474" not in next(
+        line for line in result.splitlines() if precedent in line
+    )
+    paragraphs = result.split("\n\n")
+    assert all(item in paragraphs for item in items)
+    assert "SAIBA MAIS" in paragraphs
+    assert "VÍDEO DO JULGAMENTO" in paragraphs
+
+
+def test_recompose_native_paragraphs_saiba_mais_guard_does_not_affect_blocks_outside_section(
+) -> None:
+    content = (
+        "Alguma seção anterior\n"
+        "Texto de referência que quebra em\n"
+        "duas linhas físicas do mesmo bloco\n"
+        "Próximo bloco corrido"
+    )
+    blocks = [
+        (10.0, 20.0, "Alguma seção anterior"),
+        (
+            35.0,
+            60.0,
+            "Texto de referência que quebra em\n"
+            "duas linhas físicas do mesmo bloco",
+        ),
+        (67.0, 77.0, "Próximo bloco corrido"),
+    ]
+
+    result = recompose_native_paragraphs(content, blocks)
+
+    # Baseline anterior ao guard: fora de SAIBA MAIS, a geometria continua
+    # autorizando a união do terceiro bloco ao bloco físico anterior.
+    assert result == (
+        "Alguma seção anterior\n\n"
+        "Texto de referência que quebra em duas linhas físicas do mesmo bloco "
+        "Próximo bloco corrido"
+    )
+
+
+def test_recompose_native_paragraphs_preserves_intra_block_join_inside_saiba_mais(
+) -> None:
+    content = (
+        "SAIBA MAIS\n"
+        "Jurisprudência em Teses / DIREITO PROCESSUAL PENAL - EDIÇÃO N. 117:\n"
+        "INTERCEPTAÇÃO TELEFÔNICA - I\n"
+        "Informativo de Jurisprudência n. 751\n"
+        "VÍDEO DO JULGAMENTO"
+    )
+    blocks = [
+        (55.0, 70.0, "SAIBA MAIS"),
+        (
+            85.0,
+            110.0,
+            "Jurisprudência em Teses / DIREITO PROCESSUAL PENAL - EDIÇÃO "
+            "N. 117:\nINTERCEPTAÇÃO TELEFÔNICA - I",
+        ),
+        (117.0, 127.0, "Informativo de Jurisprudência n. 751"),
+        (150.0, 160.0, "VÍDEO DO JULGAMENTO"),
+    ]
+
+    result = recompose_native_paragraphs(content, blocks)
+
+    assert (
+        "Jurisprudência em Teses / DIREITO PROCESSUAL PENAL - EDIÇÃO N. 117: "
+        "INTERCEPTAÇÃO TELEFÔNICA - I"
+    ) in result.splitlines()
+
+
+def test_recompose_native_paragraphs_saiba_mais_label_stays_separate_from_first_item(
+) -> None:
+    content = "SAIBA MAIS\nInformativo de Jurisprudência n. 135"
+    blocks = [
+        (55.0, 70.0, "SAIBA MAIS"),
+        (75.0, 85.0, "Informativo de Jurisprudência n. 135"),
+    ]
+
+    result = recompose_native_paragraphs(content, blocks)
+
+    assert result == "SAIBA MAIS\n\nInformativo de Jurisprudência n. 135"
+
+
 def test_normalize_legal_symbols_normalizes_article_ordinal() -> None:
     content = "Art. 1 o Toda pessoa é capaz..."
 
