@@ -114,10 +114,35 @@ O candidato é determinístico, geral (não depende de nome de arquivo, número 
 2. Implementar este candidato produziria uma alteração de corpus em `AINTARESP_1462304-PA.md` e `REsp_1704551-SP.md` que um validador ingênuo classificaria como "alteração inesperada fora do escopo" — desqualificando a mudança pelos critérios de validação já estabelecidos neste projeto (`AINT, REsp e CC sem alterações inesperadas`), mesmo que a alteração seja, pelo próprio mérito, uma correção (não uma regressão).
 3. Não foi encontrado, dentro do tempo desta investigação, um refinamento adicional que preserve o candidato para a página-alvo mas exclua especificamente essas 2 páginas sem introduzir uma condição ad-hoc (ex. "só na página 1 do documento" seria uma regra específica de página, proibida pela tarefa).
 
-## Próximos passos possíveis (não iniciados)
+## Próximos passos possíveis (avaliados após o diagnóstico)
 
-1. Levar esta sobreposição para decisão humana explícita: aceitar o efeito colateral em `Papel/Nome` como uma correção parcial documentada (não uma regressão) e prosseguir com TDD/implementação sob uma mudança que declare abertamente tocar as duas áreas; OU
-2. Investigar um sinal adicional que distinga estruturalmente a capa editorial (bloco de título com fonte >20pt, cor de marca, presença de imagem de fundo no mesmo intervalo y — blocos 0/1 tipo=1 não avaliados nesta rodada) do padrão `Papel/Nome` (blocos de texto puro, sem elementos gráficos de fundo), o que permitiria escopar o candidato apenas à capa; OU
-3. Tratar esta sobreposição como evidência adicional a favor de uma futura mudança dedicada a `Papel/Nome` que use precisamente este mecanismo (interpolação sensível a linhas em branco) como parte de um critério mais amplo — mas isso reabriria uma investigação já fechada duas vezes e exigiria sua própria validação completa contra os R01 e demais casos já documentados como frágeis.
+Três alternativas foram identificadas ao final do diagnóstico:
 
-Nenhuma dessas opções foi executada nesta investigação.
+1. Aceitar o efeito colateral em `Papel/Nome` e prosseguir com o candidato sem gate, declarando abertamente que a mudança toca as duas áreas.
+2. Investigar um sinal adicional que distinga estruturalmente a capa editorial do padrão `Papel/Nome`, escopando o candidato apenas à capa.
+3. Tratar a sobreposição como evidência para uma futura mudança dedicada a `Papel/Nome`, sem agir agora.
+
+As três foram comparadas empiricamente (função real `recompose_native_paragraphs`, simulações fora de `src/`, rodadas nas 241 páginas do corpus) segundo 10 critérios (decisões alteradas, páginas reais, correção do alvo, toque em `Papel/Nome`, falsos positivos/negativos, dependência de texto/arquivo/página, risco em R01/SUBTÍTULO/índice/rodapés/SAIBA MAIS, capacidade de distinguir capa de `Papel/Nome` sem regra específica, blast radius total):
+
+- **Alternativa 1** (sem gate): blast radius de 3/241 páginas; corrige o alvo mas **também altera** `AINTARESP_1462304-PA.pdf` p.11 e `REsp_1704551-SP.pdf` p.2 (mesmo mecanismo de causa raiz, território de `Papel/Nome`). **Descartada** para esta mudança.
+- **Alternativa 2, variante "cadeia de parágrafo"** (gate ativo só quando o parágrafo em formação remonta a um bloco-origem com sinal de capa): apresentou bug de escopo — o sinal se perdia ao reiniciar um parágrafo, deixando uma transição interna da própria página-alvo sem proteção. Descartada por incompletude nesta rodada (não por conceito errado).
+- **Alternativa 2, variante "gate por página"** (a correção de interpolação só é permitida em páginas que contenham pelo menos um bloco de texto com tamanho tipográfico ≥20pt em qualquer lugar da página): blast radius de **1/241 páginas** — corrige integralmente `Inf0024E.pdf` p.1, **0 diferenças** em `AINTARESP_1462304-PA.pdf`, `REsp_1704551-SP.pdf` e `L10.406_CC_2002.pdf` (186 páginas, incluindo os 4 R01 e o índice 178–186). 0 falsos positivos, 0 falsos negativos, 0 perda de token (296→296 na página-alvo).
+- **Alternativa 3** (deferir): não corrige o defeito-alvo agora; descartada por não apresentar critério testável.
+
+**Decisão aprovada (humana, nesta mudança): Alternativa 2, variante "gate por página" — doravante "Candidato 2b".**
+
+### Justificativa do limiar de 20pt (evidência tipográfica, não número mágico)
+
+Medição de todos os `span["size"]` de texto legível nos 4 PDFs do corpus (241 páginas, ~13.500 spans de texto):
+
+| Faixa | Ocorrência no corpus |
+| --- | --- |
+| ≤ 16.5pt | Todo o restante do corpus: corpo de texto (7–14pt, predominantemente 10pt), rótulos de campo (`PROCESSO`, `TEMA`, `DESTAQUE`, `RAMO DO DIREITO`: 10pt), rótulos de seção maiores (`SAIBA MAIS`, `INFORMAÇÕES DO INTEIRO TEOR`, `INFORMAÇÕES ADICIONAIS`, `CORTE ESPECIAL`, nomes de turma/seção como `TERCEIRA SEÇÃO`/`QUINTA TURMA`/`SEXTA TURMA`: sempre exatamente **15.0pt**, 53 ocorrências em 29 páginas de `Inf0024E.pdf`); um span de código de barras (`Barcode`, 16.5pt, texto não-legível, presente em 8 páginas de `AINTARESP_1462304-PA.pdf`, não é conteúdo estrutural). |
+| 16.6pt – 25.4pt | **Zero spans em todo o corpus.** |
+| ≥ 25.5pt | Somente 2 elementos: o banner "Superior Tribunal de Justiça" (`BullScriptSSi`, 25.5pt, 8 páginas de `AINTARESP_1462304-PA.pdf`) e o título estilizado "Informativo"/"de Jurisprudência" (26.0pt, única ocorrência, página 1 de `Inf0024E.pdf`). |
+
+Há uma lacuna real e limpa de **10.5pt** (15.0pt → 25.5pt) sem nenhuma ocorrência no corpus inteiro — não um limiar ajustado a um único caso. 20pt foi escolhido por ficar no meio dessa lacuna, com 5pt de margem para os dois lados: acima do maior rótulo estrutural legítimo já observado (15pt, usado consistentemente em todo o documento, inclusive nas 18 seções `SAIBA MAIS`), e abaixo do menor elemento de masthead/título observado (25.5pt). O banner de `AINTARESP_1462304-PA.pdf` (25.5pt, presente em 8 páginas, incluindo páginas SEM o defeito) confirma que o sinal generaliza para "elemento tipográfico de destaque/masthead" — não é uma característica exclusiva de `Inf0024E.pdf` — e que sua mera presença não basta para alterar o Markdown final: nas 8 páginas de AINTARESP onde o gate fica ativo, nenhum bloco daquelas páginas contém linhas físicas em branco intercaladas, então a correção de interpolação não tem efeito algum ali (gate necessário, mas não suficiente).
+
+### Estado desta mudança
+
+Diagnóstico e comparação de alternativas concluídos; decisão humana registrada. TDD (ETAPA 2) e implementação (ETAPA 3) autorizados, restritos exclusivamente ao Candidato 2b: interpolação de `line_height` sensível a linhas em branco em `recompose_native_paragraphs`, habilitada apenas em páginas com pelo menos um bloco de texto ≥20pt. `Papel/Nome` permanece explicitamente fora de escopo — nenhuma alteração em `AINTARESP_1462304-PA.md` ou `REsp_1704551-SP.md` é esperada ou aceitável nesta mudança.

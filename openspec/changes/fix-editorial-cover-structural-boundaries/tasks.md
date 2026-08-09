@@ -1,18 +1,49 @@
-> Nota de status: esta mudança é SOMENTE DIAGNÓSTICO (ETAPA 1 da tarefa). Nenhum código foi alterado, nenhum teste de produção foi criado. Conclusão: **A condicional** — um critério seguro, geral e de blast radius muito baixo (3 de ~241 páginas) foi encontrado e validado empiricamente contra os 4 PDFs, mas ele se sobrepõe, em 2 das 3 páginas que afeta, ao território já documentado e formalmente fechado do achado pendente `Papel/Nome` (`openspec/changes/archive/2026-08-07-fix-role-name-list-cross-block-fusion/`). Ver `design.md`, seção "Por que a conclusão é 'A condicional', não 'A' pura" e "Próximos passos possíveis". TDD e implementação NÃO devem começar sem decisão humana explícita sobre como tratar essa sobreposição.
+> Histórico: esta mudança começou como diagnóstico puro (Seção 0). Após comparação empírica de 3 alternativas e decisão humana explícita, foi aprovada para TDD/implementação restrita ao Candidato 2b (interpolação sensível a linhas em branco, com gate por página ≥20pt). `Papel/Nome` permanece fora de escopo.
 
-## 1. Diagnóstico
+## 0. Diagnóstico e comparação de alternativas (concluído)
 
-- [x] 1.1 Inspecionar a página 1 de `input/Inf0024E.pdf` com `page.get_text("dict")` (texto, ordem/índice de bloco, `bbox`, fonte, tamanho, flags, número de linhas, relação espacial com blocos vizinhos). Resultado: documentado em `design.md`, ETAPA 1 — 21 blocos, incluindo o achado de que o bloco do título (índice bruto 19) aparece fora de ordem no índice bruto do PDF mas é corretamente reordenado por y0 antes do processamento.
-- [x] 1.2 Rastrear os mesmos elementos pela extração nativa (MarkItDown/pdfminer), `compose_document`, `recompose_native_paragraphs` e cleaners posteriores, determinando o PRIMEIRO ponto de fusão. Resultado: a extração nativa (MarkItDown) já produz a separação correta nesta página (`_has_native_reading_order_defect`/`_has_fabricated_native_table` ambos `False`); a fusão ocorre inteiramente dentro de `recompose_native_paragraphs`, que descarta essa segmentação correta em favor de sua própria reconstrução geométrica. Confirmado reproduzindo o defeito chamando a função de produção, sem modificação, diretamente sobre os blocos reais da página.
-- [x] 1.3 Determinar a causa raiz exata dentro de `recompose_native_paragraphs`. Resultado: interpolação de `line_height` dividindo a altura do bloco pelo número de linhas físicas NÃO-VAZIAS (após filtrar linhas em branco), sem ajustar para o espaço vertical consumido pelas linhas em branco descartadas — mesma classe de mecanismo já identificada na investigação de `SAIBA MAIS`, mas manifestando de forma mais severa aqui (7 linhas em branco em um único bloco produzem um gap de junção negativo, tornando a fusão praticamente inevitável).
-- [x] 1.4 Comparar com casos corretos no corpus (páginas 2+ do mesmo documento, índice do Código Civil) e avaliar sinais candidatos (geometria real de linha em todo o pipeline; mudança de fonte/tamanho/cor; interpolação sensível a linhas em branco), estimando o blast radius de cada um nos 4 PDFs por simulação completa (função real de produção, sem modificá-la no repositório). Resultado: documentado em `design.md`, ETAPA 3 — tabela completa dos 3 candidatos avaliados, blast radius de cada um (44 decisões alteradas; 91 de 329 junções corretas quebradas; 3 de ~241 páginas, respectivamente).
-- [x] 1.5 Concluir A ou B conforme critério de aceitação da tarefa. Resultado: **A condicional** — critério seguro existe para o defeito-alvo, mas a implementação, tal como encontrada, também toca 2 páginas do achado pendente `Papel/Nome` (mesmo mecanismo de causa raiz, correção não uma regressão, mas fora do escopo declarado desta mudança). Documentado em `design.md` com 3 próximos passos possíveis, nenhum executado.
-- [x] 1.6 Confirmar que nenhum código de `src/`/`tests/` foi alterado e que `git status --short` permanece limpo além dos artefatos desta mudança.
+- [x] 0.1 Inspecionar a página 1 de `input/Inf0024E.pdf` com `page.get_text("dict")`, rastrear pelo pipeline e determinar causa raiz e primeiro estágio da fusão. Resultado: documentado em `design.md`, ETAPAS 1–3.
+- [x] 0.2 Avaliar candidatos (geometria real em todo o pipeline; mudança de fonte/tamanho/cor; interpolação sensível a linhas em branco sem gate) com blast radius medido nos 4 PDFs. Resultado: candidato sem gate tem blast radius de 3/241 páginas, mas toca `Papel/Nome` em 2 delas.
+- [x] 0.3 Comparar 3 alternativas (aceitar efeito colateral; sinal estrutural adicional; deferir para futura mudança de `Papel/Nome`) segundo 10 critérios, com simulação completa da função real nos 4 PDFs. Resultado: Candidato 2b (gate por página ≥20pt) tem blast radius de 1/241 páginas, 0 falsos positivos, 0 falsos negativos, 0 impacto em `Papel/Nome`.
+- [x] 0.4 Obter decisão humana explícita aprovando o Candidato 2b. Resultado: aprovado.
+- [x] 0.5 Documentar em `design.md` a evidência tipográfica que justifica o limiar de 20pt (não um número mágico). Resultado: lacuna real de 10.5pt (15.0pt maior rótulo estrutural do corpus inteiro, 25.5pt menor elemento de masthead) medida em ~13.500 spans dos 4 PDFs.
 
-## 2. TDD (bloqueado)
+## 1. Testes (TDD, antes de qualquer implementação)
 
-- [ ] 2.1 BLOQUEADO — aguardando decisão humana explícita sobre como tratar a sobreposição do candidato com o território `Papel/Nome` (ver `design.md`, "Próximos passos possíveis"). Não criar testes de produção antes dessa decisão.
+- [ ] 1.1 Adicionar teste positivo (página 1 real do Inf0024E, via `_isolate_first_page`): título, linha de edição/data + "Direito Penal", aviso editorial e "CORTE ESPECIAL" ficam cada um em parágrafo próprio no Markdown final.
+- [ ] 1.2 Adicionar teste positivo unitário de `recompose_native_paragraphs`, replicando a geometria real medida (blocos com linhas em branco intercaladas, bloco de título ≥20pt): confirma a separação dos elementos e ausência de perda de token.
+- [ ] 1.3 Adicionar teste unitário cobrindo especificamente linhas em branco no início e no meio de um bloco geométrico (não apenas no fim), replicando os dois padrões reais encontrados (7 linhas em branco antes do conteúdo; 1 linha em branco depois do conteúdo).
+- [ ] 1.4 Adicionar teste negativo: página 11 de `AINTARESP_1462304-PA.pdf` (via `_isolate_first_page`) mantém o comportamento atual — a fusão de `Papel/Nome` já existente permanece inalterada (mesmo texto produzido antes desta mudança).
+- [ ] 1.5 Adicionar teste negativo: página 2 de `REsp_1704551-SP.pdf` mantém o comportamento atual pelo mesmo motivo.
+- [ ] 1.6 Adicionar teste negativo unitário: uma página sem nenhum bloco ≥20pt, mas com um bloco contendo linhas em branco intercaladas, não aciona a correção (resultado idêntico ao comportamento pré-existente, calculado sem a correção).
+- [ ] 1.7 Adicionar teste de controle próximo ao limiar tipográfico: um bloco com tamanho 19.9pt não aciona o gate; um bloco com tamanho exatamente 20.0pt aciona.
+- [ ] 1.8 Adicionar teste negativo: um bloco geométrico legítimo, sem linhas em branco intercaladas, em uma página com bloco ≥20pt, continua sendo recomposto normalmente (a correção não introduz nem impede junções fora do padrão de linha em branco).
+- [ ] 1.9 Adicionar teste negativo: marcadores `[[Pág. N]]` preservados, únicos e sequenciais no resultado dos testes de integração acima.
+- [ ] 1.10 Adicionar teste negativo: os 4 casos R01, os 8 SUBTÍTULO, o índice do Código Civil, o guard de `SAIBA MAIS`, os rodapés técnicos já removidos e a normalização de thin-space permanecem intactos (reexecução da suíte existente, sem novos casos específicos).
+- [ ] 1.11 Rodar a suíte e confirmar que os novos testes falham (red) antes da implementação.
 
-## 3. Implementação (bloqueado)
+## 2. Implementação
 
-- [ ] 3.1 BLOQUEADO — aguardando a mesma decisão do item 2.1.
+- [ ] 2.1 Em `recompose_native_paragraphs` (`src/pipeline_juridico/cleaner.py`), alterar a interpolação de `line_height` para dividir pelo número TOTAL de linhas físicas do bloco (incluindo as em branco), preservando o índice original de cada linha não-vazia ao posicioná-la.
+- [ ] 2.2 Restringir essa correção a páginas com pelo menos um bloco de texto com tamanho tipográfico ≥20pt; disponibilizar esse sinal ao pipeline (via `converter.py`/`_sorted_native_text_blocks` ou equivalente) sem alterar o extrator, o roteamento ou o OCR.
+- [ ] 2.3 Fora dessas páginas, preservar exatamente o cálculo já existente (divisão apenas pelas linhas não-vazias), byte a byte.
+- [ ] 2.4 Rodar a suíte completa e confirmar que os testes novos e existentes passam (green).
+
+## 3. Validação do corpus
+
+- [ ] 3.1 Rodar `uv run pytest tests/` (suíte completa) e registrar o resultado.
+- [ ] 3.2 Rodar `openspec validate --all --strict` e registrar o resultado.
+- [ ] 3.3 Reconverter os 4 PDFs do corpus com `converter-juridico --no-ocr` e confirmar que nenhuma página exigiu OCR.
+- [ ] 3.4 Confirmar que `output/Inf0024E.md` p.1 tem os elementos editoriais separados, com antes/depois.
+- [ ] 3.5 Confirmar que `AINTARESP_1462304-PA.md`, `REsp_1704551-SP.md` e `L10.406_CC_2002.md` ficam byte-idênticos à reconversão anterior a esta mudança.
+- [ ] 3.6 Confirmar que nenhuma palavra foi perdida ou adicionada em `Inf0024E.md` (contagem de tokens antes/depois).
+- [ ] 3.7 Confirmar `Papel/Nome` inalterado (decorrência direta de 3.5), R01 (4/4), 8 SUBTÍTULO, índice do CC, rodapés técnicos, `SAIBA MAIS` e thin-space preservados.
+- [ ] 3.8 Confirmar marcadores `[[Pág. N]]` únicos e sequenciais nos 4 arquivos.
+- [ ] 3.9 Reconverter novamente e confirmar idempotência (segunda reconversão byte-idêntica à primeira) nos 4 arquivos.
+- [ ] 3.10 Produzir e explicar o diff completo do corpus.
+
+## 4. Encerramento do ciclo
+
+- [ ] 4.1 Claude revisa o diff, reexecuta os testes e valida o OpenSpec de forma independente antes de aprovar cada subtarefa.
+- [ ] 4.2 Commit local (sem push) após aprovação explícita de cada subtarefa aprovada pelo Codex.
+- [ ] 4.3 Atualizar `LOOPS.md` com o resultado desta mudança (sem arquivar sem aprovação humana).

@@ -6,29 +6,23 @@ A primeira página editorial de `Inf0024E.pdf` (e somente ela, no corpus de 4 PD
 Informativo de Jurisprudência Informativo de Jurisprudência n. 24 - Edição Extraordinária 28 de janeiro de 2025 Direito Penal Este periódico destaca teses jurisprudenciais e não consiste em repositório oficial de jurisprudência. CORTE ESPECIAL
 ```
 
-**Esta mudança é SOMENTE DIAGNÓSTICO** — nenhuma correção, teste de produção, arquivamento ou push foi realizado. `git status` permanece limpo além dos artefatos desta mudança (`openspec/changes/fix-editorial-cover-structural-boundaries/`).
+## Diagnóstico e decisão (histórico desta mudança)
 
-## Conclusão do diagnóstico
+Esta mudança começou como diagnóstico puro. A causa raiz foi comprovada (ver `design.md`): `recompose_native_paragraphs` (`src/pipeline_juridico/cleaner.py`) estima a posição de cada linha física de um bloco PyMuPDF dividindo a altura total do bloco pelo número de linhas **não-vazias**, sem ajustar para o espaço consumido pelas linhas em branco descartadas. No bloco de edição/data desta página (7 linhas em branco + 2 reais), isso produz um gap de junção **negativo**, tornando a fusão praticamente inevitável.
 
-**Causa raiz comprovada e primeiro estágio da fusão identificado com precisão** (ver `design.md` para a evidência completa, rastreada estágio a estágio). Um candidato de correção geral, determinístico e de blast radius extremamente baixo (3 de ~241 páginas do corpus) foi encontrado e validado empiricamente contra os 4 PDFs — mas ele **não é 100% isolado** ao defeito desta mudança: nas outras 2 páginas que ele afeta, o candidato também altera (corrigindo, não corrompendo) dois casos que pertencem ao achado pendente `Papel/Nome`, já documentado e duas vezes investigado sem critério seguro encontrado (`openspec/changes/archive/2026-08-07-fix-role-name-list-cross-block-fusion/`).
+Um primeiro candidato de correção (interpolar sobre o número TOTAL de linhas físicas, incluindo as em branco) foi validado com blast radius de apenas 3 de ~241 páginas do corpus — mas 2 dessas páginas (`AINTARESP_1462304-PA.pdf` p.11, `REsp_1704551-SP.pdf` p.2) pertencem ao achado pendente `Papel/Nome`, já documentado e duas vezes investigado sem critério seguro geral (`openspec/changes/archive/2026-08-07-fix-role-name-list-cross-block-fusion/`), e explicitamente fora de escopo desta mudança.
 
-Por isso a conclusão é **A condicional**: existe um critério seguro e geral para o defeito desta mudança especificamente, mas sua implementação, tal como encontrada, requer uma decisão humana explícita sobre como tratar a sobreposição com o território já fechado de `Papel/Nome` — não é uma implementação "limpa" de um único defeito isolado. Nenhuma implementação foi feita; ver "Próximos passos possíveis" em `design.md`.
+Três alternativas foram comparadas empiricamente (ver `design.md`, "Próximos passos possíveis"). A alternativa aprovada por decisão humana — **Candidato 2b** — adiciona um gate: a correção de interpolação só é permitida em páginas que contenham pelo menos um bloco de texto com tamanho tipográfico **≥20pt**. Validado com blast radius de **1 de 241 páginas** (somente `Inf0024E.pdf` p.1), **0 alterações** em `AINTARESP_1462304-PA.pdf` e `REsp_1704551-SP.pdf`, 0 falsos positivos, 0 falsos negativos, 0 perda de token. O limiar de 20pt não é um número arbitrário: medição de ~13.500 spans de texto em todo o corpus mostra uma lacuna real de 10.5pt (15.0pt, o maior rótulo estrutural legítimo observado — `SAIBA MAIS`, `INFORMAÇÕES DO INTEIRO TEOR` etc. — até 25.5pt, o menor elemento de masthead/título observado) sem nenhuma ocorrência no meio; 20pt fica no centro dessa lacuna, com 5pt de margem para os dois lados (detalhes completos em `design.md`).
 
-## Causa raiz (resumo — detalhes completos em `design.md`)
+## What Changes
 
-`recompose_native_paragraphs` (`src/pipeline_juridico/cleaner.py`) estima a posição vertical de cada linha física de um bloco PyMuPDF dividindo a altura total do bloco pelo número de linhas físicas **não-vazias** (`line_height = (y1 - y0) / len(physical_lines)`, após filtrar linhas em branco via `if line.strip()`). Quando um bloco contém linhas físicas em branco intercaladas com o conteúdo real — um padrão de espaçamento vertical usado neste PDF especificamente na capa, mas não específico deste arquivo em sua forma (blocos com linhas em branco dentro de um único frame de texto) — a altura de cada linha real fica catastroficamente distorcida, porque o divisor (contagem de linhas não-vazias) não reflete o numerador (altura total do bloco, que ainda inclui o espaço das linhas em branco descartadas). Em um caso extremo desta página (bloco com 7 linhas em branco + 2 linhas reais), isso produz um "gap" negativo entre o título e a linha de edição/data — uma junção estruturalmente inevitável, não apenas provável.
+- Em `recompose_native_paragraphs` (`src/pipeline_juridico/cleaner.py`): a interpolação de `line_height` passa a dividir pelo número TOTAL de linhas físicas do bloco (incluindo as em branco), preservando o índice original de cada linha real ao posicioná-la — em vez de dividir apenas pelas linhas sobreviventes após o filtro de linhas em branco.
+- Essa correção de interpolação só é aplicada em páginas onde pelo menos um bloco de texto tem tamanho tipográfico ≥20pt (sinal obtido via geometria já disponível ao pipeline, sem nova extração). Fora desse contexto, o comportamento atual (sem correção) é preservado exatamente, byte a byte.
+- Nenhuma lista de palavras, nome de arquivo, número de página ou vocabulário documental (`CORTE ESPECIAL`, `Informativo`, etc.) é usado como critério — apenas geometria (contagem de linhas físicas) e tipografia (tamanho de fonte).
 
-Confirmado que a extração nativa (MarkItDown/pdfminer) **já produz a separação correta** nesta página — o defeito é introduzido inteiramente dentro de `recompose_native_paragraphs`, que descarta essa segmentação correta em favor de sua própria reconstrução geométrica (defeituosa).
+## Fora do escopo (confirmado)
 
-## Sinal discriminante e candidato avaliado
-
-**Candidato aceito como mais promissor**: corrigir a interpolação de `line_height` para dividir pelo número TOTAL de linhas físicas do bloco (incluindo as em branco), preservando o índice original de cada linha real ao posicioná-la — em vez de dividir apenas pelas linhas sobreviventes após o filtro. Validado por simulação completa (função real `recompose_native_paragraphs`, com essa única alteração, rodada página a página nos 4 PDFs): produz diferença em exatamente 3 das ~241 páginas do corpus. Uma delas é o defeito-alvo desta mudança (corrigido integralmente, sem nenhum efeito colateral na mesma página). As outras duas (`AINTARESP_1462304-PA.pdf` p.11, `REsp_1704551-SP.pdf` p.2) share o mesmo mecanismo de causa raiz mas caem dentro do território já documentado de `Papel/Nome`.
-
-**Candidatos descartados** (blast radius medido, ver `design.md`): substituir a interpolação por geometria real de linha em todo o pipeline (mesmo candidato já descartado na investigação de `SAIBA MAIS`, 44 decisões de junção alteradas); usar mudança de fonte/tamanho/cor como sinal de fronteira (91 de 329 junções atualmente corretas seriam quebradas, incluindo continuações legítimas de frase com ênfase em negrito ou citações em corpo menor).
-
-## Fora do escopo (confirmado, não tocado nesta investigação)
-
-`Papel/Nome`, `RECURSO / ESPECIAL`, `SAIBA MAIS`, thin-space, rodapés técnicos, `SUBTÍTULO`, índice, R01 — nenhum código foi alterado; nenhum teste de produção foi criado. Extrator, roteamento, OCR e dependências não foram tocados nem avaliados para alteração.
+`Papel/Nome`, `RECURSO / ESPECIAL`, `SAIBA MAIS`, thin-space, rodapés técnicos, `SUBTÍTULO`, índice, R01 — nenhum desses deve ser alterado por esta mudança. Extrator, roteamento, OCR e dependências não são tocados. Nenhuma alteração em `AINTARESP_1462304-PA.md` ou `REsp_1704551-SP.md` é esperada ou aceitável.
 
 ## Capabilities
 
@@ -36,9 +30,10 @@ Confirmado que a extração nativa (MarkItDown/pdfminer) **já produz a separaç
 (nenhuma)
 
 ### Modified Capabilities
-(nenhuma — diagnóstico apenas, nenhuma implementação)
+- `juridical-pdf-conversion`: o requisito "Recomposição geométrica de parágrafos" passa a cobrir também a preservação da separação entre elementos estruturalmente distintos de uma capa editorial estilizada (título, linha de edição/data, avisos, cabeçalho de câmara julgadora), quando o bloco correspondente contém linhas físicas em branco intercaladas, restrito a páginas com pelo menos um bloco de texto ≥20pt.
 
 ## Impact
 
-- Nenhum código de `src/` ou `tests/` foi alterado. Todos os scripts de investigação foram executados fora do repositório versionado (`/tmp/.../scratchpad/`).
-- Achado registrado em `LOOPS.md` (após aprovação deste relatório), incluindo a sobreposição com `Papel/Nome` identificada, para que uma tentativa futura de implementação não precise refazer esta investigação.
+- Código: `src/pipeline_juridico/cleaner.py` (`recompose_native_paragraphs`). Possível ajuste pontual em `converter.py`/`_sorted_native_text_blocks` apenas se necessário para disponibilizar o tamanho de fonte por bloco (a definir na implementação; sem alterar extrator, roteamento ou OCR).
+- Testes: novos casos cobrindo a geometria real da página 1 do Inf0024E, a separação dos elementos hoje colapsados, os negativos obrigatórios (AINTARESP p.11 e REsp p.2 inalterados, página sem bloco ≥20pt não aciona a regra, controle próximo ao limiar, preservação de `[[Pág. N]]`).
+- Corpus de regressão: reconversão `--no-ocr` dos 4 PDFs, diff completo explicado, idempotência confirmada.
