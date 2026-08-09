@@ -1,17 +1,17 @@
 ## 1. Testes (TDD, antes de qualquer implementação)
 
-- [ ] 1.1 Adicionar teste positivo: `apreensão de &#8201;37 gramas` → `apreensão de 37 gramas` (sem espaço duplicado).
-- [ ] 1.2 Adicionar teste positivo: `Lei n.&#8201;11.343/2006` → `Lei n. 11.343/2006`.
-- [ ] 1.3 Adicionar teste positivo: `na&#8201;realidade` → `na realidade`.
-- [ ] 1.4 Adicionar teste positivo: entidade imediatamente antes de um espaço já existente (ex. `regulamentar.&#8201; A diferença`) → um único espaço, não dois (`regulamentar. A diferença`).
-- [ ] 1.5 Adicionar teste positivo para cada variante equivalente documentada no diagnóstico: `&#x2009;`, `&#X2009;`, `&thinsp;`, `&THINSP;` → mesmo comportamento de substituição por espaço único.
-- [ ] 1.6 Adicionar teste negativo: outras entidades HTML (`&amp;`, `&lt;`, `&gt;`, `&nbsp;`) permanecem inalteradas.
-- [ ] 1.7 Adicionar teste negativo: a substituição não introduz espaço dentro de uma palavra além do exigido pela própria correção (verificar que nenhum caractere alfanumérico adjacente à entidade é removido ou alterado).
-- [ ] 1.8 Adicionar teste negativo: nenhuma pontuação adjacente à entidade é alterada (ex. o `.` em `n.&#8201;11.343` permanece).
-- [ ] 1.9 Adicionar teste negativo: `[[Pág. N]]` e o comentário `<!-- método: ... -->` permanecem intactos quando presentes no mesmo documento.
-- [ ] 1.10 Adicionar teste negativo: os 4 casos R01, os 8 SUBTÍTULO, o índice do Código Civil, os rodapés técnicos já removidos por mudanças anteriores e o defeito `Papel/Nome` (inalterado, fora de escopo) permanecem intactos — cobertura via reexecução dos testes de regressão já existentes, sem necessidade de novos casos específicos.
-- [ ] 1.11 Adicionar teste de idempotência: aplicar a função de normalização duas vezes seguidas no mesmo texto produz o mesmo resultado da primeira aplicação.
-- [ ] 1.12 Rodar a suíte e confirmar que os novos testes falham (red) antes da implementação.
+- [x] 1.1 Adicionar teste positivo: `apreensão de &#8201;37 gramas` → `apreensão de 37 gramas` (sem espaço duplicado).
+- [x] 1.2 Adicionar teste positivo: `Lei n.&#8201;11.343/2006` → `Lei n. 11.343/2006`.
+- [x] 1.3 Adicionar teste positivo: `na&#8201;realidade` → `na realidade`.
+- [x] 1.4 Adicionar teste positivo: entidade imediatamente antes de um espaço já existente (ex. `regulamentar.&#8201; A diferença`) → um único espaço, não dois (`regulamentar. A diferença`).
+- [x] 1.5 Adicionar teste positivo para cada variante equivalente documentada no diagnóstico: `&#x2009;`, `&#X2009;`, `&thinsp;`, `&THINSP;` → mesmo comportamento de substituição por espaço único.
+- [x] 1.6 Adicionar teste negativo: outras entidades HTML (`&amp;`, `&lt;`, `&gt;`, `&nbsp;`) permanecem inalteradas.
+- [x] 1.7 Adicionar teste negativo: a substituição não introduz espaço dentro de uma palavra além do exigido pela própria correção (verificar que nenhum caractere alfanumérico adjacente à entidade é removido ou alterado).
+- [x] 1.8 Adicionar teste negativo: nenhuma pontuação adjacente à entidade é alterada (ex. o `.` em `n.&#8201;11.343` permanece).
+- [x] 1.9 Adicionar teste negativo: `[[Pág. N]]` e o comentário `<!-- método: ... -->` permanecem intactos quando presentes no mesmo documento.
+- [x] 1.10 Adicionar teste negativo: os 4 casos R01, os 8 SUBTÍTULO, o índice do Código Civil, os rodapés técnicos já removidos por mudanças anteriores e o defeito `Papel/Nome` (inalterado, fora de escopo) permanecem intactos — cobertura via reexecução dos testes de regressão já existentes, sem necessidade de novos casos específicos. Confirmação plena adiada para a Seção 3 (só é possível reexecutar a suíte completa após a implementação, já que `tests/test_cleaner.py` inteiro falha ao coletar em ImportError na fase RED).
+- [x] 1.11 Adicionar teste de idempotência: aplicar a função de normalização duas vezes seguidas no mesmo texto produz o mesmo resultado da primeira aplicação.
+- [x] 1.12 Rodar a suíte e confirmar que os novos testes falham (red) antes da implementação. Resultado: `ImportError: cannot import name 'normalize_thin_space_entities'` (verificado de forma independente pelo orquestrador, commit `82d9bdb`).
 
 ## 2. Implementação
 
