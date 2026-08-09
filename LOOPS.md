@@ -2,7 +2,48 @@
 
 Mudança ativa:
 
-Nenhuma. `openspec/changes/` não contém mudanças pendentes no momento.
+`fix-saiba-mais-item-boundaries` — implementação e validação concluídas (todas as subtarefas de
+`tasks.md` marcadas, exceto o registro do arquivamento, que exige aprovação humana). Corrige a
+fusão indevida de itens independentes da seção editorial `SAIBA MAIS` em `output/Inf0024E.md` —
+3 ocorrências reais: página 4 (precedente `CC 159976/SP, ... DJe 16/04/2019` fundido ao
+`Informativo de Jurisprudência n. 474` seguinte), página 14 (dois itens `Jurisprudência em Teses`
+e um `Informativo de Jurisprudência n. 751` fundidos em uma única linha) e página 18 (`Jurisprudência
+em Teses` fundido ao `Informativo de Jurisprudência n. 388` seguinte).
+
+Causa raiz: `recompose_native_paragraphs` (`src/pipeline_juridico/cleaner.py`) estima a altura de
+cada linha física de um bloco PyMuPDF dividindo a altura total do bloco pelo número de linhas
+físicas (`line_height = (y1 - y0) / len(physical_lines)`). Para itens de `SAIBA MAIS` que quebram
+em 2 linhas físicas dentro de um único bloco, essa interpolação superestima a altura real da linha
+(12,5pt interpolado vs. 10pt real, confirmado via `page.get_text("dict")`), inflando o limiar de
+junção seguinte (`gap <= previous_height * 1.2`) de ~12pt para exatamente 15pt — que coincide,
+ponto a ponto, com o espaçamento real de 15pt usado entre itens distintos da lista.
+
+Dois candidatos mais amplos foram investigados e descartados por evidência de blast radius: (1)
+substituir a interpolação por geometria real de linha em todo o pipeline altera 44 decisões de
+junção nos 4 PDFs do corpus, incluindo o índice do Código Civil (páginas 178–186) já endurecido por
+mudança arquivada anterior, e quebra uma junção legítima em `AINTARESP_1462304-PA.pdf` página 3
+nunca coberta por teste explícito; (2) apertar o limiar de empate (`<=` para `<`) tem o mesmo
+efeito colateral. Critério adotado: um guard local em `recompose_native_paragraphs`, ancorado no
+rótulo fixo e genérico `SAIBA MAIS` (já reconhecido por `native_label_pattern`, a mesma classe
+estrutural de `PROCESSO`/`TEMA`/`DESTAQUE`) — nunca unir dois blocos geométricos DIFERENTES entre
+si dentro do intervalo delimitado por esse rótulo até o próximo rótulo maiúsculo, sem depender de
+vocabulário de item (`Informativo`, `Jurisprudência em Teses`, `/`, `DJe`, números). A união de
+linhas físicas DENTRO do mesmo bloco (mesmo item) continua normal. `SAIBA MAIS` não ocorre em
+nenhum outro PDF do corpus (0 ocorrências em AINTARESP, REsp e Código Civil).
+
+Validação: suíte `332/332` (326 + 7 testes novos − 1 já contado antes), `openspec validate --all
+--strict` limpo, os 4 PDFs reconvertidos com `--no-ocr` (241 páginas roteadas como `texto_nativo`,
+zero OCR), idempotência confirmada (segunda reconversão byte-idêntica à primeira nos 4 arquivos).
+`output/Inf0024E.md`: os 3 casos reais separados em parágrafos distintos; contagem de tokens 9084 →
+9084 (diferença zero — só quebras de parágrafo inseridas, nenhuma palavra perdida ou adicionada).
+`AINTARESP_1462304-PA.md`, `REsp_1704551-SP.md` e `L10.406_CC_2002.md` byte-idênticos ao baseline
+pré-mudança — R01 4/4, 8 SUBTÍTULO, índice do CC, rodapés técnicos já removidos, normalização de
+thin-space e `Papel/Nome` preservados por decorrência direta. Marcadores `[[Pág. N]]` únicos e
+sequenciais nos 4 arquivos. Extrator, roteamento, OCR e a interpolação geométrica compartilhada
+não foram tocados. Achado documentado, fora de escopo desta mudança: a correção geral da
+interpolação de altura de linha em `recompose_native_paragraphs` permanece um defeito de precisão
+geométrica compartilhado, não corrigido; as 44 decisões de junção identificadas na investigação
+precisariam ser validadas caso a caso antes de qualquer generalização futura.
 
 **Achado pendente — NÃO RESOLVIDO** (originado ao validar o corpus de `fix-colon-label-pagewide-recomposition-bypass` em 2026-08-07; diagnóstico aprofundado em duas rodadas e documentado em `openspec/changes/archive/2026-08-07-fix-role-name-list-cross-block-fusion/` — `proposal.md`/`design.md`/`tasks.md`, commit `6fba378`). Esse arquivamento é um **fechamento administrativo**, não uma correção: nenhum critério seguro foi encontrado, nenhum código de produção foi alterado, e as tarefas de TDD/implementação permanecem marcadas `BLOQUEADO`. Uma **nova mudança OpenSpec própria** precisará ser criada para qualquer tentativa futura (esta pasta arquivada é só o registro do diagnóstico, não deve ser reaberta como "mudança ativa"):
 
