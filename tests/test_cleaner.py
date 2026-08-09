@@ -10,10 +10,104 @@ from pipeline_juridico.cleaner import (
     ensure_illegible_marker_authorized,
     join_symbol_across_page_break,
     mark_final_index,
+    normalize_thin_space_entities,
     normalize_legal_symbols,
     recompose_native_paragraphs,
     remove_repetitive_margins,
 )
+
+
+def test_normalize_thin_space_entities_separates_word_before_number() -> None:
+    markdown = "apreensão de &#8201;37 gramas"
+
+    assert normalize_thin_space_entities(markdown) == "apreensão de 37 gramas"
+
+
+def test_normalize_thin_space_entities_separates_abbreviation_and_number() -> None:
+    markdown = "Lei n.&#8201;11.343/2006"
+
+    assert normalize_thin_space_entities(markdown) == "Lei n. 11.343/2006"
+
+
+def test_normalize_thin_space_entities_separates_glued_words() -> None:
+    markdown = "na&#8201;realidade"
+
+    assert normalize_thin_space_entities(markdown) == "na realidade"
+
+
+def test_normalize_thin_space_entities_does_not_duplicate_adjacent_space() -> None:
+    markdown = "regulamentar.&#8201; A diferença"
+
+    result = normalize_thin_space_entities(markdown)
+
+    assert result == "regulamentar. A diferença"
+    assert "  " not in result
+
+
+def test_normalize_thin_space_entities_handles_hex_variant() -> None:
+    markdown = "apreensão de &#x2009;37 gramas"
+
+    assert normalize_thin_space_entities(markdown) == "apreensão de 37 gramas"
+
+
+def test_normalize_thin_space_entities_handles_uppercase_hex_variant() -> None:
+    markdown = "apreensão de &#X2009;37 gramas"
+
+    assert normalize_thin_space_entities(markdown) == "apreensão de 37 gramas"
+
+
+def test_normalize_thin_space_entities_handles_named_variant() -> None:
+    markdown = "apreensão de &thinsp;37 gramas"
+
+    assert normalize_thin_space_entities(markdown) == "apreensão de 37 gramas"
+
+
+def test_normalize_thin_space_entities_handles_uppercase_named_variant() -> None:
+    markdown = "apreensão de &THINSP;37 gramas"
+
+    assert normalize_thin_space_entities(markdown) == "apreensão de 37 gramas"
+
+
+def test_normalize_thin_space_entities_preserves_other_html_entities() -> None:
+    markdown = "Tom &amp; Ana: &lt;texto&gt; &nbsp; intacto"
+
+    assert normalize_thin_space_entities(markdown) == markdown
+
+
+def test_normalize_thin_space_entities_preserves_punctuation_and_page_marker() -> None:
+    markdown = (
+        "[[Pág. 9]]\n"
+        "<!-- método: texto_nativo -->\n\n"
+        "Lei n.&#8201;11.343/2006\n"
+        "&#8201;\n"
+        "Fim."
+    )
+
+    result = normalize_thin_space_entities(markdown)
+
+    assert result == (
+        "[[Pág. 9]]\n"
+        "<!-- método: texto_nativo -->\n\n"
+        "Lei n. 11.343/2006\n"
+        " \n"
+        "Fim."
+    )
+    assert "[[Pág. 9]]" in result
+    assert "<!-- método: texto_nativo -->" in result
+
+
+def test_normalize_thin_space_entities_is_idempotent() -> None:
+    markdown = "apreensão de &#8201;37 gramas"
+
+    normalized = normalize_thin_space_entities(markdown)
+
+    assert normalize_thin_space_entities(normalized) == normalized
+
+
+def test_normalize_thin_space_entities_no_op_without_entity() -> None:
+    markdown = "[[Pág. 9]]\nTexto jurídico sem entidade.\t\n"
+
+    assert normalize_thin_space_entities(markdown) == markdown
 
 
 def test_join_symbol_across_page_break_preserves_page_marker() -> None:
