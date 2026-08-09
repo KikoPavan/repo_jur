@@ -31,19 +31,19 @@
 
 ## 3. Validação do corpus
 
-- [ ] 3.1 Rodar `uv run pytest tests/` (suíte completa) e registrar o resultado.
-- [ ] 3.2 Rodar `openspec validate --all --strict` e registrar o resultado.
-- [ ] 3.3 Reconverter os 4 PDFs do corpus com `converter-juridico --no-ocr` e confirmar que nenhuma página exigiu OCR.
-- [ ] 3.4 Confirmar que `output/Inf0024E.md` p.1 tem os elementos editoriais separados, com antes/depois.
-- [ ] 3.5 Confirmar que `AINTARESP_1462304-PA.md`, `REsp_1704551-SP.md` e `L10.406_CC_2002.md` ficam byte-idênticos à reconversão anterior a esta mudança.
-- [ ] 3.6 Confirmar que nenhuma palavra foi perdida ou adicionada em `Inf0024E.md` (contagem de tokens antes/depois).
-- [ ] 3.7 Confirmar `Papel/Nome` inalterado (decorrência direta de 3.5), R01 (4/4), 8 SUBTÍTULO, índice do CC, rodapés técnicos, `SAIBA MAIS` e thin-space preservados.
-- [ ] 3.8 Confirmar marcadores `[[Pág. N]]` únicos e sequenciais nos 4 arquivos.
-- [ ] 3.9 Reconverter novamente e confirmar idempotência (segunda reconversão byte-idêntica à primeira) nos 4 arquivos.
-- [ ] 3.10 Produzir e explicar o diff completo do corpus.
+- [x] 3.1 Rodar `uv run pytest tests/` (suíte completa) e registrar o resultado. Resultado: 339/339 passed.
+- [x] 3.2 Rodar `openspec validate --all --strict` e registrar o resultado. Resultado: 2 passed, 0 failed (`change/fix-editorial-cover-structural-boundaries`, `spec/juridical-pdf-conversion`).
+- [x] 3.3 Reconverter os 4 PDFs do corpus com `converter-juridico --no-ocr` e confirmar que nenhuma página exigiu OCR. Resultado: 241 páginas roteadas como `texto_nativo`; `ocr.enabled: false` e `status: sucesso` nos 4 relatórios.
+- [x] 3.4 Confirmar que `output/Inf0024E.md` p.1 tem os elementos editoriais separados, com antes/depois. Resultado: "Informativo de Jurisprudência Informativo de Jurisprudência n. 24 - Edição Extraordinária 28 de janeiro de 2025 Direito Penal Este periódico destaca teses jurisprudenciais e não consiste em repositório oficial de jurisprudência. CORTE ESPECIAL" (1 linha) → 4 parágrafos distintos: título / edição+ramo / aviso editorial / CORTE ESPECIAL.
+- [x] 3.5 Confirmar que `AINTARESP_1462304-PA.md`, `REsp_1704551-SP.md` e `L10.406_CC_2002.md` ficam byte-idênticos à reconversão anterior a esta mudança. Resultado: os 3 arquivos com MD5 idêntico ao baseline pré-mudança.
+- [x] 3.6 Confirmar que nenhuma palavra foi perdida ou adicionada em `Inf0024E.md` (contagem de tokens antes/depois). Resultado: 9084 → 9084 tokens (`\w+`), diferença zero.
+- [x] 3.7 Confirmar `Papel/Nome` inalterado (decorrência direta de 3.5), R01 (4/4), 8 SUBTÍTULO, índice do CC, rodapés técnicos, `SAIBA MAIS` e thin-space preservados. Resultado: `AINTARESP_1462304-PA.md` p.11 continua com "Sessão Virtual...Presidente da Sessão...GURGEL DE FARIA" fundido exatamente como antes (Papel/Nome inalterado); `L10.406_CC_2002.md` byte-idêntico (R01/SUBTÍTULO/índice triviais); `GABGF09`/`Documento: 1807307` continuam em 0 ocorrências; thin-space continua em 0; SAIBA MAIS (páginas 4/14/18) continuam corretamente separados.
+- [x] 3.8 Confirmar marcadores `[[Pág. N]]` únicos e sequenciais nos 4 arquivos. Resultado: AINT=12, REsp=14, Inf0024E=29, CC=186, todos únicos e sequenciais.
+- [x] 3.9 Reconverter novamente e confirmar idempotência (segunda reconversão byte-idêntica à primeira) nos 4 arquivos. Resultado: os 4 arquivos byte-idênticos entre a 1ª e a 2ª reconversão.
+- [x] 3.10 Produzir e explicar o diff completo do corpus. Resultado: único arquivo alterado é `output/Inf0024E.md` (1 bloco, página 1, separando os 4 elementos editoriais antes fundidos); os outros 3 arquivos byte-idênticos ao baseline pré-mudança.
 
 ## 4. Encerramento do ciclo
 
-- [ ] 4.1 Claude revisa o diff, reexecuta os testes e valida o OpenSpec de forma independente antes de aprovar cada subtarefa.
-- [ ] 4.2 Commit local (sem push) após aprovação explícita de cada subtarefa aprovada pelo Codex.
+- [x] 4.1 Claude revisa o diff, reexecuta os testes e valida o OpenSpec de forma independente antes de aprovar cada subtarefa. Feito em cada subtarefa.
+- [x] 4.2 Commit local (sem push) após aprovação explícita de cada subtarefa aprovada pelo Codex. Feito (commits `41e206d`, `b1809ab`, `7c06cd7`).
 - [ ] 4.3 Atualizar `LOOPS.md` com o resultado desta mudança (sem arquivar sem aprovação humana).
