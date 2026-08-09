@@ -1776,6 +1776,29 @@ def test_recompose_native_paragraphs_preserves_content_with_empty_blocks() -> No
     assert result == content
 
 
+def test_recompose_native_paragraphs_does_not_split_legal_sentence_with_saiba_mais_vocabulary(
+) -> None:
+    content = (
+        "A controvérsia deve ser resolvida conforme o Informativo de\n"
+        "Jurisprudência n. 500/STJ, julgado em 10/04/2019, DJe 16/04/2019."
+    )
+    blocks = [
+        (10.0, 20.0, "A controvérsia deve ser resolvida conforme o Informativo de"),
+        (
+            27.0,
+            37.0,
+            "Jurisprudência n. 500/STJ, julgado em 10/04/2019, DJe 16/04/2019.",
+        ),
+    ]
+
+    result = recompose_native_paragraphs(content, blocks)
+
+    assert result == (
+        "A controvérsia deve ser resolvida conforme o Informativo de "
+        "Jurisprudência n. 500/STJ, julgado em 10/04/2019, DJe 16/04/2019."
+    )
+
+
 def test_recompose_native_paragraphs_separates_saiba_mais_items_after_two_line_block(
 ) -> None:
     content = (
