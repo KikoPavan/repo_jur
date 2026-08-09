@@ -244,6 +244,8 @@ O sistema SHALL NOT unir duas linhas físicas quando qualquer uma das duas perte
 
 O sistema SHALL NOT unir dois blocos geométricos de origem diferentes entre si quando ambos estiverem dentro do intervalo delimitado por um bloco cuja única linha física seja exatamente o rótulo "SAIBA MAIS" (início do intervalo) e o próximo bloco cuja primeira linha física corresponda a um rótulo de campo inteiramente em maiúsculas (fim do intervalo) — preservando cada item editorial de referência (por exemplo um "Informativo de Jurisprudência", um item de "Jurisprudência em Teses" ou um precedente citado) como parágrafo próprio, independentemente de quantas linhas físicas o item ocupe dentro do seu próprio bloco de origem. Essa proteção SHALL NOT se basear no texto específico de cada item (títulos, números de edição, palavras como "Informativo" ou "Jurisprudência", barras `/` ou datas), apenas na origem do bloco geométrico e no rótulo fixo "SAIBA MAIS", e SHALL NOT impedir a recomposição normal das linhas físicas internas de um único item (por exemplo um precedente cuja citação de Relator e data ocupam duas linhas físicas do mesmo bloco).
 
+Ao estimar a posição vertical de cada linha física dentro de um bloco geométrico de origem, em páginas onde pelo menos um bloco de texto tiver tamanho tipográfico maior ou igual a 20pt, o sistema SHALL calcular essa posição dividindo a altura total do bloco pelo número TOTAL de linhas físicas do bloco (incluindo linhas em branco), preservando o índice original de cada linha não-vazia ao posicioná-la — em vez de dividir apenas pelo número de linhas não-vazias. Fora dessas páginas, o sistema SHALL manter o cálculo já existente (divisão apenas pelas linhas não-vazias). Essa correção SHALL NOT depender do nome do arquivo, do número da página, ou de qualquer palavra ou rótulo específico presente no conteúdo.
+
 #### Scenario: Parágrafo fragmentado é recomposto
 
 - **WHEN** um artigo como "Art. 2º A personalidade civil da pessoa começa do nascimento com vida; mas a lei põe a salvo, desde a concepção, os" é seguido, no mesmo bloco de página, por "direitos do nascituro."
@@ -307,6 +309,16 @@ O sistema SHALL NOT unir dois blocos geométricos de origem diferentes entre si 
 
 - **WHEN** um bloco de duas linhas físicas fora de qualquer seção "SAIBA MAIS" é seguido por outro bloco geométrico dentro da distância vertical normalmente exigida para junção
 - **THEN** a decisão de unir ou não esses blocos segue exclusivamente a lógica geométrica e estrutural já existente, sem qualquer efeito do rótulo "SAIBA MAIS"
+
+#### Scenario: Elementos de uma capa editorial estilizada permanecem separados
+
+- **WHEN** uma página contém um bloco de texto com tamanho tipográfico ≥20pt (por exemplo um título estilizado de capa) e, em outro bloco geométrico da mesma página, linhas físicas em branco intercaladas com conteúdo real (por exemplo uma linha de edição/data precedida de várias linhas em branco de espaçamento)
+- **THEN** o conteúdo real desse bloco permanece separado do bloco anterior e do bloco seguinte, cada elemento estrutural (título, linha de edição/data, aviso editorial, cabeçalho de câmara julgadora) em parágrafo próprio, sem perda, adição ou reordenação de tokens
+
+#### Scenario: Página sem bloco de texto ≥20pt preserva o comportamento já existente
+
+- **WHEN** uma página não contém nenhum bloco de texto com tamanho tipográfico ≥20pt, mesmo que algum bloco geométrico contenha linhas físicas em branco intercaladas com conteúdo real
+- **THEN** a posição de cada linha física continua sendo calculada dividindo a altura do bloco apenas pelas linhas não-vazias (comportamento pré-existente, sem alteração)
 
 ### Requirement: Remoção de cabeçalhos e rodapés repetitivos
 
