@@ -1,7 +1,37 @@
+import fitz
 import pytest
 
-from pipeline_juridico.converter import PageBlock, compose_document, format_page_marker
+from pipeline_juridico.converter import (
+    PageBlock,
+    _page_has_large_text,
+    compose_document,
+    format_page_marker,
+)
 from pipeline_juridico.models import Metodo
+
+
+def test_page_has_large_text_threshold_boundary() -> None:
+    below_threshold_document = fitz.open()
+    at_threshold_document = fitz.open()
+    try:
+        page_below_threshold = below_threshold_document.new_page()
+        page_below_threshold.insert_text(
+            (72, 72),
+            "Texto abaixo do limiar",
+            fontsize=19.9,
+        )
+        page_at_threshold = at_threshold_document.new_page()
+        page_at_threshold.insert_text(
+            (72, 72),
+            "Texto no limiar",
+            fontsize=20.0,
+        )
+
+        assert _page_has_large_text(page_below_threshold) is False
+        assert _page_has_large_text(page_at_threshold) is True
+    finally:
+        below_threshold_document.close()
+        at_threshold_document.close()
 
 
 def test_format_page_marker_texto_nativo() -> None:

@@ -49,6 +49,7 @@ def ensure_illegible_marker_authorized(text: str, allow_partial: bool) -> None:
 def recompose_native_paragraphs(
     content: str,
     blocks: list[tuple[float, float, str]],
+    page_has_large_text: bool = False,
 ) -> str:
     """Recompose native text lines when their geometry indicates continuity."""
     if not blocks or any(
@@ -57,28 +58,61 @@ def recompose_native_paragraphs(
         return content
     lines: list[tuple[float, float, str, bool, bool]] = []
     for y0, y1, block_text in blocks:
-        physical_lines = [
-            re.sub(r"\s+", " ", line).strip()
-            for line in block_text.split("\n")
-            if line.strip()
-        ]
-        if not physical_lines:
-            continue
-        block_has_colon_line = any(
-            line.strip().startswith(":") for line in physical_lines
-        )
-        line_height = (y1 - y0) / len(physical_lines)
-        for index, line in enumerate(physical_lines):
-            line_y0 = y0 + index * line_height
-            lines.append(
-                (
-                    line_y0,
-                    line_y0 + line_height,
-                    line,
-                    index == 0,
-                    block_has_colon_line,
-                )
+        if page_has_large_text:
+            raw_lines = block_text.split("\n")
+            if raw_lines and raw_lines[-1] == "":
+                raw_lines.pop()
+            n_total = len(raw_lines)
+            if n_total == 0:
+                continue
+            stripped_all = [
+                re.sub(r"\s+", " ", line).strip() for line in raw_lines
+            ]
+            non_blank_indices = [
+                index for index, line in enumerate(stripped_all) if line
+            ]
+            if not non_blank_indices:
+                continue
+            block_has_colon_line = any(
+                stripped_all[index].startswith(":")
+                for index in non_blank_indices
             )
+            first_non_blank_index = non_blank_indices[0]
+            line_height = (y1 - y0) / n_total
+            for index in non_blank_indices:
+                line_y0 = y0 + index * line_height
+                lines.append(
+                    (
+                        line_y0,
+                        line_y0 + line_height,
+                        stripped_all[index],
+                        index == first_non_blank_index,
+                        block_has_colon_line,
+                    )
+                )
+        else:
+            physical_lines = [
+                re.sub(r"\s+", " ", line).strip()
+                for line in block_text.split("\n")
+                if line.strip()
+            ]
+            if not physical_lines:
+                continue
+            block_has_colon_line = any(
+                line.strip().startswith(":") for line in physical_lines
+            )
+            line_height = (y1 - y0) / len(physical_lines)
+            for index, line in enumerate(physical_lines):
+                line_y0 = y0 + index * line_height
+                lines.append(
+                    (
+                        line_y0,
+                        line_y0 + line_height,
+                        line,
+                        index == 0,
+                        block_has_colon_line,
+                    )
+                )
 
     if not lines:
         return content

@@ -90,6 +90,23 @@ def _sorted_native_text_blocks(
     ]
 
 
+def _page_has_large_text(
+    page: fitz.Page,
+    threshold: float = 20.0,
+) -> bool:
+    for block in page.get_text("dict")["blocks"]:
+        if block.get("type") != 0:
+            continue
+        for line in block.get("lines", []):
+            for span in line.get("spans", []):
+                if (
+                    span.get("text", "").strip()
+                    and span.get("size", 0.0) >= threshold
+                ):
+                    return True
+    return False
+
+
 def _reading_order_tokens(text: str) -> list[str]:
     return re.findall(r"\w+", text.casefold(), flags=re.UNICODE)
 
@@ -224,6 +241,11 @@ def convert_document(
                     if method is Metodo.texto_nativo
                     else []
                 )
+                page_has_large_text = (
+                    _page_has_large_text(page)
+                    if method is Metodo.texto_nativo
+                    else False
+                )
             finally:
                 doc.close()
 
@@ -246,6 +268,7 @@ def convert_document(
                 content = recompose_native_paragraphs(
                     content,
                     native_blocks,
+                    page_has_large_text=page_has_large_text,
                 )
             elif not use_ocr:
                 method = Metodo.erro
