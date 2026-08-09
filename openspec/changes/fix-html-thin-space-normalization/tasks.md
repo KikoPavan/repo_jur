@@ -21,19 +21,19 @@
 
 ## 3. Validação do corpus
 
-- [ ] 3.1 Rodar `uv run pytest tests/` (suíte completa) e registrar o resultado.
-- [ ] 3.2 Rodar `openspec validate --all --strict` e registrar o resultado.
-- [ ] 3.3 Reconverter os 4 PDFs do corpus (`AINTARESP_1462304-PA.pdf`, `REsp_1704551-SP.pdf`, `Inf0024E.pdf`, `L10.406_CC_2002.pdf`) com `converter-juridico --no-ocr` e confirmar que nenhuma página exigiu OCR.
-- [ ] 3.4 Confirmar zero ocorrências literais de `&#8201;` (e das variantes equivalentes) em `output/Inf0024E.md`, com antes/depois dos 3 casos reais citados no diagnóstico.
-- [ ] 3.5 Confirmar que nenhuma palavra foi perdida ou adicionada (contagem de tokens antes/depois, restrita às linhas alteradas de `Inf0024E.md`).
-- [ ] 3.6 Confirmar que `AINTARESP_1462304-PA.md`, `REsp_1704551-SP.md` e `L10.406_CC_2002.md` ficam byte-idênticos à reconversão anterior a esta mudança (nenhuma ocorrência do padrão nesses arquivos).
-- [ ] 3.7 Confirmar R01 (4/4), 8 SUBTÍTULO e índice do Código Civil intactos; rodapés técnicos continuam removidos.
-- [ ] 3.8 Confirmar marcadores `[[Pág. N]]` únicos e sequenciais nos 4 arquivos.
-- [ ] 3.9 Reconverter novamente e confirmar idempotência (segunda reconversão byte-idêntica à primeira) nos 4 arquivos.
-- [ ] 3.10 Produzir e explicar o diff completo do corpus (todos os arquivos alterados e por quê).
+- [x] 3.1 Rodar `uv run pytest tests/` (suíte completa) e registrar o resultado. Resultado: 323/323 passed.
+- [x] 3.2 Rodar `openspec validate --all --strict` e registrar o resultado. Resultado: 2 passed, 0 failed (`change/fix-html-thin-space-normalization`, `spec/juridical-pdf-conversion`).
+- [x] 3.3 Reconverter os 4 PDFs do corpus (`AINTARESP_1462304-PA.pdf`, `REsp_1704551-SP.pdf`, `Inf0024E.pdf`, `L10.406_CC_2002.pdf`) com `converter-juridico --no-ocr` e confirmar que nenhuma página exigiu OCR. Resultado: as 241 páginas dos 4 arquivos (12+29+186+14) roteadas como `texto_nativo`; `ocr.enabled: false` nos 4 relatórios; `status: sucesso` nos 4.
+- [x] 3.4 Confirmar zero ocorrências literais de `&#8201;` (e das variantes equivalentes) em `output/Inf0024E.md`, com antes/depois dos 3 casos reais citados no diagnóstico. Resultado: 0 ocorrências (antes: 21). Antes/depois: `apreensão de &#8201;37 gramas` → `apreensão de 37 gramas`; `Lei n.&#8201;11.343/2006` → `Lei n. 11.343/2006`; `na&#8201;realidade` → `na realidade`.
+- [x] 3.5 Confirmar que nenhuma palavra foi perdida ou adicionada (contagem de tokens antes/depois, restrita às linhas alteradas de `Inf0024E.md`). Resultado: 9105 → 9084 tokens (`\w+`), diferença de exatamente 21, idêntica ao número de entidades removidas (cada entidade contribuía um token artificial `8201`); nenhum outro token perdido ou adicionado.
+- [x] 3.6 Confirmar que `AINTARESP_1462304-PA.md`, `REsp_1704551-SP.md` e `L10.406_CC_2002.md` ficam byte-idênticos à reconversão anterior a esta mudança (nenhuma ocorrência do padrão nesses arquivos). Resultado: os 3 arquivos com MD5 idêntico ao baseline pré-mudança.
+- [x] 3.7 Confirmar R01 (4/4), 8 SUBTÍTULO e índice do Código Civil intactos; rodapés técnicos continuam removidos. Resultado: trivialmente preservados (`L10.406_CC_2002.md` byte-idêntico); `GABGF09` e `Documento: 1807307` com 0 ocorrências em AINT/REsp.
+- [x] 3.8 Confirmar marcadores `[[Pág. N]]` únicos e sequenciais nos 4 arquivos. Resultado: AINT=12, REsp=14, Inf0024E=29, CC=186, todos únicos e sequenciais.
+- [x] 3.9 Reconverter novamente e confirmar idempotência (segunda reconversão byte-idêntica à primeira) nos 4 arquivos. Resultado: os 4 arquivos byte-idênticos entre a 1ª e a 2ª reconversão (mesmo MD5).
+- [x] 3.10 Produzir e explicar o diff completo do corpus (todos os arquivos alterados e por quê). Resultado: único arquivo alterado é `output/Inf0024E.md` (5 linhas, todas removendo o literal `&#8201;`/variantes por um espaço); os outros 3 arquivos byte-idênticos ao baseline pré-mudança.
 
 ## 4. Encerramento do ciclo
 
-- [ ] 4.1 Claude revisa o diff, reexecuta os testes e valida o OpenSpec de forma independente antes de aprovar cada subtarefa.
-- [ ] 4.2 Commit local (sem push) após aprovação explícita de cada subtarefa aprovada pelo Codex.
+- [x] 4.1 Claude revisa o diff, reexecuta os testes e valida o OpenSpec de forma independente antes de aprovar cada subtarefa. Feito em cada subtarefa.
+- [x] 4.2 Commit local (sem push) após aprovação explícita de cada subtarefa aprovada pelo Codex. Feito (commits `82d9bdb`, `f1bfc0e`, `771078a`, `e86bbac`).
 - [ ] 4.3 Atualizar `LOOPS.md` com o resultado desta mudança (sem arquivar sem aprovação humana).
