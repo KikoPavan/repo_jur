@@ -384,6 +384,16 @@ def _remove_repetitive_margins_once(markdown: str) -> str:
     return result
 
 
+def normalize_thin_space_entities(markdown: str) -> str:
+    """Replace HTML thin-space entities with one ASCII space."""
+    return re.sub(
+        r"[ \t]*&(?:#8201|#x2009|thinsp);[ \t]*",
+        " ",
+        markdown,
+        flags=re.IGNORECASE,
+    )
+
+
 def normalize_legal_symbols(content: str) -> str:
     """Normalize OCR-split legal ordinal and number symbols."""
     content = re.sub(r"\b(Art\.\s*\d+)\s+o\b", r"\1º", content)

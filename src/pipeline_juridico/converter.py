@@ -16,6 +16,7 @@ from .cleaner import (
     join_symbol_across_page_break,
     mark_final_index,
     normalize_legal_symbols,
+    normalize_thin_space_entities,
     recompose_native_paragraphs,
     remove_repetitive_margins,
 )
@@ -307,6 +308,7 @@ def convert_document(
             )
 
     raw_markdown = compose_document(blocks)
+    raw_markdown = normalize_thin_space_entities(raw_markdown)
     raw_markdown = remove_repetitive_margins(raw_markdown)
     raw_markdown = join_symbol_across_page_break(raw_markdown)
     raw_markdown = normalize_legal_symbols(raw_markdown)
