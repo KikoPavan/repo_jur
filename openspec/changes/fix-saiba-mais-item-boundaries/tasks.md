@@ -15,9 +15,9 @@
 
 ## 2. Implementação
 
-- [ ] 2.1 Em `recompose_native_paragraphs` (`src/pipeline_juridico/cleaner.py`), adicionar detecção do intervalo `SAIBA MAIS`: ativo a partir de um bloco cuja única linha física é exatamente `SAIBA MAIS` (já reconhecido por `native_label_pattern`), até o próximo bloco cuja primeira linha física também corresponda a `native_label_pattern`.
-- [ ] 2.2 Adicionar uma nova cláusula de exclusão a `should_join`: quando a linha atual está dentro do intervalo `SAIBA MAIS` E é a primeira linha física de um novo bloco (transição entre blocos, não continuação de linha física dentro do mesmo bloco), nunca unir.
-- [ ] 2.3 Rodar a suíte completa e confirmar que os testes novos e existentes passam (green).
+- [x] 2.1 Em `recompose_native_paragraphs` (`src/pipeline_juridico/cleaner.py`), adicionar detecção do intervalo `SAIBA MAIS`: ativo a partir de um bloco cuja única linha física é exatamente `SAIBA MAIS` (já reconhecido por `native_label_pattern`), até o próximo bloco cuja primeira linha física também corresponda a `native_label_pattern`. Implementado via lista paralela `in_saiba_mais_span` (commit `cdc55e6`).
+- [x] 2.2 Adicionar uma nova cláusula de exclusão a `should_join`: quando a linha atual está dentro do intervalo `SAIBA MAIS` E é a primeira linha física de um novo bloco (transição entre blocos, não continuação de linha física dentro do mesmo bloco), nunca unir. Implementado (commit `cdc55e6`).
+- [x] 2.3 Rodar a suíte completa e confirmar que os testes novos e existentes passam (green). Resultado: 332/332 passed (verificado de forma independente pelo orquestrador).
 
 ## 3. Validação do corpus
 
