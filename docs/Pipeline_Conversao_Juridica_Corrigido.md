@@ -356,3 +356,60 @@ Chat do agente:
 - Plugin MarkItDown OCR: https://github.com/microsoft/markitdown/blob/main/packages/markitdown-ocr/README.md
 - Versão MarkItDown no PyPI: https://pypi.org/project/markitdown/
 - Versão MarkItDown OCR no PyPI: https://pypi.org/project/markitdown-ocr/
+
+## 20. Fase 2 (planejada, não implementada): camada de revisão semântica
+
+Registrado em 2026-08-10 como decisão arquitetural, sem nenhuma implementação associada. Esta seção documenta um requisito futuro, não uma mudança em curso; qualquer implementação exigirá sua própria mudança OpenSpec, conforme o princípio 8 (§3).
+
+### 20.1 Motivação
+
+A Fase 1 (todo o restante deste documento) exclui explicitamente "resumo, reescrita ou correção semântica" (§2, "Fora do escopo"). Essa exclusão já previa que certas fronteiras estruturais do Markdown dependem de compreensão semântica do conteúdo jurídico, não apenas de geometria de página.
+
+O caso concreto que motiva esta seção é o achado **Papel/Nome**: em páginas de capa/sessão, sequências de campos como `RELATOR` → `MINISTRO ...`, `AGRAVANTE` → `NORTE ENERGIA S.A.`, `ADVOGADOS` → nomes, `ASSUNTO` → valor, `RECORRENTE` → parte são indevidamente fundidas em texto corrido pelo mecanismo geométrico de junção de `recompose_native_paragraphs`. O diagnóstico está registrado em `openspec/changes/archive/2026-08-07-fix-role-name-list-cross-block-fusion/` (`proposal.md`/`design.md`/`tasks.md`, commit `6fba378`) e resumido em `LOOPS.md`. Duas rodadas de critérios puramente geométricos (bloco de origem, recuo/dedent de x0) foram tentadas e descartadas: nenhuma generalizou com segurança sobre o corpus inteiro sem quebrar continuações jurídicas legítimas (títulos legislativos centralizados, layout em colunas, normalização de símbolo entre páginas, ou fragmentação de parágrafos inteiros de fundamentação jurídica). Ver detalhes completos no diagnóstico arquivado.
+
+### 20.2 Decisão
+
+O conversor determinístico **não tentará resolver o Papel/Nome nem fronteiras estruturais equivalentes que dependam de compreensão semântica**. Essa classe de defeito é reclassificada de "achado pendente aguardando critério geométrico" para **limitação técnica conhecida, delegada a uma camada futura**, posterior ao conversor.
+
+Responsabilidades permanentes do conversor determinístico (Fase 1, inalteradas por esta seção):
+
+- extração fiel PDF → Markdown;
+- limpeza determinística (conservadora, idempotente);
+- preservação de conteúdo (nenhum token jurídico adicionado ou removido);
+- correções estruturais **somente** quando existir um critério geral e seguro, validado contra o corpus inteiro — exatamente a disciplina já seguida em cada mudança registrada no histórico de `LOOPS.md`.
+
+Novas heurísticas geométricas para o Papel/Nome não devem ser adicionadas ao conversor sem evidência nova que supere as regressões já documentadas nas duas rodadas descartadas.
+
+### 20.3 Arquitetura planejada (Fase 2)
+
+```
+PDF
+→ conversor determinístico            (Fase 1 — este documento, implementado)
+→ Markdown original/fiel
+→ revisor semântico por IA            (Fase 2 — planejado, não implementado)
+→ Markdown estruturalmente revisado
+→ geração/extração de YAML Frontmatter (Fase 2 — planejado, não implementado)
+```
+
+O revisor semântico é uma etapa nova, posterior e externa ao conversor atual — não uma modificação de `recompose_native_paragraphs` ou de qualquer outra função de `src/pipeline_juridico/`. Consome o Markdown fiel já produzido pela Fase 1 e produz uma segunda versão estruturalmente revisada; o Markdown original nunca é substituído (regra 1, abaixo).
+
+### 20.4 Regras da futura camada semântica
+
+Requisitos a observar por qualquer mudança OpenSpec futura que implemente o revisor semântico:
+
+1. O Markdown original nunca deve ser sobrescrito.
+2. O revisor não pode resumir, parafrasear ou inventar conteúdo.
+3. Para correções Papel/Nome, somente fronteiras estruturais podem mudar.
+4. Nenhuma palavra jurídica pode ser adicionada ou removida.
+5. Preferir operações/patches estruturados em vez de reescrever todo o documento.
+6. Cada alteração deve registrar origem, antes/depois, motivo e confiança.
+7. Deve existir validação automática de preservação textual.
+8. Alterações ambíguas devem ser marcadas para revisão, não aplicadas silenciosamente.
+9. YAML Frontmatter deve consumir o documento revisado quando disponível, mas permanecer uma responsabilidade separada do revisor.
+
+### 20.5 Fora do escopo desta seção
+
+- Implementação de qualquer agente de IA.
+- Escolha de modelo, prompt ou provedor para o revisor semântico.
+- Reabertura ou nova tentativa de critério geométrico para `fix-role-name-list-cross-block-fusion`.
+- Alteração do conversor, testes, OCR, roteamento, dependências ou arquitetura executável da Fase 1.
