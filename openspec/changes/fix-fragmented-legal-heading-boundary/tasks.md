@@ -35,16 +35,16 @@
 
 ## 3. Validação do corpus
 
-- [ ] 3.1 Rodar `uv run pytest tests/` (suíte completa) e registrar o resultado.
-- [ ] 3.2 Rodar `openspec validate --all --strict` e registrar o resultado.
-- [ ] 3.3 Reconverter os 4 PDFs do corpus com `converter-juridico --no-ocr` e confirmar que nenhuma página exigiu OCR.
-- [ ] 3.4 Confirmar que somente as 2 ocorrências reais (`REsp_1704551-SP.pdf` p.1 e p.6) mudam, com antes/depois.
-- [ ] 3.5 Confirmar que `Inf0024E.md`, `AINTARESP_1462304-PA.md` e `L10.406_CC_2002.md` ficam byte-idênticos à reconversão anterior a esta mudança.
-- [ ] 3.6 Confirmar que nenhuma palavra foi perdida ou adicionada em `REsp_1704551-SP.md` (contagem de tokens antes/depois).
-- [ ] 3.7 Confirmar `Papel/Nome` inalterado, R01 (4/4), 8 SUBTÍTULO, índice do CC, rodapés técnicos, thin-space, `SAIBA MAIS` e capa editorial preservados (decorrência direta de 3.5 para os 3 arquivos inalterados; reverificação direta em `REsp_1704551-SP.md` para os itens que lhe dizem respeito).
-- [ ] 3.8 Confirmar marcadores `[[Pág. N]]` únicos e sequenciais nos 4 arquivos.
-- [ ] 3.9 Reconverter novamente e confirmar idempotência (segunda reconversão byte-idêntica à primeira, byte a byte) nos 4 arquivos.
-- [ ] 3.10 Produzir e explicar o diff completo do corpus.
+- [x] 3.1 Rodar `uv run pytest tests/` (suíte completa) e registrar o resultado. Resultado: 354/354 passed.
+- [x] 3.2 Rodar `openspec validate --all --strict` e registrar o resultado. Resultado: 2 passed, 0 failed (`change/fix-fragmented-legal-heading-boundary`, `spec/juridical-pdf-conversion`).
+- [x] 3.3 Reconverter os 4 PDFs do corpus com `converter-juridico --no-ocr` e confirmar que nenhuma página exigiu OCR. Resultado: 241 páginas roteadas como `texto_nativo`; `ocr.enabled: false` e `status: sucesso` nos 4 relatórios.
+- [x] 3.4 Confirmar que somente as 2 ocorrências reais (`REsp_1704551-SP.pdf` p.1 e p.6) mudam, com antes/depois. Resultado: "RECURSO" + "ESPECIAL. PROCESSUAL CIVIL. ... POSSIBILIDADE." (antes em 2 parágrafos) → 1 parágrafo único, nas duas ocorrências.
+- [x] 3.5 Confirmar que `Inf0024E.md`, `AINTARESP_1462304-PA.md` e `L10.406_CC_2002.md` ficam byte-idênticos à reconversão anterior a esta mudança. Resultado: os 3 arquivos com MD5 idêntico ao baseline pré-mudança.
+- [x] 3.6 Confirmar que nenhuma palavra foi perdida ou adicionada em `REsp_1704551-SP.md` (contagem de tokens antes/depois). Resultado: 3497 → 3497 tokens (`\w+`), diferença zero.
+- [x] 3.7 Confirmar `Papel/Nome` inalterado, R01 (4/4), 8 SUBTÍTULO, índice do CC, rodapés técnicos, thin-space, `SAIBA MAIS` e capa editorial preservados. Resultado: `AINTARESP_1462304-PA.md` p.11 continua com "Presidente da Sessão"/"GURGEL DE FARIA" fundido exatamente como antes; `RECORRENTE` continua em linha própria nas 6 ocorrências de `REsp_1704551-SP.md`; `L10.406_CC_2002.md` byte-idêntico (R01/SUBTÍTULO/índice triviais); `GABGF09`/`Documento: 1807307` continuam em 0; thin-space continua em 0; `CORTE ESPECIAL` continua separado (capa editorial preservada).
+- [x] 3.8 Confirmar marcadores `[[Pág. N]]` únicos e sequenciais nos 4 arquivos. Resultado: AINT=12, REsp=14, Inf0024E=29, CC=186, todos únicos e sequenciais.
+- [x] 3.9 Reconverter novamente e confirmar idempotência (segunda reconversão byte-idêntica à primeira, byte a byte) nos 4 arquivos. Resultado: os 4 arquivos byte-idênticos entre a 1ª e a 2ª reconversão.
+- [x] 3.10 Produzir e explicar o diff completo do corpus. Resultado: único arquivo alterado é `output/REsp_1704551-SP.md` (2 blocos, páginas 1 e 6, unindo "RECURSO" ao restante da ementa); os outros 3 arquivos byte-idênticos ao baseline pré-mudança.
 
 ## 4. Encerramento do ciclo
 
