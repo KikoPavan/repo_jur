@@ -10,21 +10,21 @@
 
 ## 1. Testes (TDD, antes de qualquer implementação)
 
-- [ ] 1.1 Adicionar teste positivo (página 1 real de `REsp_1704551-SP.pdf`, via `_isolate_first_page`): "RECURSO" e "ESPECIAL. PROCESSUAL CIVIL. ARBITRAGEM. NULIDADE DE COMPROMISSO ARBITRAL..." ficam unidos em um único parágrafo.
-- [ ] 1.2 Adicionar teste positivo equivalente para a página 6.
-- [ ] 1.3 Adicionar teste positivo unitário de `recompose_native_paragraphs`, replicando a geometria real medida (bloco com pseudo-linhas de y0/y1 idênticos, x0 majoritariamente igual ao da linha-rótulo): confirma a união e ausência de perda de token/pontuação.
-- [ ] 1.4 Adicionar teste negativo: `PROCESSO` (label x0=145.6, linhas seguintes x0=218.4, 0% de coincidência) permanece separado do valor.
-- [ ] 1.5 Adicionar teste negativo: `TEMA` (mesmo padrão de `PROCESSO`) permanece separado.
-- [ ] 1.6 Adicionar teste negativo: `RAMO DO DIREITO` permanece separado.
-- [ ] 1.7 Adicionar teste negativo: `AGRAVANTE` (bloco `:`-marcado) permanece separado.
-- [ ] 1.8 Adicionar teste negativo: `AGRAVADO` permanece separado.
-- [ ] 1.9 Adicionar teste negativo: `ASSUNTO` permanece separado.
-- [ ] 1.10 Adicionar teste negativo: `RECORRENTE` (23% de coincidência, abaixo do limiar de 50%) permanece separado — caso mais próximo da fronteira entre os rótulos genuínos do corpus real.
-- [ ] 1.11 Adicionar teste negativo: `VÍDEO DO JULGAMENTO` permanece separado.
-- [ ] 1.12 Adicionar teste negativo: os casos `Papel/Nome` (`AINTARESP_1462304-PA.pdf` p.11, `REsp_1704551-SP.pdf` p.3/p.14 `RECORRENTE`) permanecem exatamente como hoje.
-- [ ] 1.13 Adicionar teste de controle de fronteira: bloco sintético com exatamente 50% das linhas seguintes na mesma margem (não deve desativar a proteção — a regra exige MAIS de 50%, `> 0.5`, não `>=`) e outro com 51% (deve desativar).
-- [ ] 1.14 Adicionar teste negativo: bloco cuja linha-rótulo não tem nenhuma outra linha física (sem dado de x0 para comparar) mantém a proteção ativa, idêntico ao comportamento anterior.
-- [ ] 1.15 Rodar a suíte e confirmar que os novos testes falham (red) antes da implementação.
+- [x] 1.1 Adicionar teste positivo (página 1 real de `REsp_1704551-SP.pdf`, via `_isolate_first_page`): "RECURSO" e "ESPECIAL. PROCESSUAL CIVIL. ARBITRAGEM. NULIDADE DE COMPROMISSO ARBITRAL..." ficam unidos em um único parágrafo. Implementado em `test_convert_resp_page_1_unifies_recurso_especial_heading` (commit `bdccba7`).
+- [x] 1.2 Adicionar teste positivo equivalente para a página 6. Implementado em `test_convert_resp_page_6_unifies_recurso_especial_heading` (commit `bdccba7`).
+- [x] 1.3 Adicionar teste positivo unitário de `recompose_native_paragraphs`, replicando a geometria real medida (bloco com pseudo-linhas de y0/y1 idênticos, x0 majoritariamente igual ao da linha-rótulo): confirma a união e ausência de perda de token/pontuação. Implementado em `test_recompose_native_paragraphs_unifies_recurso_especial_with_x0_signal` (commit `bdccba7`).
+- [x] 1.4 Adicionar teste negativo: `PROCESSO` (label x0=145.6, linhas seguintes x0=218.4, 0% de coincidência) permanece separado do valor. Implementado em `test_recompose_native_paragraphs_keeps_processo_label_separated` (commit `bdccba7`).
+- [x] 1.5 Adicionar teste negativo: `TEMA` (mesmo padrão de `PROCESSO`) permanece separado. Implementado em `test_recompose_native_paragraphs_keeps_tema_label_separated` (commit `bdccba7`).
+- [x] 1.6 Adicionar teste negativo: `RAMO DO DIREITO` permanece separado. Implementado em `test_recompose_native_paragraphs_keeps_ramo_do_direito_label_separated` (commit `bdccba7`).
+- [x] 1.7 Adicionar teste negativo: `AGRAVANTE` (bloco `:`-marcado) permanece separado. Implementado em `test_convert_aintaresp_page_11_agravante_agravado_assunto_unaffected` (commit `bdccba7`).
+- [x] 1.8 Adicionar teste negativo: `AGRAVADO` permanece separado. Coberto pelo mesmo teste do item 1.7.
+- [x] 1.9 Adicionar teste negativo: `ASSUNTO` permanece separado. Coberto pelo mesmo teste do item 1.7.
+- [x] 1.10 Adicionar teste negativo: `RECORRENTE` (23% de coincidência, abaixo do limiar de 50%) permanece separado — caso mais próximo da fronteira entre os rótulos genuínos do corpus real. Implementado em `test_recompose_native_paragraphs_keeps_recorrente_label_separated` (geometria real) e `test_convert_resp_page_3_recorrente_unaffected`/`test_convert_resp_page_14_recorrente_unaffected` (integração, commit `bdccba7`).
+- [x] 1.11 Adicionar teste negativo: `VÍDEO DO JULGAMENTO` permanece separado. Implementado em `test_convert_inf0024e_video_do_julgamento_unaffected` — teste escrito mas com `page_index` incorreto (0 em vez de 3); correção incluída como parte da Subtarefa 2 (o próprio Codex diagnosticou o índice correto ao rodar o teste, mas duas tentativas de aplicar a correção isoladamente travaram na execução; a correção de 2 strings foi agrupada à subtarefa de implementação para evitar uma terceira tentativa isolada).
+- [x] 1.12 Adicionar teste negativo: os casos `Papel/Nome` (`AINTARESP_1462304-PA.pdf` p.11, `REsp_1704551-SP.pdf` p.3/p.14 `RECORRENTE`) permanecem exatamente como hoje. Coberto pelos testes dos itens 1.7 e 1.10.
+- [x] 1.13 Adicionar teste de controle de fronteira: bloco sintético com exatamente 50% das linhas seguintes na mesma margem (não deve desativar a proteção — a regra exige MAIS de 50%, `> 0.5`, não `>=`) e outro com 51%/66% (deve desativar). Implementado em `test_recompose_native_paragraphs_boundary_exactly_fifty_percent_keeps_protection` e `test_recompose_native_paragraphs_boundary_above_fifty_percent_disables_protection` (commit `bdccba7`).
+- [x] 1.14 Adicionar teste negativo: bloco cuja linha-rótulo não tem nenhuma outra linha física (sem dado de x0 para comparar) mantém a proteção ativa, idêntico ao comportamento anterior. Implementado em `test_recompose_native_paragraphs_block_without_extra_lines_keeps_protection` (commit `bdccba7`). Compatibilidade sem o parâmetro `line_x0s` coberta também por `test_recompose_native_paragraphs_without_x0_parameter_preserves_legacy_behavior`.
+- [x] 1.15 Rodar a suíte e confirmar que os novos testes falham (red) antes da implementação. Resultado: 8 failed (os que dependem do parâmetro `line_x0s`, ainda inexistente), 345 passed (verificado de forma independente pelo orquestrador, commit `bdccba7`).
 
 ## 2. Implementação
 
