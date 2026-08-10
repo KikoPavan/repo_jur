@@ -28,10 +28,10 @@
 
 ## 2. Implementação
 
-- [ ] 2.1 Em `_sorted_native_text_blocks` (`src/pipeline_juridico/converter.py`), adicionar apenas o dado geométrico necessário: x0 por linha física bruta de cada bloco (via `page.get_text("dict")`), sem alterar o extrator, o roteamento ou o OCR.
-- [ ] 2.2 Em `recompose_native_paragraphs` (`src/pipeline_juridico/cleaner.py`), usar esse dado exclusivamente para refinar a condição `native_label_pattern.match(previous_text) and previous_is_first`: desativar a proteção quando o bloco tiver outras linhas físicas E mais da metade delas tiverem x0 a menos de 2pt do x0 da linha-rótulo. Nenhuma outra condição de `should_join` é alterada.
-- [ ] 2.3 Preservar o comportamento atual quando o bloco não tiver outras linhas físicas (sem dado de comparação).
-- [ ] 2.4 Rodar a suíte completa e confirmar que os testes novos e existentes passam (green).
+- [x] 2.1 Em `_sorted_native_text_blocks` (`src/pipeline_juridico/converter.py`), adicionar apenas o dado geométrico necessário: x0 por linha física bruta de cada bloco (via `page.get_text("dict")`), sem alterar o extrator, o roteamento ou o OCR. Implementado (commit `e38b715`).
+- [x] 2.2 Em `recompose_native_paragraphs` (`src/pipeline_juridico/cleaner.py`), usar esse dado exclusivamente para refinar a condição `native_label_pattern.match(previous_text) and previous_is_first`: desativar a proteção quando o bloco tiver outras linhas físicas E mais da metade delas tiverem x0 a menos de 2pt do x0 da linha-rótulo. Nenhuma outra condição de `should_join` é alterada. Implementado via novo parâmetro `line_x0s` (commit `e38b715`). Nota de revisão: a primeira versão da implementação incluía uma heurística extra não especificada (`horizontally_fragmented`), introduzida para compensar um fixture de teste truncado (16 de 33 linhas reais) que eu mesmo havia fornecido incorretamente. Corrigido: fixture substituído pelo bloco real completo (33 linhas), heurística extra removida — a regra final usa exclusivamente `same_margin_fraction <= 0.5`, exatamente como diagnosticado e aprovado.
+- [x] 2.3 Preservar o comportamento atual quando o bloco não tiver outras linhas físicas (sem dado de comparação). Implementado: `if first_x0 is None or not other_x0s: genuine_label_blocks[block_index] = True`.
+- [x] 2.4 Rodar a suíte completa e confirmar que os testes novos e existentes passam (green). Resultado: 354/354 passed (verificado de forma independente pelo orquestrador, commit `e38b715`).
 
 ## 3. Validação do corpus
 
