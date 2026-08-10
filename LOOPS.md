@@ -2,7 +2,45 @@
 
 Mudança ativa:
 
-Nenhuma. `openspec/changes/` não contém mudanças pendentes no momento.
+`fix-fragmented-legal-heading-boundary` — implementação e validação concluídas (todas as
+subtarefas de `tasks.md` marcadas, exceto o registro do arquivamento, que exige aprovação humana).
+Corrige a fragmentação estrutural "RECURSO" / "ESPECIAL. PROCESSUAL CIVIL. ..." em
+`output/REsp_1704551-SP.md`, páginas 1 e 6 (a mesma ementa, no resumo inicial e dentro do acórdão).
+
+Causa raiz: o próprio PyMuPDF (`page.get_text("dict")` e `"blocks"`, igualmente) fragmenta uma
+linha totalmente justificada com espaçamento largo entre palavras em vários registros de "linha"
+separados, apesar de compartilharem exatamente a mesma coordenada Y (confirmado sem diferença de
+nenhuma casa decimal). `recompose_native_paragraphs` já recompunha corretamente quase todas essas
+pseudo-linhas, exceto a primeira ("RECURSO"), porque ela coincidia, por acaso, com o guard de
+proteção de rótulo de campo (`native_label_pattern` + `previous_is_first`) — o mesmo mecanismo que
+protege corretamente `PROCESSO`, `TEMA`, `RAMO DO DIREITO`, `AGRAVANTE`, `RECORRENTE` etc. (74 de
+76 ocorrências do mesmo padrão geométrico no corpus são esse comportamento correto e já validado;
+só 2 são falsos positivos).
+
+Critério discriminante: recuo (x0) das demais linhas físicas do mesmo bloco em relação à
+linha-rótulo. Nos rótulos genuínos, essas linhas ficam consistentemente recuadas numa coluna de
+valor (0–23% compartilham a margem do rótulo no corpus real); em "RECURSO", 65,6% delas retornam à
+mesma margem do bloco (parágrafo justificado comum, sem coluna de valor). Limiar fixado em 50%
+(maioria simples) — ponto médio de uma lacuna de 58 pontos percentuais sem nenhuma ocorrência no
+meio do corpus (23% a 81%, na análise por agrupamento de linhas de mesma coordenada Y).
+Implementação: novo parâmetro `line_x0s` em `recompose_native_paragraphs` — a proteção de rótulo só
+permanece ativa quando o bloco não tem outras linhas físicas (comportamento anterior preservado) ou
+quando mais da metade delas compartilha a margem do rótulo; `_sorted_native_text_blocks` passa a
+carregar x0 por linha física bruta (via `page.get_text("dict")`), sem alterar extrator, roteamento
+ou OCR. Durante a revisão da implementação, uma heurística extra não aprovada (`horizontally_fragmented`)
+foi identificada e removida — havia sido introduzida pelo Codex para compensar um fixture de teste
+truncado (16 de 33 linhas reais) fornecido incorretamente pelo orquestrador; corrigido com os dados
+completos do bloco real, a regra aprovada isoladamente (`> 50%`) já é suficiente.
+
+Validação: suíte `354/354`, `openspec validate --all --strict` limpo, quatro PDFs reconvertidos com
+`--no-ocr` (241 páginas roteadas como `texto_nativo`, zero OCR), idempotência confirmada (segunda
+reconversão byte-idêntica à primeira). Blast radius real: 2 de 241 páginas — somente
+`output/REsp_1704551-SP.md` mudou (páginas 1 e 6, "RECURSO" unido ao restante da ementa),
+contagem de tokens 3497 → 3497 (zero perda/adição). `Inf0024E.md`, `AINTARESP_1462304-PA.md` e
+`L10.406_CC_2002.md` byte-idênticos ao baseline pré-mudança — `Papel/Nome` inalterado (AINTARESP
+p.11 e `RECORRENTE` em `REsp_1704551-SP.md` reverificados), R01 4/4, 8 SUBTÍTULO, índice do CC,
+rodapés técnicos, thin-space, `SAIBA MAIS` e capa editorial preservados. Marcadores `[[Pág. N]]`
+únicos e sequenciais nos 4 arquivos.
 
 **Achado pendente — NÃO RESOLVIDO** (originado ao validar o corpus de `fix-colon-label-pagewide-recomposition-bypass` em 2026-08-07; diagnóstico aprofundado em duas rodadas e documentado em `openspec/changes/archive/2026-08-07-fix-role-name-list-cross-block-fusion/` — `proposal.md`/`design.md`/`tasks.md`, commit `6fba378`). Esse arquivamento é um **fechamento administrativo**, não uma correção: nenhum critério seguro foi encontrado, nenhum código de produção foi alterado, e as tarefas de TDD/implementação permanecem marcadas `BLOQUEADO`. Uma **nova mudança OpenSpec própria** precisará ser criada para qualquer tentativa futura (esta pasta arquivada é só o registro do diagnóstico, não deve ser reaberta como "mudança ativa"):
 

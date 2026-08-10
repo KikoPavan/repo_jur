@@ -48,6 +48,6 @@
 
 ## 4. Encerramento do ciclo
 
-- [ ] 4.1 Claude revisa o diff, reexecuta os testes e valida o OpenSpec de forma independente antes de aprovar cada subtarefa.
-- [ ] 4.2 Commit local (sem push) após aprovação explícita de cada subtarefa aprovada pelo Codex.
-- [ ] 4.3 Atualizar `LOOPS.md` com o resultado desta mudança (sem arquivar sem aprovação humana).
+- [x] 4.1 Claude revisa o diff, reexecuta os testes e valida o OpenSpec de forma independente antes de aprovar cada subtarefa. Feito em cada subtarefa — inclusive identificando e corrigindo, na revisão da Subtarefa 2, uma heurística extra não aprovada que havia sido introduzida para compensar um fixture de teste truncado.
+- [x] 4.2 Commit local (sem push) após aprovação explícita de cada subtarefa aprovada pelo Codex. Feito (commits `bdccba7`, `91a5ee9`, `e38b715`, `facf023`, `e813d62`).
+- [x] 4.3 Atualizar `LOOPS.md` com o resultado desta mudança (sem arquivar sem aprovação humana).
