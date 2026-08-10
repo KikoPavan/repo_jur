@@ -240,6 +240,8 @@ O sistema SHALL NOT unir o bloco atual ao próximo quando o bloco atual terminar
 
 O sistema SHALL NOT unir o bloco atual ao próximo quando o bloco atual for inteiramente em maiúsculas, sem dígito ou pontuação, e for a primeira linha física do seu bloco geométrico de origem no PDF — comportamento que protege rótulos de campo (por exemplo "PROCESSO", "RAMO DO DIREITO", "TEMA", "DESTAQUE") de serem fundidos ao valor que os segue. O sistema SHALL permitir a união quando essa mesma forma textual (linha inteiramente em maiúsculas, sem dígito ou pontuação) ocorrer no meio de um bloco geométrico já em fluxo — ou seja, não for a primeira linha física do bloco — desde que as demais condições de junção geométrica e estrutural sejam satisfeitas, mesmo que a linha seja curta ou formada por uma única palavra.
 
+Essa proteção de rótulo SHALL ser refinada quando o bloco de origem da linha candidata a rótulo tiver outras linhas físicas além dela: a proteção só permanece ativa quando o bloco não tiver nenhuma outra linha física (mantendo o comportamento acima, sem alteração), OU quando mais da metade dessas outras linhas físicas do mesmo bloco tiverem coordenada horizontal (x0) diferente por 2pt ou mais da coordenada x0 da própria linha candidata a rótulo — sinal de uma coluna de valor genuinamente recuada (estrutura "rótulo: valor"). Quando mais da metade dessas outras linhas físicas do bloco compartilham a mesma coordenada x0 (dentro de 2pt) da linha candidata — sinal de que a linha é, na verdade, a primeira palavra de um parágrafo justificado comum, fragmentada pela extração em uma pseudo-linha própria apesar de pertencer à mesma linha visual do texto seguinte — a proteção SHALL ser desativada, permitindo a junção normal segundo as demais condições geométricas e estruturais. Esse refinamento SHALL NOT se basear em nenhuma palavra específica (como "RECURSO", "PROCESSO" ou qualquer outro vocabulário jurídico), nome de arquivo, número de página ou de processo — apenas na geometria (contagem e posição x0 das linhas físicas do bloco).
+
 O sistema SHALL NOT unir duas linhas físicas quando qualquer uma das duas pertencer a um bloco geométrico de origem que contenha, em qualquer de suas linhas físicas, texto iniciado por `:` (formato de campo estruturado "RÓTULO" seguido de "`: VALOR`", usado por exemplo em RELATOR, AGRAVANTE, AGRAVADO, ADVOGADOS, RECORRENTE, RECORRIDO). Essa proteção SHALL se aplicar apenas às linhas do bloco geométrico que contém o padrão `:`, e SHALL NOT desativar a recomposição geométrica de outros blocos da mesma página que não contenham esse padrão.
 
 O sistema SHALL NOT unir dois blocos geométricos de origem diferentes entre si quando ambos estiverem dentro do intervalo delimitado por um bloco cuja única linha física seja exatamente o rótulo "SAIBA MAIS" (início do intervalo) e o próximo bloco cuja primeira linha física corresponda a um rótulo de campo inteiramente em maiúsculas (fim do intervalo) — preservando cada item editorial de referência (por exemplo um "Informativo de Jurisprudência", um item de "Jurisprudência em Teses" ou um precedente citado) como parágrafo próprio, independentemente de quantas linhas físicas o item ocupe dentro do seu próprio bloco de origem. Essa proteção SHALL NOT se basear no texto específico de cada item (títulos, números de edição, palavras como "Informativo" ou "Jurisprudência", barras `/` ou datas), apenas na origem do bloco geométrico e no rótulo fixo "SAIBA MAIS", e SHALL NOT impedir a recomposição normal das linhas físicas internas de um único item (por exemplo um precedente cuja citação de Relator e data ocupam duas linhas físicas do mesmo bloco).
@@ -268,8 +270,13 @@ Ao estimar a posição vertical de cada linha física dentro de um bloco geomét
 
 #### Scenario: Rótulo de campo real permanece separado do valor que o segue
 
-- **WHEN** uma linha como "TEMA", "PROCESSO", "RAMO DO DIREITO" ou "DESTAQUE" é a primeira linha física do seu bloco geométrico de origem e é seguida por linhas de conteúdo do respectivo campo
+- **WHEN** uma linha como "TEMA", "PROCESSO", "RAMO DO DIREITO" ou "DESTAQUE" é a primeira linha física do seu bloco geométrico de origem, é seguida por linhas de conteúdo do respectivo campo, e essas linhas de conteúdo têm coordenada x0 consistentemente diferente da linha-rótulo
 - **THEN** a linha-rótulo permanece separada, como parágrafo próprio, do conteúdo do campo no Markdown final
+
+#### Scenario: Palavra maiúscula isolada no início de um parágrafo justificado é recomposta corretamente
+
+- **WHEN** a extração nativa fragmenta a primeira palavra de uma linha totalmente justificada (por exemplo "RECURSO" seguido de "ESPECIAL. PROCESSUAL CIVIL. ...") em uma pseudo-linha própria, apesar de pertencer à mesma linha visual do restante do texto, e as demais linhas físicas do mesmo bloco geométrico retornam à mesma coordenada x0 dessa primeira palavra (sem coluna de valor recuada)
+- **THEN** a palavra isolada é recomposta normalmente com o restante da linha e do parágrafo, sem perda, adição ou reordenação de tokens, e sem depender do texto específico da palavra
 
 #### Scenario: Título ou ementa fragmentado em palavras isoladas é recomposto
 
@@ -319,6 +326,11 @@ Ao estimar a posição vertical de cada linha física dentro de um bloco geomét
 
 - **WHEN** uma página não contém nenhum bloco de texto com tamanho tipográfico ≥20pt, mesmo que algum bloco geométrico contenha linhas físicas em branco intercaladas com conteúdo real
 - **THEN** a posição de cada linha física continua sendo calculada dividindo a altura do bloco apenas pelas linhas não-vazias (comportamento pré-existente, sem alteração)
+
+#### Scenario: Bloco sem outras linhas físicas mantém a proteção de rótulo
+
+- **WHEN** uma linha candidata a rótulo (inteiramente maiúscula, sem dígito ou pontuação, primeira linha física do seu bloco) pertence a um bloco geométrico que não tem nenhuma outra linha física além dela
+- **THEN** a proteção de rótulo permanece ativa exatamente como antes deste refinamento, sem depender de dado de x0
 
 ### Requirement: Remoção de cabeçalhos e rodapés repetitivos
 
