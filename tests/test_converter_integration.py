@@ -372,6 +372,26 @@ def test_convert_inf0024e_page_1_separates_editorial_cover_elements(tmp_path) ->
     assert elements[3] not in notice_line
 
 
+def test_convert_inf0024e_video_do_julgamento_unaffected(tmp_path) -> None:
+    source = tmp_path / "inf0024e-pagina-4-video-julgamento.pdf"
+    corpus_pdf = Path(__file__).parents[1] / "input" / "Inf0024E.pdf"
+    _isolate_first_page(corpus_pdf, source, page_index=3)
+
+    markdown, _relatorio = convert_document(
+        pdf_path=source,
+        output_path=tmp_path / "saida.md",
+        temp_root=tmp_path / "temp",
+        use_ocr=False,
+    )
+    normalized_lines = [
+        " ".join(line.split()) for line in markdown.splitlines() if line.strip()
+    ]
+
+    assert "VÍDEO DO JULGAMENTO" in normalized_lines
+    assert "ÁUDIO DO TEXTO" in normalized_lines
+    assert "VÍDEO DO JULGAMENTO ÁUDIO DO TEXTO" not in normalized_lines
+
+
 def test_convert_aintaresp_page_11_papel_nome_unaffected(tmp_path) -> None:
     source = tmp_path / "aintaresp-pagina-11.pdf"
     corpus_pdf = Path(__file__).parents[1] / "input" / "AINTARESP_1462304-PA.pdf"

@@ -50,14 +50,20 @@ def recompose_native_paragraphs(
     content: str,
     blocks: list[tuple[float, float, str]],
     page_has_large_text: bool = False,
+    line_x0s: list[list[float]] | None = None,
 ) -> str:
     """Recompose native text lines when their geometry indicates continuity."""
     if not blocks or any(
         line.strip().startswith("|") for line in content.splitlines()
     ):
         return content
-    lines: list[tuple[float, float, str, bool, bool]] = []
-    for y0, y1, block_text in blocks:
+    lines: list[tuple[float, float, str, bool, bool, int, float | None]] = []
+    for block_index, (y0, y1, block_text) in enumerate(blocks):
+        block_line_x0s = (
+            line_x0s[block_index]
+            if line_x0s is not None and block_index < len(line_x0s)
+            else []
+        )
         if page_has_large_text:
             raw_lines = block_text.split("\n")
             if raw_lines and raw_lines[-1] == "":
@@ -88,21 +94,25 @@ def recompose_native_paragraphs(
                         stripped_all[index],
                         index == first_non_blank_index,
                         block_has_colon_line,
+                        block_index,
+                        block_line_x0s[index]
+                        if index < len(block_line_x0s)
+                        else None,
                     )
                 )
         else:
             physical_lines = [
-                re.sub(r"\s+", " ", line).strip()
-                for line in block_text.split("\n")
+                (index, re.sub(r"\s+", " ", line).strip())
+                for index, line in enumerate(block_text.split("\n"))
                 if line.strip()
             ]
             if not physical_lines:
                 continue
             block_has_colon_line = any(
-                line.strip().startswith(":") for line in physical_lines
+                line.startswith(":") for _, line in physical_lines
             )
             line_height = (y1 - y0) / len(physical_lines)
-            for index, line in enumerate(physical_lines):
+            for index, (raw_index, line) in enumerate(physical_lines):
                 line_y0 = y0 + index * line_height
                 lines.append(
                     (
@@ -111,6 +121,10 @@ def recompose_native_paragraphs(
                         line,
                         index == 0,
                         block_has_colon_line,
+                        block_index,
+                        block_line_x0s[raw_index]
+                        if raw_index < len(block_line_x0s)
+                        else None,
                     )
                 )
 
@@ -166,7 +180,24 @@ def recompose_native_paragraphs(
     )
     in_saiba_mais_span: list[bool] = []
     saiba_mais_active = False
-    for _, _, text, is_first, _ in lines:
+    genuine_label_blocks: dict[int, bool] = {}
+    lines_by_block: dict[int, list[tuple[str, float | None]]] = {}
+    for _, _, text, _, _, block_index, line_x0 in lines:
+        lines_by_block.setdefault(block_index, []).append((text, line_x0))
+    for block_index, block_lines in lines_by_block.items():
+        first_text, first_x0 = block_lines[0]
+        if not native_label_pattern.match(first_text):
+            continue
+        other_x0s = [x0 for _, x0 in block_lines[1:] if x0 is not None]
+        if first_x0 is None or not other_x0s:
+            genuine_label_blocks[block_index] = True
+            continue
+        same_margin_fraction = sum(
+            abs(x0 - first_x0) < 2 for x0 in other_x0s
+        ) / len(other_x0s)
+        genuine_label_blocks[block_index] = same_margin_fraction <= 0.5
+
+    for _, _, text, is_first, _, _, _ in lines:
         if is_first and native_label_pattern.match(text):
             saiba_mais_active = text == "SAIBA MAIS"
             in_saiba_mais_span.append(False)
@@ -180,6 +211,8 @@ def recompose_native_paragraphs(
         previous_text,
         previous_is_first,
         previous_belongs_to_colon_block,
+        previous_block_index,
+        previous_line_x0,
     ) = lines[0]
     for (
         (
@@ -188,6 +221,8 @@ def recompose_native_paragraphs(
             current_text,
             current_is_first,
             current_belongs_to_colon_block,
+            current_block_index,
+            current_line_x0,
         ),
         current_in_saiba_mais_span,
     ) in zip(lines[1:], in_saiba_mais_span[1:]):
@@ -211,6 +246,7 @@ def recompose_native_paragraphs(
             and not (
                 native_label_pattern.match(previous_text)
                 and previous_is_first
+                and genuine_label_blocks.get(previous_block_index, True)
             )
             and not (
                 current_in_saiba_mais_span
@@ -242,12 +278,16 @@ def recompose_native_paragraphs(
             previous_text,
             previous_is_first,
             previous_belongs_to_colon_block,
+            previous_block_index,
+            previous_line_x0,
         ) = (
             current_y0,
             current_y1,
             current_text,
             current_is_first,
             current_belongs_to_colon_block,
+            current_block_index,
+            current_line_x0,
         )
 
     geometric_text = "\n\n".join(paragraphs)

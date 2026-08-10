@@ -1113,11 +1113,30 @@ RECURSO_HEADING_CONTENT = (
     "ERRO MATERIAL. AUSÊNCIA. VALOR DA CAUSA. IMPUGNAÇÃO. MENSURAÇÃO DO \n"
     "CONTEÚDO \nECONÔMICO. \nCONDENAÇÃO \nEM \nSENTENÇA \nARBITRAL. \n"
     "POSSIBILIDADE.\n"
+    "1. Agravo de instrumento interposto em 25/09/2015. Recurso especial interposto \n"
+    "em 17/05/2016 e atribuído a este Gabinete em 23/05/2017.\n"
+    "2. O propósito recursal consiste em determinar qual deve ser o valor da causa em \n"
+    "hipóteses de ação declaratória de nulidade de sentença arbitral, ajuizada com \n"
+    "fundamento no art. 33 da Lei 9.307/96. \n"
+    "3. A legislação brasileira sobre arbitragem estabelece uma precedência temporal ao \n"
+    "procedimento arbitral, permitindo que seja franqueado o acesso ao Poder Judiciário \n"
+    "somente após a edição de sentença arbitral. Precedentes.\n"
+    "4. A jurisprudência desta Corte superior, há algum tempo, está orientada no \n"
+    "sentido de afirmar que “o valor da causa, inclusive nas ações declaratórias, deve \n"
+    "corresponder, em princípio, ao do seu conteúdo econômico, considerado como tal \n"
+    "o valor do benefício econômico que a autora pretende obter com a demanda” (REsp \n"
+    "642.488/DF, Primeira Turma, DJ 28/09/2006, p. 193).\n"
+    "5. Na hipótese dos autos, não há óbice jurídico algum para que a condenação \n"
+    "contida na sentença arbitral seja considerada como o parâmetro para a definição do \n"
+    "valor da causa.\n"
+    "6. Recurso especial conhecido e não provido.\n"
 )
-RECURSO_HEADING_BLOCKS = [(339.75, 650.0, RECURSO_HEADING_CONTENT)]
+RECURSO_HEADING_BLOCKS = [(339.75, 649.95, RECURSO_HEADING_CONTENT)]
 RECURSO_HEADING_LINE_X0S = [[
-    160.1, 220.1, 280.9, 357.45, 398.4, 478.8, 542.7, 160.1,
-    160.1, 160.1, 234.0, 318.1, 405.4, 438.9, 507.2, 160.1,
+    160.1, 220.1, 280.9, 357.45, 398.4, 478.8, 542.7, 160.1, 160.1, 160.1,
+    234.0, 318.1, 405.35, 438.9, 507.25, 160.1, 160.1, 160.1, 160.1, 160.1,
+    160.1, 160.1, 160.1, 160.1, 160.1, 160.1, 160.1, 160.1, 160.1, 160.1,
+    160.1, 160.1, 160.1,
 ]]
 RECURSO_HEADING_EXPECTED = (
     "RECURSO ESPECIAL. PROCESSUAL CIVIL. ARBITRAGEM. NULIDADE DE "
@@ -1134,7 +1153,12 @@ def test_recompose_native_paragraphs_unifies_recurso_especial_with_x0_signal() -
         line_x0s=RECURSO_HEADING_LINE_X0S,
     )
 
-    assert RECURSO_HEADING_EXPECTED in result.split("\n\n")
+    paragraphs = result.split("\n\n")
+    assert RECURSO_HEADING_EXPECTED in paragraphs
+    for item_number in range(1, 7):
+        assert any(
+            paragraph.startswith(f"{item_number}. ") for paragraph in paragraphs
+        )
     assert len(re.findall(r"\w+", result)) == len(
         re.findall(r"\w+", RECURSO_HEADING_CONTENT)
     )
@@ -1251,7 +1275,11 @@ def test_recompose_native_paragraphs_without_x0_parameter_preserves_legacy_behav
         RECURSO_HEADING_CONTENT, RECURSO_HEADING_BLOCKS
     )
 
-    assert result == f"RECURSO\n\n{RECURSO_HEADING_EXPECTED.removeprefix('RECURSO ')}"
+    paragraphs = result.split("\n\n")
+    assert paragraphs[0] == "RECURSO"
+    assert paragraphs[1].startswith(
+        RECURSO_HEADING_EXPECTED.removeprefix("RECURSO ")
+    )
 
 
 def _editorial_cover_scenario() -> tuple[str, list[tuple[float, float, str]]]:

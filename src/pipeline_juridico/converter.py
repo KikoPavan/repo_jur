@@ -77,7 +77,7 @@ def _geometric_reading_order_text(page: fitz.Page) -> str:
 
 def _sorted_native_text_blocks(
     page: fitz.Page,
-) -> list[tuple[float, float, str]]:
+) -> list[tuple[float, float, str, list[float]]]:
     text_blocks = [
         block for block in page.get_text("blocks") if block[6] == 0
     ]
@@ -85,8 +85,35 @@ def _sorted_native_text_blocks(
         text_blocks,
         key=lambda block: (round(block[1], 1), block[0]),
     )
+    dict_blocks = [
+        block
+        for block in page.get_text("dict")["blocks"]
+        if block.get("type") == 0
+    ]
+    ordered_dict_blocks = sorted(
+        dict_blocks,
+        key=lambda block: (
+            round(block["bbox"][1], 1),
+            block["bbox"][0],
+        ),
+    )
+    line_x0s_by_block: list[list[float]] = []
+    for block, dict_block in zip(ordered_blocks, ordered_dict_blocks):
+        line_x0s = [
+            line["bbox"][0] for line in dict_block.get("lines", [])
+        ]
+        raw_lines = block[4].split("\n")
+        if raw_lines and raw_lines[-1] == "":
+            raw_lines.pop()
+        if len(line_x0s) != len(raw_lines):
+            line_x0s = []
+        line_x0s_by_block.append(line_x0s)
+    line_x0s_by_block.extend(
+        [] for _ in range(len(ordered_blocks) - len(line_x0s_by_block))
+    )
     return [
-        (block[1], block[3], block[4]) for block in ordered_blocks
+        (block[1], block[3], block[4], line_x0s)
+        for block, line_x0s in zip(ordered_blocks, line_x0s_by_block)
     ]
 
 
@@ -236,11 +263,19 @@ def convert_document(
                     if method is Metodo.texto_nativo
                     else ""
                 )
-                native_blocks = (
+                native_blocks_with_x0 = (
                     _sorted_native_text_blocks(page)
                     if method is Metodo.texto_nativo
                     else []
                 )
+                native_blocks = [
+                    (y0, y1, text)
+                    for y0, y1, text, _ in native_blocks_with_x0
+                ]
+                native_line_x0s = [
+                    line_x0s
+                    for _, _, _, line_x0s in native_blocks_with_x0
+                ]
                 page_has_large_text = (
                     _page_has_large_text(page)
                     if method is Metodo.texto_nativo
@@ -269,6 +304,7 @@ def convert_document(
                     content,
                     native_blocks,
                     page_has_large_text=page_has_large_text,
+                    line_x0s=native_line_x0s,
                 )
             elif not use_ocr:
                 method = Metodo.erro
