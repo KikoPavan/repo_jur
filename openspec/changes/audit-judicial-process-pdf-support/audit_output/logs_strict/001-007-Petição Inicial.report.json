@@ -1,0 +1,97 @@
+{
+  "schema_version": "1.0",
+  "run_id": "30d35a6d-1016-4cfa-b7da-c992ab1bc65f",
+  "status": "sucesso",
+  "source": {
+    "path": "input/processos_auditoria/001-007-Petição Inicial.pdf",
+    "size_bytes": 232668,
+    "sha256": "04a7bbd65b82ea8e0a35e256cb9b304bcf6725aa45708f0b255a3ad46a87acdd",
+    "pages": 7
+  },
+  "output": {
+    "path": "openspec/changes/audit-judicial-process-pdf-support/audit_output/strict/001-007-Petição Inicial.md",
+    "sha256": "70b5b3643ca4a8d46a7e045a0d8ee9b03f6cfed6fe80eafba0452b30871d23a5"
+  },
+  "runtime": {
+    "python": "3.12.11",
+    "markitdown": "0.1.5",
+    "markitdown_ocr": "0.1.0",
+    "pymupdf": "1.28.0"
+  },
+  "ocr": {
+    "enabled": false,
+    "provider": "openai-compatible",
+    "model": "gemini-3-flash-preview",
+    "prompt_sha256": "34c6b4c284bc3ec8070ea7f8523684067c8471f6d820d83ab97c76b9e7dc6233"
+  },
+  "timing": {
+    "started_at": "2026-08-12T13:15:28.376144+00:00",
+    "finished_at": "2026-08-12T13:15:29.451297+00:00",
+    "duration_ms": 1075
+  },
+  "pages": [
+    {
+      "number": 1,
+      "method": "texto_nativo",
+      "status": "sucesso",
+      "characters": 1224,
+      "duration_ms": 133,
+      "warnings": [],
+      "error": null
+    },
+    {
+      "number": 2,
+      "method": "texto_nativo",
+      "status": "sucesso",
+      "characters": 1870,
+      "duration_ms": 143,
+      "warnings": [],
+      "error": null
+    },
+    {
+      "number": 3,
+      "method": "texto_nativo",
+      "status": "sucesso",
+      "characters": 1735,
+      "duration_ms": 211,
+      "warnings": [],
+      "error": null
+    },
+    {
+      "number": 4,
+      "method": "texto_nativo",
+      "status": "sucesso",
+      "characters": 1738,
+      "duration_ms": 136,
+      "warnings": [],
+      "error": null
+    },
+    {
+      "number": 5,
+      "method": "texto_nativo",
+      "status": "sucesso",
+      "characters": 1753,
+      "duration_ms": 120,
+      "warnings": [],
+      "error": null
+    },
+    {
+      "number": 6,
+      "method": "texto_nativo",
+      "status": "sucesso",
+      "characters": 1512,
+      "duration_ms": 118,
+      "warnings": [],
+      "error": null
+    },
+    {
+      "number": 7,
+      "method": "texto_nativo",
+      "status": "sucesso",
+      "characters": 649,
+      "duration_ms": 69,
+      "warnings": [],
+      "error": null
+    }
+  ]
+}
