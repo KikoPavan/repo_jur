@@ -1,0 +1,78 @@
+{
+  "schema_version": "1.0",
+  "run_id": "61e8f2f6-dc27-4d31-8737-5aa08e01e432",
+  "status": "incompleto",
+  "source": {
+    "path": "input/processos_auditoria/012-015-Testamento Publico.pdf",
+    "size_bytes": 1257004,
+    "sha256": "d6c6a05a48fcce1601c83b2bdb657e250b30e337d8b4c803bbe06e0f8e0a0fc1",
+    "pages": 4
+  },
+  "output": {
+    "path": "openspec/changes/audit-scanned-pdf-ocr-support/audit_output/partial/012-015-Testamento Publico.md",
+    "sha256": "08848d3ce32347bab035caf6326ff318676eea5bedc1945ae3c8e68faa91a753"
+  },
+  "runtime": {
+    "python": "3.12.11",
+    "markitdown": "0.1.5",
+    "markitdown_ocr": "0.1.0",
+    "pymupdf": "1.28.0"
+  },
+  "ocr": {
+    "enabled": false,
+    "provider": "openai-compatible",
+    "model": "gemini-3-flash-preview",
+    "prompt_sha256": "34c6b4c284bc3ec8070ea7f8523684067c8471f6d820d83ab97c76b9e7dc6233"
+  },
+  "timing": {
+    "started_at": "2026-08-12T17:52:09.097523+00:00",
+    "finished_at": "2026-08-12T17:52:09.215109+00:00",
+    "duration_ms": 117
+  },
+  "pages": [
+    {
+      "number": 1,
+      "method": "erro",
+      "status": "falha",
+      "characters": 18,
+      "duration_ms": 3,
+      "warnings": [
+        "OCR desabilitado via --no-ocr; página não pôde ser processada."
+      ],
+      "error": null
+    },
+    {
+      "number": 2,
+      "method": "erro",
+      "status": "falha",
+      "characters": 18,
+      "duration_ms": 3,
+      "warnings": [
+        "OCR desabilitado via --no-ocr; página não pôde ser processada."
+      ],
+      "error": null
+    },
+    {
+      "number": 3,
+      "method": "erro",
+      "status": "falha",
+      "characters": 18,
+      "duration_ms": 2,
+      "warnings": [
+        "OCR desabilitado via --no-ocr; página não pôde ser processada."
+      ],
+      "error": null
+    },
+    {
+      "number": 4,
+      "method": "erro",
+      "status": "falha",
+      "characters": 18,
+      "duration_ms": 2,
+      "warnings": [
+        "OCR desabilitado via --no-ocr; página não pôde ser processada."
+      ],
+      "error": null
+    }
+  ]
+}

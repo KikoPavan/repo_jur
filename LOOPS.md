@@ -2,7 +2,7 @@
 
 Mudança ativa:
 
-Nenhuma. `openspec/changes/` não contém mudanças pendentes no momento.
+`audit-scanned-pdf-ocr-support` — mudança exclusivamente diagnóstica (instrução explícita do usuário via `/goal`: "SOMENTE DIAGNÓSTICO"), permanece ativa e não arquivada por instrução do usuário. Conclusão: a infraestrutura de OCR (`engines.py`, `converter.py`, `markitdown-ocr`, spec "OCR controlado e verificável") já existe, já está implementada, isolada e testada — não é uma lacuna a preencher. Nenhuma ação de código é necessária; o próximo passo é uma execução supervisionada e aprovada por humano do OCR real sobre `Testamento Publico.pdf`, fora desta mudança. Ver `openspec/changes/audit-scanned-pdf-ocr-support/{proposal.md,design.md}` para a evidência completa. `openspec validate --all --strict` retorna 1 falha esperada para esta mudança (`change/audit-scanned-pdf-ocr-support`: "Change must have at least one delta") — mesma situação, mesmo motivo e mesma resolução (`--skip-specs` só no arquivamento futuro) já documentados para `audit-judicial-process-pdf-support`.
 
 **Achado conhecido — limitação técnica, delegada à camada de revisão semântica** (originado ao validar o corpus de `fix-colon-label-pagewide-recomposition-bypass` em 2026-08-07; diagnóstico aprofundado em duas rodadas e documentado em `openspec/changes/archive/2026-08-07-fix-role-name-list-cross-block-fusion/` — `proposal.md`/`design.md`/`tasks.md`, commit `6fba378`). Esse arquivamento foi um **fechamento administrativo**, não uma correção: nenhum critério geométrico seguro foi encontrado, nenhum código de produção foi alterado, e as tarefas de TDD/implementação permanecem marcadas `BLOQUEADO`.
 
