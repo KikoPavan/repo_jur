@@ -153,7 +153,7 @@ Em `convert_document()`, dentro do bloco `try` que já calcula `reference_conten
 
 - **Testes direcionados:** `uv run pytest tests/test_converter.py -v` → 22/22 passando (10 novos + 12 preexistentes).
 - **Suíte completa:** `uv run pytest tests/` → **364/364 passando** (354 baseline + 10 novos).
-- **`openspec validate --all --strict`:** 1 passed (spec), 1 failed (esta mudança, sem deltas — esperado, mesmo padrão do precedente diagnóstico).
+- **`openspec validate --all --strict`:** 1 passed (spec), 1 failed nesta etapa. **Correção posterior (ver seção seguinte):** essa falha foi identificada pelo usuário como real, não esperada — uma mudança que altera comportamento de produção precisa de delta spec, e não deveria ser arquivada com `--skip-specs`. Corrigido criando `specs/juridical-pdf-conversion/spec.md` nesta mudança; após a correção, `openspec validate --all --strict` retorna 2 passed, 0 failed (ver "Correção do delta spec").
 - **Reconversão dos 4 PDFs de `input/processos_auditoria/` (`--no-ocr`, saída isolada fora de `output/`/`logs/`):** `Testamento Publico.pdf` corretamente bloqueado em modo estrito (preexistente, não relacionado); os outros 3 com sucesso. `100-106-DECISÃO.md`: 2727 → 94 linhas; linhas de 1 caractere: 2130 → 0; ocorrências de espaço duplo: 502 → 0; marcadores `[[Pág. N]]`: 7 → 7 (preservados). Diff de tokens (≥3 caracteres, casefold) entre a versão sem a correção (`git stash` do código) e com a correção: **0 tokens perdidos**; 150 ocorrências "ganhas" correspondem exatamente às palavras do carimbo de assinatura do juiz que antes só existiam como ruído de caractere único (agora legíveis, 1 única vez, sem duplicação) — confirmado por inspeção direta do Markdown (carimbo de anexação presente 7/7 páginas; carimbo de assinatura do juiz presente e não duplicado nas páginas 1–5). `001-007-Petição Inicial.md` e `086-096-CONTESTAÇÃO...md`: byte-idênticos antes/depois.
 - **Regressão dos 4 PDFs canônicos (`--no-ocr`):** os 4 arquivos resultantes são **byte-idênticos** aos já commitados em `output/` — R01, SUBTÍTULO, remoção de margens/rodapés técnicos, thin-space, índice legislativo e a limitação conhecida Papel/Nome permanecem intactos por definição (nenhum desses 4 arquivos foi tocado).
 - **Zero OCR:** `logs/*.report.json` das 7 reconversões bem-sucedidas — 100% das páginas com `method=texto_nativo`, `status=sucesso`.
@@ -162,3 +162,17 @@ Em `convert_document()`, dentro do bloco `try` que já calcula `reference_conten
 ### Blast radius real (medido, pós-implementação)
 
 Idêntico ao blast radius medido na fase de diagnóstico (ETAPA 4): apenas as páginas 1–5 de `100-106-DECISÃO.pdf` mudam; as 265 páginas restantes dos 8 PDFs de referência (incluindo as páginas 6–7 do próprio `100-106-DECISÃO.pdf`) são byte-idênticas ao comportamento anterior — confirmado agora por reconversão real, não apenas por inspeção de blocos.
+
+## Correção do delta spec (2026-08-12)
+
+`openspec/specs/juridical-pdf-conversion/spec.md` não tinha nenhum requisito cobrindo o comportamento implementado na ETAPA 2 (deduplicação geométrica antes do motor nativo). Como esta mudança altera comportamento de produção real (não é diagnóstico), a falha de `openspec validate --all --strict` era legítima, não um caso esperado a ser contornado com `--skip-specs` no arquivamento.
+
+Criado `openspec/changes/fix-rotated-digital-signature-noise/specs/juridical-pdf-conversion/spec.md` (`## ADDED Requirements`) com o requisito **"Deduplicação geométrica de texto rotacionado sobreposto"**, formalizando em termos gerais e verificáveis o que o código em `converter.py` já faz: para páginas `texto_nativo`, duas ou mais linhas de texto não horizontal com texto idêntico e bbox coincidente dentro de uma tolerância determinística são tratadas como uma única ocorrência, usando a representação geométrica deduplicada em vez do motor de conversão nativo; uma ocorrência única (não duplicada) de texto rotacionado é preservada; texto horizontal duplicado não é afetado por esta regra; linhas com texto diferente ou bbox fora da tolerância não são tratadas como duplicata; nenhuma chamada de OCR é introduzida. O requisito e seus 5 cenários não citam `DECISÃO.pdf`, número de página/processo, texto de assinatura ou nome de pessoa — apenas sinais geométricos (direção de escrita, bbox, igualdade de texto entre linhas).
+
+Nenhuma inconsistência foi encontrada entre este requisito e a implementação já commitada — nenhum código de produção ou teste foi alterado nesta correção, apenas o novo arquivo de delta spec.
+
+**Validação após a correção:**
+- `openspec validate fix-rotated-digital-signature-noise --strict`: válida.
+- `openspec validate --all --strict`: **2 passed, 0 failed**.
+- `uv run pytest tests/`: **364/364 passando** (inalterado).
+- `git diff --check`: limpo.
