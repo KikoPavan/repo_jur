@@ -1,3 +1,7 @@
+## Status
+
+**2026-08-12 — Implementação autorizada.** Usuário aprovou explicitamente, via `/goal`, avançar do diagnóstico (abaixo) para TDD + implementação mínima nesta mesma mudança, sem criar mudança OpenSpec separada. Ver `design.md`, seção "Autorização de implementação", para o critério exato aprovado e as validações exigidas.
+
 ## Why
 
 O diagnóstico `audit-judicial-process-pdf-support` (arquivado em 2026-08-12) identificou, em `100-106-DECISÃO.pdf`, dois defeitos determinísticos novos (achados C.1 e C.2) concentrados nas páginas 1–5: centenas de linhas espúrias de caracteres isolados (C.1) e espaçamento duplo sistemático entre palavras (C.2), ambos ausentes nas páginas 6–7 do mesmo documento e no resto do corpus auditado. Esse diagnóstico prévio já apontava a causa provável (carimbo de assinatura digital rotacionado e duplicado, mal interpretado pelo MarkItDown) mas não isolava a causa raiz com evidência reproduzível nem avaliava um critério de correção contra o corpus completo.
@@ -23,14 +27,15 @@ Fora do escopo: OCR/Testamento Público, segmentação de peças, YAML, a limita
 ## Capabilities
 
 ### New Capabilities
-(nenhuma — mudança diagnóstica, não implementa)
+(nenhuma nova capacidade de usuário final — correção interna e conservadora do conversor)
 
 ### Modified Capabilities
-(nenhuma — mudança diagnóstica, não implementa)
+- Conversão de texto nativo (`converter.py`): páginas com blocos de texto não horizontais duplicados (mesmo bbox, dentro de tolerância, e mesmo texto) deixam de ser processadas pelo MarkItDown e passam a usar diretamente o texto geométrico do PyMuPDF, já deduplicado. Sem efeito em páginas sem esse padrão geométrico.
 
 ## Impact
 
-- Código: nenhum. `src/`, `tests/`, dependências, roteamento, OCR, cleaner e arquitetura não foram tocados.
-- Corpus canônico de regressão: não reconvertido, não alterado.
-- Nenhuma chamada de OCR ou LLM foi realizada.
-- Esta mudança permanece ativa (não arquivada) por instrução explícita do escopo — a "proposta mínima futura" é candidata a uma mudança OpenSpec própria, não implementada aqui.
+- Código: `src/pipeline_juridico/converter.py` (nova lógica de detecção/dedup geométrica, ponto de decisão em `convert_document`). `src/pipeline_juridico/cleaner.py` só é tocado se a implementação exigir (a avaliar por Codex/verificação — ver `tasks.md`).
+- Testes: novos testes em `tests/` cobrindo positivos e negativos (ver `tasks.md`, seção TDD).
+- Corpus canônico de regressão: reconvertido para validação, esperado byte-idêntico (0 páginas afetadas fora de `100-106-DECISÃO.pdf`).
+- Roteamento, OCR e dependências: não alterados.
+- Esta mudança permanece ativa (não arquivada) por instrução explícita do usuário.
