@@ -15,7 +15,7 @@
 
 - [x] 1.1 Claude (orquestrador) executou todo o diagnóstico diretamente (sem Codex/OpenCode), por se tratar de tarefa de auditoria/análise geométrica, não de implementação de código em `src/`/`tests/` — consistente com `AGENTS.md`.
 - [x] 1.2 Nenhum código, teste, dependência ou corpus canônico foi alterado; commit local (sem push) desta mudança, sem arquivar (instrução explícita do usuário).
-- [ ] 1.3 Atualizar `LOOPS.md` com o resultado final (diagnóstico + implementação) ao encerrar todo o ciclo desta mudança.
+- [x] 1.3 `LOOPS.md` atualizado com o resultado final (diagnóstico + implementação + validação) ao encerrar este ciclo.
 
 ## 2. Implementação (TDD) — autorizada em 2026-08-12, ver `design.md` "Autorização de implementação"
 
