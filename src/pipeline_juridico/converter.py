@@ -298,6 +298,153 @@ def _has_fabricated_native_table(
     )
 
 
+def _split_ocr_tail(
+    raw_content: str,
+    marker: str = "[End OCR]*",
+) -> tuple[str, str] | None:
+    idx = raw_content.rfind(marker)
+    if idx == -1:
+        return None
+    split_at = idx + len(marker)
+    return raw_content[:split_at], raw_content[split_at:]
+
+
+def _tail_fragments(tail: str) -> list[str]:
+    return [
+        fragment.strip()
+        for fragment in tail.split("\n\n")
+        if fragment.strip()
+    ]
+
+
+def _is_degenerate_fragment_tail(
+    fragments: list[str],
+    max_fragment_chars: int = 2,
+    min_short_fraction: float = 0.9,
+) -> bool:
+    if not fragments:
+        return False
+    short = sum(
+        1 for fragment in fragments if len(fragment) <= max_fragment_chars
+    )
+    return (short / len(fragments)) >= min_short_fraction
+
+
+def _non_horizontal_line_texts(page: fitz.Page) -> list[str]:
+    texts = []
+    for block in page.get_text("dict")["blocks"]:
+        if block.get("type") != 0:
+            continue
+        for line in block.get("lines", []):
+            if _line_direction(line) != (1.0, 0.0):
+                texts.append(_line_text(line))
+    return texts
+
+
+def _char_multiset_overlap(a: str, b: str) -> float:
+    counter_a, counter_b = Counter(a), Counter(b)
+    largest = max(sum(counter_a.values()), sum(counter_b.values()))
+    if not largest:
+        return 0.0
+    common = sum((counter_a & counter_b).values())
+    return common / largest
+
+
+def _geometrically_corroborated_vertical_residual(
+    fragments: list[str],
+    vertical_line_texts: list[str],
+    length_ratio_bounds: tuple[float, float] = (0.5, 1.2),
+    min_char_overlap: float = 0.80,
+) -> bool:
+    if not vertical_line_texts:
+        return False
+    tail_chars = "".join("".join(fragment.split()) for fragment in fragments)
+    combined_vertical = "".join(vertical_line_texts)
+    if not tail_chars or not combined_vertical:
+        return False
+    ratio = len(tail_chars) / len(combined_vertical)
+    if not (length_ratio_bounds[0] <= ratio <= length_ratio_bounds[1]):
+        return False
+    return (
+        _char_multiset_overlap(tail_chars, combined_vertical)
+        >= min_char_overlap
+    )
+
+
+def _replace_fragmented_vertical_residual(
+    raw_content: str,
+    page_path,
+) -> str:
+    doc = fitz.open(page_path)
+    try:
+        vertical_line_texts = _non_horizontal_line_texts(doc[0])
+    finally:
+        doc.close()
+    return _replace_fragmented_vertical_residual_in_text(
+        raw_content,
+        vertical_line_texts,
+    )
+
+
+def _replace_fragmented_vertical_residual_in_text(
+    raw_content: str,
+    vertical_line_texts: list[str],
+) -> str:
+    split = _split_ocr_tail(raw_content)
+    if split is None:
+        return raw_content
+    head, tail = split
+    if not tail.strip():
+        return raw_content
+    fragments = _tail_fragments(tail)
+    if not _is_degenerate_fragment_tail(fragments):
+        return raw_content
+    if not _geometrically_corroborated_vertical_residual(
+        fragments,
+        vertical_line_texts,
+    ):
+        return raw_content
+    return f"{head}\n\n" + "\n".join(vertical_line_texts) + "\n"
+
+
+_PAGE_MARKER_SPLIT_PATTERN = re.compile(r"(?=\[\[Pág\. \d+\]\])")
+_PAGE_MARKER_NUMBER_PATTERN = re.compile(r"\[\[Pág\. (\d+)\]\]")
+
+
+def _replace_fragmented_vertical_residuals_in_document(
+    markdown: str,
+    blocks: list[PageBlock],
+    vertical_geometry_by_page: dict[int, list[str]],
+) -> str:
+    eligible_numbers = {
+        block.number
+        for block in blocks
+        if block.method in (Metodo.hibrido, Metodo.ocr_integral)
+    }
+    if not eligible_numbers:
+        return markdown
+
+    segments = _PAGE_MARKER_SPLIT_PATTERN.split(markdown)
+    updated_segments = []
+    for segment in segments:
+        match = _PAGE_MARKER_NUMBER_PATTERN.match(segment)
+        if not match:
+            updated_segments.append(segment)
+            continue
+        page_number = int(match.group(1))
+        vertical_line_texts = vertical_geometry_by_page.get(page_number, [])
+        if page_number not in eligible_numbers or not vertical_line_texts:
+            updated_segments.append(segment)
+            continue
+        updated_segments.append(
+            _replace_fragmented_vertical_residual_in_text(
+                segment,
+                vertical_line_texts,
+            )
+        )
+    return "".join(updated_segments)
+
+
 def convert_document(
     pdf_path: str | Path,
     *,
@@ -325,6 +472,7 @@ def convert_document(
     ocr_engine = None
     page_results = []
     blocks: list[PageBlock] = []
+    vertical_geometry_by_page: dict[int, list[str]] = {}
 
     with isolated_page_workspace(
         pdf_path,
@@ -367,8 +515,14 @@ def convert_document(
                     if method is Metodo.texto_nativo
                     else False
                 )
+                vertical_line_texts = (
+                    _non_horizontal_line_texts(page)
+                    if method in (Metodo.hibrido, Metodo.ocr_integral)
+                    else []
+                )
             finally:
                 doc.close()
+            vertical_geometry_by_page[page_number] = vertical_line_texts
 
             warnings: list[str] = []
             content = ""
@@ -458,6 +612,11 @@ def convert_document(
     raw_markdown = compose_document(blocks)
     raw_markdown = normalize_thin_space_entities(raw_markdown)
     raw_markdown = remove_repetitive_margins(raw_markdown)
+    raw_markdown = _replace_fragmented_vertical_residuals_in_document(
+        raw_markdown,
+        blocks,
+        vertical_geometry_by_page,
+    )
     raw_markdown = join_symbol_across_page_break(raw_markdown)
     raw_markdown = normalize_legal_symbols(raw_markdown)
     raw_markdown = build_legislative_headings(raw_markdown)
