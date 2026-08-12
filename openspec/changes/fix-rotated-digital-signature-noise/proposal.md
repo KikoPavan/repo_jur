@@ -1,6 +1,6 @@
 ## Status
 
-**2026-08-12 — Implementação autorizada.** Usuário aprovou explicitamente, via `/goal`, avançar do diagnóstico (abaixo) para TDD + implementação mínima nesta mesma mudança, sem criar mudança OpenSpec separada. Ver `design.md`, seção "Autorização de implementação", para o critério exato aprovado e as validações exigidas.
+**2026-08-12 — Implementada e validada.** Usuário aprovou avançar do diagnóstico para TDD + implementação mínima nesta mesma mudança. Codex implementou (TDD: 10 testes RED → GREEN); Claude verificou: suíte completa 364/364, `openspec validate --all --strict` limpo (exceto esta própria mudança sem deltas, esperado), reconversão real dos 8 PDFs de referência com `--no-ocr` confirmando blast radius de exatamente 5 páginas (as já diagnosticadas), zero perda de conteúdo, zero OCR, idempotência byte a byte. Ver `design.md`, seções "Autorização de implementação" e "Implementação (2026-08-12)", para o critério exato, o refinamento de nível de linha descoberto durante a revisão dos testes, e a evidência completa de validação. Mudança permanece não arquivada, sem push.
 
 ## Why
 

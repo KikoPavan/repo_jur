@@ -64,10 +64,114 @@ def compose_document(blocks: list[PageBlock]) -> str:
     return "\n\n".join(formatted_blocks)
 
 
-def _geometric_reading_order_text(page: fitz.Page) -> str:
-    text_blocks = [
-        block for block in page.get_text("blocks") if block[6] == 0
+def _line_direction(line: dict) -> tuple[float, float]:
+    return tuple(round(value, 2) for value in line.get("dir", (1.0, 0.0)))
+
+
+def _line_text(line: dict) -> str:
+    return "".join(span.get("text", "") for span in line.get("spans", []))
+
+
+def _bbox_within_tolerance(
+    left: tuple[float, float, float, float],
+    right: tuple[float, float, float, float],
+    tolerance: float,
+) -> bool:
+    return all(abs(a - b) <= tolerance for a, b in zip(left, right))
+
+
+def _deduplicated_text_blocks_with_line_x0s(
+    page: fitz.Page,
+    tolerance: float = 2.0,
+) -> list[tuple[tuple[float, float, float, float, str], list[float]]]:
+    dict_blocks = [
+        block
+        for block in page.get_text("dict")["blocks"]
+        if block.get("type") == 0
     ]
+    seen_non_horizontal: list[
+        tuple[tuple[float, float, float, float], str]
+    ] = []
+    deduplicated = []
+    for block in dict_blocks:
+        kept_line_texts: list[str] = []
+        line_x0s: list[float] = []
+        removed_line = False
+        for line in block.get("lines", []):
+            text = _line_text(line)
+            if _line_direction(line) != (1.0, 0.0):
+                bbox = tuple(round(value, 1) for value in line["bbox"])
+                is_duplicate = any(
+                    text == seen_text
+                    and _bbox_within_tolerance(
+                        bbox,
+                        seen_bbox,
+                        tolerance,
+                    )
+                    for seen_bbox, seen_text in seen_non_horizontal
+                )
+                if is_duplicate:
+                    removed_line = True
+                    continue
+                seen_non_horizontal.append((bbox, text))
+            kept_line_texts.append(text)
+            line_x0s.append(line["bbox"][0])
+        if not kept_line_texts:
+            continue
+        block_bbox = block["bbox"]
+        text_block = (
+            block_bbox[0],
+            block_bbox[1],
+            block_bbox[2],
+            block_bbox[3],
+            "\n".join(kept_line_texts) + "\n",
+        )
+        deduplicated.append((text_block, [] if removed_line else line_x0s))
+    return deduplicated
+
+
+def _deduplicated_text_blocks(
+    page: fitz.Page,
+    tolerance: float = 2.0,
+) -> list[tuple[float, float, float, float, str]]:
+    """Return text blocks after dropping duplicate non-horizontal lines."""
+    return [
+        block
+        for block, _ in _deduplicated_text_blocks_with_line_x0s(
+            page,
+            tolerance,
+        )
+    ]
+
+
+def _has_duplicated_rotated_block(
+    page: fitz.Page,
+    tolerance: float = 2.0,
+) -> bool:
+    dict_blocks = [
+        block
+        for block in page.get_text("dict")["blocks"]
+        if block.get("type") == 0
+    ]
+    seen: list[tuple[tuple[float, float, float, float], str]] = []
+    for block in dict_blocks:
+        for line in block.get("lines", []):
+            if _line_direction(line) == (1.0, 0.0):
+                continue
+            text = _line_text(line)
+            bbox = tuple(round(value, 1) for value in line["bbox"])
+            if any(
+                text == seen_text
+                and _bbox_within_tolerance(bbox, seen_bbox, tolerance)
+                for seen_bbox, seen_text in seen
+            ):
+                return True
+            seen.append((bbox, text))
+    return False
+
+
+def _geometric_reading_order_text(page: fitz.Page) -> str:
+    text_blocks = _deduplicated_text_blocks(page)
     ordered_blocks = sorted(
         text_blocks,
         key=lambda block: (round(block[1], 1), block[0]),
@@ -78,43 +182,20 @@ def _geometric_reading_order_text(page: fitz.Page) -> str:
 def _sorted_native_text_blocks(
     page: fitz.Page,
 ) -> list[tuple[float, float, str, list[float]]]:
-    text_blocks = [
-        block for block in page.get_text("blocks") if block[6] == 0
-    ]
+    blocks_with_line_x0s = _deduplicated_text_blocks_with_line_x0s(page)
     ordered_blocks = sorted(
-        text_blocks,
-        key=lambda block: (round(block[1], 1), block[0]),
+        blocks_with_line_x0s,
+        key=lambda item: (round(item[0][1], 1), item[0][0]),
     )
-    dict_blocks = [
-        block
-        for block in page.get_text("dict")["blocks"]
-        if block.get("type") == 0
-    ]
-    ordered_dict_blocks = sorted(
-        dict_blocks,
-        key=lambda block: (
-            round(block["bbox"][1], 1),
-            block["bbox"][0],
-        ),
-    )
-    line_x0s_by_block: list[list[float]] = []
-    for block, dict_block in zip(ordered_blocks, ordered_dict_blocks):
-        line_x0s = [
-            line["bbox"][0] for line in dict_block.get("lines", [])
-        ]
+    normalized_blocks = []
+    for block, line_x0s in ordered_blocks:
         raw_lines = block[4].split("\n")
         if raw_lines and raw_lines[-1] == "":
             raw_lines.pop()
         if len(line_x0s) != len(raw_lines):
             line_x0s = []
-        line_x0s_by_block.append(line_x0s)
-    line_x0s_by_block.extend(
-        [] for _ in range(len(ordered_blocks) - len(line_x0s_by_block))
-    )
-    return [
-        (block[1], block[3], block[4], line_x0s)
-        for block, line_x0s in zip(ordered_blocks, line_x0s_by_block)
-    ]
+        normalized_blocks.append((block[1], block[3], block[4], line_x0s))
+    return normalized_blocks
 
 
 def _page_has_large_text(
@@ -281,6 +362,11 @@ def convert_document(
                     if method is Metodo.texto_nativo
                     else False
                 )
+                has_duplicated_rotated_block = (
+                    _has_duplicated_rotated_block(page)
+                    if method is Metodo.texto_nativo
+                    else False
+                )
             finally:
                 doc.close()
 
@@ -290,16 +376,19 @@ def convert_document(
             if method is Metodo.vazia:
                 pass
             elif method is Metodo.texto_nativo:
-                result = native_engine.convert(page_path)
-                content = result.text_content or ""
-                if _has_native_reading_order_defect(
-                    content,
-                    reference_content,
-                ) or _has_fabricated_native_table(
-                    content,
-                    reference_content,
-                ):
+                if has_duplicated_rotated_block:
                     content = reference_content
+                else:
+                    result = native_engine.convert(page_path)
+                    content = result.text_content or ""
+                    if _has_native_reading_order_defect(
+                        content,
+                        reference_content,
+                    ) or _has_fabricated_native_table(
+                        content,
+                        reference_content,
+                    ):
+                        content = reference_content
                 content = recompose_native_paragraphs(
                     content,
                     native_blocks,

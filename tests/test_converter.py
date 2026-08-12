@@ -1,13 +1,195 @@
 import fitz
 import pytest
 
+import pipeline_juridico.converter as converter_module
 from pipeline_juridico.converter import (
     PageBlock,
+    _geometric_reading_order_text,
     _page_has_large_text,
     compose_document,
+    convert_document,
     format_page_marker,
 )
 from pipeline_juridico.models import Metodo
+
+
+VERTICAL_BLOCK_TEXT = "Registro digital genérico para teste."
+HORIZONTAL_BODY_TEXT = (
+    "Texto horizontal normal do corpo com conteúdo suficiente para que a "
+    "página sintética seja classificada como texto nativo."
+)
+
+
+def _insert_rotated_text(
+    page: fitz.Page,
+    text: str = VERTICAL_BLOCK_TEXT,
+    *,
+    x: float = 550,
+    y: float = 700,
+) -> None:
+    page.insert_text((x, y), text, fontsize=8, rotate=90)
+
+
+def _save_native_pdf_with_duplicated_rotated_block(path) -> None:
+    document = fitz.open()
+    try:
+        page = document.new_page(width=595, height=842)
+        _insert_rotated_text(page)
+        _insert_rotated_text(page)
+        page.insert_text((72, 100), HORIZONTAL_BODY_TEXT, fontsize=10)
+        document.save(path)
+    finally:
+        document.close()
+
+
+def test_has_duplicated_rotated_block_detects_overlapping_vertical_duplicate(
+) -> None:
+    document = fitz.open()
+    try:
+        page = document.new_page(width=595, height=842)
+        _insert_rotated_text(page)
+        _insert_rotated_text(page)
+        page.insert_text((72, 100), HORIZONTAL_BODY_TEXT, fontsize=10)
+
+        assert converter_module._has_duplicated_rotated_block(page) is True
+    finally:
+        document.close()
+
+
+def test_geometric_reading_order_text_deduplicates_repeated_vertical_block(
+) -> None:
+    document = fitz.open()
+    try:
+        page = document.new_page(width=595, height=842)
+        _insert_rotated_text(page)
+        _insert_rotated_text(page)
+        page.insert_text((72, 100), HORIZONTAL_BODY_TEXT, fontsize=10)
+
+        result = _geometric_reading_order_text(page)
+
+        assert result.count(VERTICAL_BLOCK_TEXT) == 1
+    finally:
+        document.close()
+
+
+def test_convert_document_avoids_single_character_noise_from_rotated_duplicate(
+    tmp_path,
+) -> None:
+    source = tmp_path / "bloco-vertical-duplicado.pdf"
+    _save_native_pdf_with_duplicated_rotated_block(source)
+
+    markdown, _report = convert_document(
+        pdf_path=source,
+        output_path=tmp_path / "saida.md",
+        temp_root=tmp_path / "temp",
+        use_ocr=False,
+    )
+
+    single_character_lines = [
+        line for line in markdown.splitlines() if len(line.strip()) == 1
+    ]
+    assert len(single_character_lines) < 5
+
+
+def test_convert_document_bypasses_native_engine_for_rotated_duplicate(
+    tmp_path,
+    monkeypatch,
+) -> None:
+    source = tmp_path / "bloco-vertical-duplicado.pdf"
+    _save_native_pdf_with_duplicated_rotated_block(source)
+
+    class FailingNativeEngine:
+        def convert(self, _page_path):
+            raise AssertionError(
+                "MarkItDown não deveria ser chamado nesta página"
+            )
+
+    monkeypatch.setattr(
+        converter_module,
+        "create_native_engine",
+        lambda: FailingNativeEngine(),
+    )
+
+    markdown, _report = convert_document(
+        pdf_path=source,
+        output_path=tmp_path / "saida.md",
+        temp_root=tmp_path / "temp",
+        use_ocr=False,
+    )
+
+    assert VERTICAL_BLOCK_TEXT in markdown
+
+
+def test_has_duplicated_rotated_block_single_legitimate_vertical_block(
+) -> None:
+    document = fitz.open()
+    try:
+        page = document.new_page(width=595, height=842)
+        _insert_rotated_text(page)
+        page.insert_text((72, 100), HORIZONTAL_BODY_TEXT, fontsize=10)
+
+        assert converter_module._has_duplicated_rotated_block(page) is False
+    finally:
+        document.close()
+
+
+def test_has_duplicated_rotated_block_ignores_horizontal_duplicate() -> None:
+    document = fitz.open()
+    try:
+        page = document.new_page(width=595, height=842)
+        page.insert_text((72, 100), HORIZONTAL_BODY_TEXT, fontsize=10)
+        page.insert_text((72, 100), HORIZONTAL_BODY_TEXT, fontsize=10)
+
+        assert converter_module._has_duplicated_rotated_block(page) is False
+    finally:
+        document.close()
+
+
+def test_has_duplicated_rotated_block_different_text_same_position() -> None:
+    document = fitz.open()
+    try:
+        page = document.new_page(width=595, height=842)
+        _insert_rotated_text(page, "Primeiro registro vertical genérico.")
+        _insert_rotated_text(page, "Segundo registro vertical genérico.")
+
+        assert converter_module._has_duplicated_rotated_block(page) is False
+    finally:
+        document.close()
+
+
+def test_has_duplicated_rotated_block_bbox_beyond_tolerance() -> None:
+    document = fitz.open()
+    try:
+        page = document.new_page(width=595, height=842)
+        _insert_rotated_text(page)
+        _insert_rotated_text(page, y=720)
+
+        assert converter_module._has_duplicated_rotated_block(page) is False
+    finally:
+        document.close()
+
+
+def test_has_duplicated_rotated_block_bbox_within_tolerance() -> None:
+    document = fitz.open()
+    try:
+        page = document.new_page(width=595, height=842)
+        _insert_rotated_text(page)
+        _insert_rotated_text(page, y=701)
+
+        assert converter_module._has_duplicated_rotated_block(page) is True
+    finally:
+        document.close()
+
+
+def test_has_duplicated_rotated_block_absent_keeps_current_behavior() -> None:
+    document = fitz.open()
+    try:
+        page = document.new_page(width=595, height=842)
+        page.insert_text((72, 100), HORIZONTAL_BODY_TEXT, fontsize=10)
+
+        assert converter_module._has_duplicated_rotated_block(page) is False
+    finally:
+        document.close()
 
 
 def test_page_has_large_text_threshold_boundary() -> None:
