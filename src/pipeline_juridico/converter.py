@@ -445,6 +445,30 @@ def _replace_fragmented_vertical_residuals_in_document(
     return "".join(updated_segments)
 
 
+def _strip_internal_ocr_markers(
+    markdown: str,
+    blocks: list[PageBlock],
+    marker: str = "[End OCR]*",
+) -> str:
+    eligible_numbers = {
+        block.number
+        for block in blocks
+        if block.method in (Metodo.hibrido, Metodo.ocr_integral)
+    }
+    if not eligible_numbers:
+        return markdown
+
+    segments = _PAGE_MARKER_SPLIT_PATTERN.split(markdown)
+    updated_segments = []
+    for segment in segments:
+        match = _PAGE_MARKER_NUMBER_PATTERN.match(segment)
+        if not match or int(match.group(1)) not in eligible_numbers:
+            updated_segments.append(segment)
+            continue
+        updated_segments.append(segment.replace(marker, ""))
+    return "".join(updated_segments)
+
+
 def convert_document(
     pdf_path: str | Path,
     *,
@@ -617,6 +641,7 @@ def convert_document(
         blocks,
         vertical_geometry_by_page,
     )
+    raw_markdown = _strip_internal_ocr_markers(raw_markdown, blocks)
     raw_markdown = join_symbol_across_page_break(raw_markdown)
     raw_markdown = normalize_legal_symbols(raw_markdown)
     raw_markdown = build_legislative_headings(raw_markdown)

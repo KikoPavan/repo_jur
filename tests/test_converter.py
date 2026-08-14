@@ -364,6 +364,62 @@ def test_split_ocr_tail_returns_none_without_marker() -> None:
     assert converter_module._split_ocr_tail("Conteúdo sem marcador") is None
 
 
+def test_strip_internal_ocr_markers_preserves_eligible_page_content() -> None:
+    substantive_before = f"{SUBSTANTIVE_OCR_TEXT} OCR [End OCR]"
+    reconstructed_residual = ROTATED_OCR_RESIDUAL_TEXT
+    blocks = [
+        PageBlock(
+            number=7,
+            method=Metodo.hibrido,
+            content="conteúdo original não usado pelo helper",
+        )
+    ]
+    markdown = (
+        "[[Pág. 7]]\n<!-- método: hibrido -->\n\n"
+        f"{substantive_before}\n{OCR_END_MARKER}\n"
+        f"conteúdo entre imagens\n{OCR_END_MARKER}\n"
+        f"{reconstructed_residual}"
+    )
+
+    result = converter_module._strip_internal_ocr_markers(markdown, blocks)
+
+    assert result == markdown.replace(OCR_END_MARKER, "")
+    assert substantive_before in result
+    assert reconstructed_residual in result
+    assert "[[Pág. 7]]\n<!-- método: hibrido -->" in result
+    assert result.count(OCR_END_MARKER) == 0
+
+
+@pytest.mark.parametrize(
+    "method",
+    [Metodo.texto_nativo, Metodo.vazia, Metodo.erro],
+)
+def test_strip_internal_ocr_markers_ignores_ineligible_pages(method) -> None:
+    block = PageBlock(number=1, method=method, content="conteúdo")
+    markdown = (
+        f"{format_page_marker(1, method)}\n\n"
+        f"Texto jurídico OCR [End OCR] preservado.\n{OCR_END_MARKER}"
+    )
+
+    result = converter_module._strip_internal_ocr_markers(markdown, [block])
+
+    assert result == markdown
+
+
+@pytest.mark.parametrize("method", [Metodo.hibrido, Metodo.ocr_integral])
+def test_strip_internal_ocr_markers_without_marker_is_noop(method) -> None:
+    block = PageBlock(number=3, method=method, content="conteúdo")
+    markdown = (
+        f"{format_page_marker(3, method)}\n\n"
+        "Texto jurídico menciona OCR e [End OCR] sem asterisco."
+    )
+
+    assert (
+        converter_module._strip_internal_ocr_markers(markdown, [block])
+        == markdown
+    )
+
+
 def test_tail_fragments_splits_blank_lines_and_discards_empty_items() -> None:
     tail = "\n A \n\n  \n\nBC\n\n\n D \n"
 
@@ -558,10 +614,16 @@ def test_convert_document_replaces_fragmented_vertical_residual_on_hybrid_pages(
 
     assert [page.method for page in report.pages] == [Metodo.hibrido] * 4
     assert markdown.count(SUBSTANTIVE_OCR_TEXT) == 8
-    assert markdown.count(OCR_END_MARKER) == 4
+    assert markdown.count(OCR_END_MARKER) == 0
     assert markdown.count(vertical_text) == 4
-    for page_content in markdown.split("[[Pág. ")[1:]:
-        tail = page_content.split(OCR_END_MARKER, 1)[-1]
+    for page_number, page_content in enumerate(
+        markdown.split("[[Pág. ")[1:],
+        start=1,
+    ):
+        assert page_content.startswith(
+            f"{page_number}]]\n<!-- método: hibrido -->"
+        )
+        tail = page_content
         short_lines = [
             line
             for line in tail.splitlines()
