@@ -1,0 +1,17 @@
+> Mudança exclusivamente diagnóstica (instrução explícita do usuário: "SOMENTE DIAGNÓSTICO"). Conclusão: OCR não pode ser considerado operacionalmente fechado para fidelidade de dados críticos — 1 divergência real confirmada (selo digital, 1 dígito omitido) e 1 caso incerto (telefone parcialmente truncado pela borda do scan) sobre ~70 dados críticos catalogados. Nenhuma implementação foi feita. Ver `design.md` para a evidência completa e `proposal.md` para o resumo executivo.
+
+## 0. Diagnóstico (concluído)
+
+- [x] 0.1 Localizar evidência: PDF original, Markdown da última conversão OCR real (`var/ocr_final/`), mudanças OCR já arquivadas relevantes (`validate-supervised-ocr-testamento-publico`, `fix-ocr-rotated-text-fragmentation`, `fix-ocr-end-marker-leak`). Confirmar por `diff` que o texto substantivo de `var/ocr_final` é idêntico ao já auditado em 2026-08-12, refletindo as correções já arquivadas. `design.md`, seção "Caso e evidência usada".
+- [x] 0.2 Etapa 1 — inventariar dados críticos (CPF/CNPJ, RG/CNH, processo, matrícula, selo digital, protocolo, datas, valores, CEP, medidas, códigos alfanuméricos) comparando PDF × Markdown, classificando EXATA/DIVERGENTE/INCERTA, sem corrigir o Markdown. `design.md`, ETAPA 1.
+- [x] 0.3 Etapa 2 — investigar causa das duas divergências apontadas (selo digital p.3, telefone p.3/p.1): texto visual original (extração nativa da imagem embutida, sem reamostragem, segmentação de caracteres por projeção de pixels), tipo de erro, contexto visual, resolução, redundância intra-documento. Tentativa adicional de decodificação de QR Code/código de barras (não conclusiva, registrada como limitação). `design.md`, ETAPA 2.
+- [x] 0.4 Etapa 3 — avaliar candidatos de validação determinística (checksum CPF, comprimento fixo do selo digital, checksum CNJ do processo, comparação de valores redundantes, divergência OCR×texto nativo residual, marcação para revisão) com classes cobertas, falsos positivos/negativos e risco de alterar conteúdo legítimo, sem implementar nada. `design.md`, ETAPA 3.
+- [x] 0.5 Etapa 4 — classificar cada solução futura como pipeline determinístico / camada de validação pós-OCR / revisor semântico por IA / revisão humana obrigatória, sem gerar YAML. `design.md`, ETAPA 4.
+- [x] 0.6 Registrar meta-achado transversal: a auditoria visual humana/manual anterior (já arquivada) declarou o selo digital divergente como correto; o erro só foi exposto por comparação determinística entre duas ocorrências redundantes do mesmo dado — evidência de que revisão visual isolada não é suficiente sozinha para fidelidade crítica. `design.md`, seção "Meta-achado transversal".
+
+## 1. Encerramento do ciclo
+
+- [x] 1.1 Claude (orquestrador) executou todo o diagnóstico diretamente (sem Codex/OpenCode), por se tratar de tarefa de auditoria/análise visual e forense de imagem, não de implementação de código em `src/`/`tests/` — consistente com `AGENTS.md` e com o precedente `audit-scanned-pdf-ocr-support`.
+- [x] 1.2 Nenhum código, teste, dependência do projeto (`pyproject.toml`/`uv.lock`), prompt, modelo, provider ou corpus canônico (`output/`, `logs/`) foi alterado. Ferramentas de decodificação de imagem (`opencv-python-headless`, `zxing-cpp`) instaladas apenas em virtualenv descartável fora do projeto.
+- [x] 1.3 Atualizar `LOOPS.md` com o resultado desta auditoria e o `git status --short` final.
+- [x] 1.4 Commit local (sem push) desta mudança e de sua evidência.
