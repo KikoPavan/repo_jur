@@ -34,6 +34,8 @@ Das 23 capacidades lógicas mapeadas:
 
 Validação pós-reconciliação (nada corrigido): `uv run pytest tests/` → 391 passed, 0 failed. `openspec validate --all --strict` → 1 passed, 1 failed (a mudança diagnóstica em si, por não ter delta spec — esperado e consistente com todas as auditorias diagnósticas anteriores deste repositório; nenhuma spec artificial foi criada para mascarar essa falha).
 
+**Amendment (mesma sessão, revisão posterior):** leitura completa do corpo de `report.py::determine_final_status` (não feita na reconciliação inicial) encontrou uma divergência comportamental — não apenas de vocabulário — no item 13 (Phase 1 Quality Gate): `--allow-partial` produz saída `incompleto` que é publicada normalmente via `write_atomic`, quando a FROZEN exige que esse modo permaneça sempre `FAIL`, fora do caminho de saída canônico. Ver `repository-implementation-map.md`, linha 13 de `R.1`.
+
 ## Fora do escopo desta investigação
 
 Implementação de qualquer capacidade `CREATE`; criação de módulos/diretórios/adapters; refatoração; alteração de configuração ou testes; chamada real de OCR/LLM; arquivamento; push. `src/pipeline_juridico/` foi apenas inspecionado, nunca movido. `var/ocr_final/` foi apenas listado no `git status`, nunca alterado.
