@@ -36,3 +36,9 @@
 
 - [x] 4.1 Ler o corpo completo de `report.py::determine_final_status` e o fluxo de `cli.py::main` (não lidos linha a linha na revisão `R.` anterior, só por assinatura) para verificar se a divergência do item 13 era só de vocabulário/forma. Encontrada uma segunda causa, comportamental: `sucesso` nunca é rebaixado por `page.warnings` e `--allow-partial` publica a saída `incompleto` via `write_atomic` em vez de permanecer sempre `FAIL`/diagnóstico, conforme `decision-memo-phase1-quality-gate-v1.0-FROZEN.md` §10.3–§10.4/invariante 9 e `technical-implementation-spec-repo-jur-v1.2-FROZEN.md` §16.1/critério de aceite 7. `repository-implementation-map.md`, linha 13 de `R.1` e amendment em `R.2`/`R.3`.
 - [x] 4.2 Commit local (sem push) do amendment, separado dos dois commits anteriores desta mudança.
+
+## 5. Fechamento final: leitura complementar das baselines de Retrieval/OKF
+
+- [x] 5.1 Ler integralmente as 5 baselines de Retrieval/Chunking/Reranking/Search/OKF ainda não lidas por completo (`legal-okf-profile-v1.3`, `retrieval-contract-v2.8`, `decision-memo-chunking-strategy-v1.0`, `decision-memo-reranking-pipeline-v1.0`, `decision-memo-search-execution-path-v1.0`), confirmando que `#16`/`#20`/`#21` permanecem `CREATE` e precisando as citações (schema OKF exato para o Producer; envelope de resultado do Retrieval Contract v2.8; Search Execution Path como sub-escopo de `#20`, não de `#21`; dependência estrutural `#16 → #20/#21` confirmada pelas próprias baselines, não apenas inferida). `repository-implementation-map.md`, seção `R.6`.
+- [x] 5.2 Executar `uv run pytest tests/`, `openspec validate --all --strict` e `git status --short --untracked-files=all` como validação final, sem corrigir a falha OpenSpec esperada.
+- [x] 5.3 Commit local (sem push) deste fechamento final, separado dos commits anteriores desta mudança.
