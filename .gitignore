@@ -18,10 +18,12 @@ input/*
 output/*
 logs/*
 var/tmp/*
+var/object-storage/*
 !input/.gitkeep
 !output/.gitkeep
 !logs/.gitkeep
 !var/tmp/.gitkeep
+!var/object-storage/.gitkeep
 
 # Sistema e editor
 .DS_Store
