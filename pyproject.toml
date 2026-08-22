@@ -14,6 +14,7 @@ dependencies = [
 
 [project.scripts]
 converter-juridico = "pipeline_juridico.cli:main"
+repo-jur = "pipeline_juridico.domain_router_cli:main"
 
 [build-system]
 requires = ["hatchling"]
