@@ -1,5 +1,23 @@
 # phase1-quality-gate Specification — MODIFIED Requirements
 
+## ADDED Requirements
+
+### Requirement: Technical report records the Quality Gate result
+
+The system SHALL record the Quality Gate outcome in the emitted Phase 1 technical report's `result` block: `result.quality_gate` SHALL be the serialized gate state — exactly one of `PASS`, `PASS_WITH_WARNINGS`, `FAIL` (the serialized value whose human label is "PASS WITH WARNINGS"; the label is never a serialized value) — and `result.warnings`/`result.errors` SHALL be the gate result's warning and error tuples. The gate itself SHALL NOT read the `result` block as an input signal — it derives its state solely from the structural fields (`input`, `pages`) and the literal Markdown — and SHALL NOT read the `telemetry` block. The pipeline SHALL evaluate the gate before emitting the final report, and the gate SHALL NOT mutate the report it evaluated (the serialized report passed to the gate SHALL be identical, byte for byte, before and after evaluation).
+
+#### Scenario: Emitted report carries the gate result
+
+- **WHEN** the pipeline emits the final Phase 1 technical report after Quality Gate evaluation
+- **THEN** `result.quality_gate` equals the serialized gate state
+- **AND** `result.warnings` and `result.errors` equal the gate result's warning and error tuples
+
+#### Scenario: Gate ignores the recorded result and telemetry
+
+- **WHEN** the report passed to the gate contains any `result` or `telemetry` values
+- **THEN** the gate derives its state solely from `input`, `pages`, and the literal Markdown
+- **AND** the recorded `result` or `telemetry` values never alter the gate's state, warnings, or errors
+
 ## MODIFIED Requirements
 
 ### Requirement: PASS requires complete physical conformance and no active technical warning
@@ -54,13 +72,13 @@ The system SHALL return `FAIL` when any of the following conditions occurs and i
 - **THEN** the result state is `FAIL`
 - **AND** the inventory deficiency is recorded in the result errors tuple
 
-#### Scenario: A page with unresolved errors causes FAIL
+#### Scenario: A page in extraction error state causes FAIL
 
 - **WHEN** any page's report record carries a non-empty `pages[].errors` list (the page is not completed)
 - **THEN** the result state is `FAIL`
 - **AND** the failed page is recorded in the result errors tuple
 
-#### Scenario: A page with erro method fails independently of its error list
+#### Scenario: A page with erro method fails independently of its status
 
 - **WHEN** any page's report record carries the extraction method `erro` (`pages[].method == "erro"`), regardless of the record's `pages[].errors` value — including an inconsistent record combining `method: erro` with an empty `errors` list
 - **THEN** the result state is `FAIL`
@@ -81,6 +99,12 @@ The system SHALL return `FAIL` when any of the following conditions occurs and i
 #### Scenario: A false truncation signal never causes FAIL from truncation
 
 - **WHEN** every page's report record carries `pages[].truncated: false` and no other fatal rule is violated
+- **THEN** the gate neither infers nor invents a truncation signal, and the result state is not `FAIL` from truncation
+- **AND** the empty-return rule remains its own deterministic fatal rule, applied independently
+
+#### Scenario: No truncation signal is inferred or invented
+
+- **WHEN** the technical report carries no truncation signal indicating known truncation — no page record has `pages[].truncated: true` (the mandatory boolean `pages[].truncated` is the only truncation signal the report contract defines) — and no other fatal rule is violated
 - **THEN** the gate neither infers nor invents a truncation signal, and the result state is not `FAIL` from truncation
 - **AND** the empty-return rule remains its own deterministic fatal rule, applied independently
 
@@ -146,24 +170,8 @@ The system SHALL return `FAIL` for Phase 1 conversion artifacts in which one or 
 - **THEN** the result state is `FAIL`
 - **AND** no warning-only outcome is produced for the unresolved page error
 
-#### Scenario: No other recorded flag decides FAIL by itself
+#### Scenario: A partial-output flag alone never decides FAIL
 
 - **WHEN** every page record is completed (`pages[].errors` empty and `pages[].method != "erro"`), no page carries `pages[].truncated: true`, and no fatal rule is violated
 - **THEN** the result state is not `FAIL` because of any flag or other recorded signal
 - **AND** the gate derives its state solely from the page inventory and the other observable artifact signals
-
-### Requirement: Technical report records the Quality Gate result
-
-The system SHALL record the Quality Gate outcome in the emitted Phase 1 technical report's `result` block: `result.quality_gate` SHALL be the serialized gate state — exactly one of `PASS`, `PASS_WITH_WARNINGS`, `FAIL` (the serialized value whose human label is "PASS WITH WARNINGS"; the label is never a serialized value) — and `result.warnings`/`result.errors` SHALL be the gate result's warning and error tuples. The gate itself SHALL NOT read the `result` block as an input signal — it derives its state solely from the structural fields (`input`, `pages`) and the literal Markdown — and SHALL NOT read the `telemetry` block. The pipeline SHALL evaluate the gate before emitting the final report, and the gate SHALL NOT mutate the report it evaluated (the serialized report passed to the gate SHALL be identical, byte for byte, before and after evaluation).
-
-#### Scenario: Emitted report carries the gate result
-
-- **WHEN** the pipeline emits the final Phase 1 technical report after Quality Gate evaluation
-- **THEN** `result.quality_gate` equals the serialized gate state
-- **AND** `result.warnings` and `result.errors` equal the gate result's warning and error tuples
-
-#### Scenario: Gate ignores the recorded result and telemetry
-
-- **WHEN** the report passed to the gate contains any `result` or `telemetry` values
-- **THEN** the gate derives its state solely from `input`, `pages`, and the literal Markdown
-- **AND** the recorded `result` or `telemetry` values never alter the gate's state, warnings, or errors
