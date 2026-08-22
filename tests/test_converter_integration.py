@@ -89,7 +89,7 @@ def test_convert_document_all_native_pages(tmp_path) -> None:
     assert isinstance(relatorio, Relatorio)
     assert "[[Pág. 1]]" in markdown
     assert "[[Pág. 2]]" in markdown
-    assert relatorio.status == StatusExecucao.sucesso
+    assert all(not page.errors for page in relatorio.pages)
     assert len(relatorio.pages) == 2
     assert all(
         page.method == Metodo.texto_nativo for page in relatorio.pages
@@ -814,7 +814,7 @@ def test_convert_document_with_ocr_page_success(
         ocr_model="gemini-2.0-flash",
     )
 
-    assert relatorio.status == StatusExecucao.sucesso
+    assert all(not page.errors for page in relatorio.pages)
     assert relatorio.pages[0].method == Metodo.ocr_integral
     assert simulated_text in markdown
 
@@ -846,7 +846,8 @@ def test_convert_document_ocr_needed_no_ocr_flag_with_allow_partial(
         allow_partial=True,
     )
 
-    assert relatorio.status == StatusExecucao.incompleto
+    assert relatorio.pages[0].method is Metodo.erro
+    assert relatorio.pages[0].errors
     assert ILLEGIBLE_TEXT_MARKER in markdown
 
 

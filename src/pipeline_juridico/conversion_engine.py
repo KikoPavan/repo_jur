@@ -4,14 +4,21 @@ from __future__ import annotations
 
 import json
 import os
-import re
 from dataclasses import dataclass
 from pathlib import Path
 from urllib.parse import unquote, urlparse
 
 from .config import RoutingConfig
+from .contracts import Phase1Artifacts
 from .converter import convert_document
-from .report import build_report_json, validate_report_contract
+from .quality_gate import evaluate
+from .report import (
+    attach_gate_result,
+    build_candidate_report_json,
+    build_report_json,
+    strip_technical_routing_metadata,
+    validate_report_contract,
+)
 
 
 @dataclass(frozen=True)
@@ -27,28 +34,8 @@ class ConversionConfig:
     keep_temp: bool = False
 
 
-@dataclass(frozen=True)
-class Phase1Artifacts:
-    markdown: str
-    report_json: str
-
-
 class EvidenceReferenceError(Exception):
     """A preserved-evidence reference cannot be resolved to a readable file."""
-
-
-_TECHNICAL_ROUTING_METADATA = re.compile(
-    r"^(\[\[Pág\. [1-9]\d*\]\]\r?\n)"
-    r"<!-- método: (?:texto_nativo|ocr_integral|hibrido|vazia|erro) -->"
-    r"(?:\r?\n|$)",
-    re.MULTILINE,
-)
-
-
-def strip_technical_routing_metadata(markdown: str) -> str:
-    """Remove canonical marker-adjacent method comments from Markdown."""
-
-    return _TECHNICAL_ROUTING_METADATA.sub(r"\1", markdown)
 
 
 def resolve_evidence_reference(evidence_ref: str) -> Path:
@@ -97,9 +84,20 @@ class ConversionEngine:
             routing_config=config.routing_config,
             keep_temp=config.keep_temp,
         )
-        report_json = build_report_json(relatorio)
+        literal = strip_technical_routing_metadata(markdown)
+        candidate_json = build_candidate_report_json(relatorio)
+        gate_result = evaluate(
+            Phase1Artifacts(markdown=literal, report_json=candidate_json)
+        )
+        final = attach_gate_result(
+            relatorio,
+            quality_gate=gate_result.state.value,
+            warnings=gate_result.warnings,
+            errors=gate_result.errors,
+        )
+        report_json = build_report_json(final)
         validate_report_contract(json.loads(report_json))
         return Phase1Artifacts(
-            markdown=strip_technical_routing_metadata(markdown),
+            markdown=literal,
             report_json=report_json,
         )

@@ -1,5 +1,6 @@
 import time
 import uuid
+from dataclasses import asdict
 from collections import Counter
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -26,20 +27,23 @@ from .engines import (
     create_ocr_engine,
     verify_ocr_evidence,
 )
+from . import __version__
 from .hashing import sha256_bytes
 from .inspector import inspect_source, isolated_page_workspace
 from .models import (
+    ArtifactsInfo,
+    InputInfo,
     Metodo,
+    Phase1Info,
     Relatorio,
-    SaidaInfo,
-    StatusExecucao,
     TimingInfo,
 )
 from .report import (
     build_ocr_info,
     build_page_result,
     build_runtime_info,
-    determine_final_status,
+    compute_relevant_config_fingerprint,
+    strip_technical_routing_metadata,
 )
 from .router import route_page
 
@@ -497,6 +501,7 @@ def convert_document(
     page_results = []
     blocks: list[PageBlock] = []
     vertical_geometry_by_page: dict[int, list[str]] = {}
+    page_durations_ms: list[int] = []
 
     with isolated_page_workspace(
         pdf_path,
@@ -549,6 +554,7 @@ def convert_document(
             vertical_geometry_by_page[page_number] = vertical_line_texts
 
             warnings: list[str] = []
+            errors: list[str] = []
             content = ""
 
             if method is Metodo.vazia:
@@ -575,7 +581,7 @@ def convert_document(
                 )
             elif not use_ocr:
                 method = Metodo.erro
-                warnings.append(
+                errors.append(
                     "OCR desabilitado via --no-ocr; página não pôde ser processada."
                 )
             else:
@@ -591,7 +597,7 @@ def convert_document(
                     result = ocr_engine.convert(page_path)
                 except Exception:
                     method = Metodo.erro
-                    warnings.append(
+                    errors.append(
                         "Falha técnica durante o processamento de OCR."
                     )
                 else:
@@ -600,29 +606,27 @@ def convert_document(
                         raw_content,
                         method,
                     )
-                    warnings.extend(evidence_warnings)
+                    if method is Metodo.erro:
+                        errors.extend(evidence_warnings)
+                    else:
+                        warnings.extend(evidence_warnings)
                     content = "" if method is Metodo.erro else raw_content
 
             if method is Metodo.erro:
                 content = ILLEGIBLE_TEXT_MARKER if allow_partial else ""
 
-            status = (
-                StatusExecucao.falha
-                if method is Metodo.erro
-                else StatusExecucao.sucesso
-            )
             duration_ms = int(
                 (time.monotonic() - page_started_at) * 1000
             )
+            page_durations_ms.append(duration_ms)
             page_results.append(
                 build_page_result(
-                    number=page_number,
+                    page_number=page_number,
                     method=method,
-                    status=status,
                     content=content,
-                    duration_ms=duration_ms,
                     warnings=warnings,
-                    error=None,
+                    errors=errors,
+                    truncated=False,
                 )
             )
             blocks.append(
@@ -654,16 +658,11 @@ def convert_document(
     validate_markdown_matches_report(final_markdown, page_results)
     validate_encoding_and_line_endings(final_markdown)
 
-    final_status = determine_final_status(page_results, allow_partial)
     finished_at = datetime.now(timezone.utc)
     total_duration_ms = int(
         (finished_at - started_at).total_seconds() * 1000
     )
-    output_bytes = final_markdown.encode("utf-8")
-    output_info = SaidaInfo(
-        path=str(output_path),
-        sha256=sha256_bytes(output_bytes),
-    )
+    literal = strip_technical_routing_metadata(final_markdown)
     runtime_info = build_runtime_info()
     ocr_info = build_ocr_info(
         enabled=use_ocr,
@@ -677,13 +676,33 @@ def convert_document(
         duration_ms=total_duration_ms,
     )
     relatorio = Relatorio(
-        run_id=str(uuid.uuid4()),
-        status=final_status,
-        source=source_info,
-        output=output_info,
-        runtime=runtime_info,
-        ocr=ocr_info,
-        timing=timing_info,
+        execution_id=str(uuid.uuid4()),
+        input=InputInfo(
+            sha256=source_info.sha256,
+            byte_size=source_info.size_bytes,
+            page_count=source_info.pages,
+        ),
+        phase1=Phase1Info(
+            implementation="pipeline-juridico",
+            implementation_version=__version__,
+            logical_processing_version="1",
+            relevant_config_fingerprint=compute_relevant_config_fingerprint(
+                allow_partial=allow_partial,
+                use_ocr=use_ocr,
+                routing_config=routing_config,
+            ),
+        ),
+        artifacts=ArtifactsInfo(
+            markdown_sha256=sha256_bytes(literal.encode("utf-8"))
+        ),
         pages=page_results,
+        telemetry={
+            "runtime": asdict(runtime_info),
+            "ocr": asdict(ocr_info),
+            "timing": asdict(timing_info),
+            "input_path": str(pdf_path),
+            "output_path": str(output_path),
+            "page_durations_ms": page_durations_ms,
+        },
     )
     return final_markdown, relatorio

@@ -138,7 +138,7 @@ def test_9_1_fully_digital_pdf_never_calls_ocr(
 
     _markdown, relatorio = _convert(source, tmp_path, use_ocr=True)
 
-    assert relatorio.status == StatusExecucao.sucesso
+    assert all(not page.errors for page in relatorio.pages)
     assert all(
         page.method == Metodo.texto_nativo for page in relatorio.pages
     )
@@ -160,10 +160,10 @@ def test_9_2_fully_scanned_pdf_has_ocr_evidence_on_all_pages(
         ocr_model="fake-model",
     )
 
-    assert relatorio.status == StatusExecucao.sucesso
+    assert all(not page.errors for page in relatorio.pages)
     assert len(relatorio.pages) == 3
     assert all(
-        page.method == Metodo.ocr_integral and page.characters > 0
+        page.method == Metodo.ocr_integral and page.char_count > 0
         for page in relatorio.pages
     )
 
@@ -190,7 +190,7 @@ def test_9_3_mixed_pdf_records_each_page_method_correctly(
         Metodo.ocr_integral,
         Metodo.vazia,
     ]
-    assert relatorio.status == StatusExecucao.sucesso
+    assert all(not page.errors for page in relatorio.pages)
 
 
 def test_9_4_page_count_matches_markdown_blocks_and_report(
@@ -211,7 +211,7 @@ def test_9_4_page_count_matches_markdown_blocks_and_report(
 
     assert len(relatorio.pages) == 4
     assert markdown.count("[[Pág. ") == 4
-    assert [page.number for page in relatorio.pages] == [1, 2, 3, 4]
+    assert [page.page_number for page in relatorio.pages] == [1, 2, 3, 4]
 
 
 def test_9_5_ocr_failure_never_produces_global_success(
@@ -245,8 +245,8 @@ def test_9_5_ocr_failure_never_produces_global_success(
         ocr_model="fake-model",
     )
 
-    assert relatorio.status != StatusExecucao.sucesso
-    assert relatorio.status == StatusExecucao.incompleto
+    assert relatorio.pages[0].method is Metodo.erro
+    assert relatorio.pages[0].errors
 
 
 def test_9_6_report_contains_source_output_hashes_and_versions(
@@ -263,14 +263,14 @@ def test_9_6_report_contains_source_output_hashes_and_versions(
     _markdown, relatorio = _convert(source, tmp_path, use_ocr=True)
 
     hexadecimal = set("0123456789abcdef")
-    assert len(relatorio.source.sha256) == 64
-    assert set(relatorio.source.sha256) <= hexadecimal
-    assert len(relatorio.output.sha256) == 64
-    assert set(relatorio.output.sha256) <= hexadecimal
-    assert relatorio.runtime.python
-    assert relatorio.runtime.markitdown
-    assert relatorio.runtime.markitdown_ocr
-    assert relatorio.runtime.pymupdf
+    assert len(relatorio.input.sha256) == 64
+    assert set(relatorio.input.sha256) <= hexadecimal
+    assert len(relatorio.artifacts.markdown_sha256) == 64
+    assert set(relatorio.artifacts.markdown_sha256) <= hexadecimal
+    assert relatorio.telemetry["runtime"]["python"]
+    assert relatorio.telemetry["runtime"]["markitdown"]
+    assert relatorio.telemetry["runtime"]["markitdown_ocr"]
+    assert relatorio.telemetry["runtime"]["pymupdf"]
 
 
 def test_9_7_representative_legal_content_survives_conversion(

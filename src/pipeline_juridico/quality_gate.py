@@ -6,8 +6,7 @@ import json
 import re
 from dataclasses import dataclass, field
 
-from .contracts import GateState
-from .conversion_engine import Phase1Artifacts
+from .contracts import GateState, Phase1Artifacts
 
 
 _MARKER_PATTERN = re.compile(r"\[\[Pág\. (\d+)\]\]")
@@ -51,17 +50,19 @@ def evaluate(phase1_artifacts: Phase1Artifacts) -> QualityGateResult:
         if not isinstance(parsed, dict):
             errors.append("Technical report root must be an object")
         else:
-            source = parsed.get("source")
-            if not isinstance(source, dict):
-                errors.append("Technical report source must be an object")
+            input_info = parsed.get("input")
+            if not isinstance(input_info, dict):
+                errors.append("Technical report input must be an object")
             else:
-                source_hash = source.get("sha256")
+                source_hash = input_info.get("sha256")
                 if not _is_exact_type(source_hash, str) or not source_hash:
-                    errors.append("Technical report source.sha256 must be a string")
+                    errors.append(
+                        "Technical report input.sha256 must be a non-empty string"
+                    )
 
-                source_pages = source.get("pages")
+                source_pages = input_info.get("page_count")
                 if not _is_exact_type(source_pages, int):
-                    errors.append("Technical report source.pages must be an integer")
+                    errors.append("Technical report input.page_count must be an integer")
                 else:
                     page_count = source_pages
                     if page_count < 1:
@@ -80,18 +81,18 @@ def evaluate(phase1_artifacts: Phase1Artifacts) -> QualityGateResult:
             errors.append(f"{label} must be an object")
             continue
 
-        number = record.get("number")
+        number = record.get("page_number")
         method = record.get("method")
-        status = record.get("status")
-        characters = record.get("characters")
+        characters = record.get("char_count")
+        page_errors = record.get("errors")
+        truncated = record.get("truncated")
 
         valid_number = _is_exact_type(number, int)
         valid_method = _is_exact_type(method, str) and method in _METHODS
-        valid_status = _is_exact_type(status, str)
         valid_characters = _is_exact_type(characters, int)
 
         if not valid_number:
-            errors.append(f"{label}.number must be an integer")
+            errors.append(f"{label}.page_number must be an integer")
         else:
             inventory_numbers.append(number)
 
@@ -100,13 +101,21 @@ def evaluate(phase1_artifacts: Phase1Artifacts) -> QualityGateResult:
         else:
             method_counts[method] = method_counts.get(method, 0) + 1
 
-        if not valid_status:
-            errors.append(f"{label}.status must be a string")
-        elif status != "sucesso":
-            errors.append(f"{label}.status is not completed: {status}")
-
         if not valid_characters:
-            errors.append(f"{label}.characters must be an integer")
+            errors.append(f"{label}.char_count must be an integer")
+        elif characters < 0:
+            errors.append(f"{label}.char_count must be non-negative")
+
+        valid_errors = isinstance(page_errors, list)
+        if not valid_errors:
+            errors.append(f"{label}.errors must be a list")
+        elif page_errors:
+            errors.append(f"{label}.errors is not empty")
+
+        if not _is_exact_type(truncated, bool):
+            errors.append(f"{label}.truncated must be a boolean")
+        elif truncated:
+            errors.append(f"{label} has known truncation")
 
         if valid_method and method == "erro":
             errors.append(f"{label}.method is erro")
@@ -120,7 +129,15 @@ def evaluate(phase1_artifacts: Phase1Artifacts) -> QualityGateResult:
             errors.append(f"{label} has an empty return for a non-blank method")
 
         page_warnings = record.get("warnings")
-        if status == "sucesso" and isinstance(page_warnings, list):
+        if not isinstance(page_warnings, list):
+            errors.append(f"{label}.warnings must be a list")
+        if (
+            valid_errors
+            and not page_errors
+            and valid_method
+            and method != "erro"
+            and isinstance(page_warnings, list)
+        ):
             warnings.extend(
                 warning
                 for warning in page_warnings

@@ -4,7 +4,7 @@ import pytest
 
 import pipeline_juridico.validator as validator_module
 from pipeline_juridico.converter import PageBlock, format_page_marker
-from pipeline_juridico.models import Metodo, ResultadoPagina, StatusExecucao
+from pipeline_juridico.models import Metodo, ResultadoPagina
 from pipeline_juridico.validator import (
     MarkdownValidationError,
     OutputAlreadyExistsError,
@@ -22,13 +22,11 @@ def _page(number: int, method: Metodo = Metodo.texto_nativo) -> str:
 
 def _result(number: int, method: Metodo) -> ResultadoPagina:
     return ResultadoPagina(
-        number=number,
+        page_number=number,
         method=method,
-        status=StatusExecucao.sucesso,
-        characters=10,
-        duration_ms=5,
+        char_count=10,
         warnings=[],
-        error=None,
+        errors=[],
     )
 
 

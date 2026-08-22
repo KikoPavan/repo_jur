@@ -156,7 +156,7 @@ def test_facade_markdown_equals_direct_converter(
 
     assert artifacts.markdown == strip_technical_routing_metadata(direct_markdown)
     assert "<!-- método:" not in artifacts.markdown
-    assert [page["number"] for page in report["pages"]] == list(
+    assert [page["page_number"] for page in report["pages"]] == list(
         range(1, expected_pages + 1)
     )
     assert all(page["method"] for page in report["pages"])
@@ -207,8 +207,8 @@ def test_technical_report_metadata_is_not_injected_into_markdown(tmp_path: Path)
     assert sentinel_model not in artifacts.markdown
     assert "<!-- método:" not in artifacts.markdown
     assert report["pages"][0]["method"] == "texto_nativo"
-    assert report["ocr"]["provider"] not in artifacts.markdown
-    assert report["timing"]["started_at"] not in artifacts.markdown
+    assert report["telemetry"]["ocr"]["provider"] not in artifacts.markdown
+    assert report["telemetry"]["timing"]["started_at"] not in artifacts.markdown
     assert not any(warning in artifacts.markdown for page in report["pages"] for warning in page["warnings"])
 
 
@@ -271,12 +271,12 @@ def test_stage2_preflight_reference_flows_into_conversion_engine(tmp_path: Path)
     validate_report_contract(report)
 
     assert artifacts.markdown == strip_technical_routing_metadata(direct_markdown)
-    assert report["source"] == {
-        "path": str(resolved),
-        "size_bytes": len(evidence),
+    assert report["input"] == {
+        "byte_size": len(evidence),
         "sha256": result.official_evidence_sha256,
-        "pages": 1,
+        "page_count": 1,
     }
+    assert report["telemetry"]["input_path"] == str(resolved)
 
 
 def test_different_evidence_bytes_have_different_report_hashes(tmp_path: Path) -> None:
@@ -291,7 +291,7 @@ def test_different_evidence_bytes_have_different_report_hashes(tmp_path: Path) -
         artifacts = ConversionEngine().convert(
             source.resolve().as_uri(), _config(tmp_path)
         )
-        hashes.append(json.loads(artifacts.report_json)["source"]["sha256"])
+        hashes.append(json.loads(artifacts.report_json)["input"]["sha256"])
 
     assert hashes[0] != hashes[1]
 

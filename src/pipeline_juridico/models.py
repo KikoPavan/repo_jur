@@ -21,13 +21,12 @@ class StatusExecucao(str, Enum):
 
 @dataclass
 class ResultadoPagina:
-    number: int
+    page_number: int
     method: Metodo
-    status: StatusExecucao
-    characters: int
-    duration_ms: int
+    char_count: int
     warnings: List[str] = field(default_factory=list)
-    error: Optional[str] = None
+    errors: List[str] = field(default_factory=list)
+    truncated: bool = False
 
 
 @dataclass
@@ -39,9 +38,30 @@ class FonteInfo:
 
 
 @dataclass
-class SaidaInfo:
-    path: str
-    sha256: str
+class InputInfo:
+    sha256: str = ""
+    byte_size: int = 0
+    page_count: int = 0
+
+
+@dataclass
+class Phase1Info:
+    implementation: str = ""
+    implementation_version: str = ""
+    logical_processing_version: str = ""
+    relevant_config_fingerprint: str = ""
+
+
+@dataclass
+class ResultadoInfo:
+    quality_gate: str = ""
+    warnings: List[str] = field(default_factory=list)
+    errors: List[str] = field(default_factory=list)
+
+
+@dataclass
+class ArtifactsInfo:
+    markdown_sha256: str = ""
 
 
 @dataclass
@@ -70,11 +90,10 @@ class TimingInfo:
 @dataclass
 class Relatorio:
     schema_version: str = "1.0"
-    run_id: str = ""
-    status: StatusExecucao = StatusExecucao.sucesso
-    source: Optional[FonteInfo] = None
-    output: Optional[SaidaInfo] = None
-    runtime: Optional[RuntimeInfo] = None
-    ocr: Optional[OcrInfo] = None
-    timing: Optional[TimingInfo] = None
+    execution_id: str = ""
+    input: Optional[InputInfo] = None
+    phase1: Optional[Phase1Info] = None
+    result: Optional[ResultadoInfo] = None
+    artifacts: Optional[ArtifactsInfo] = None
     pages: List[ResultadoPagina] = field(default_factory=list)
+    telemetry: dict = field(default_factory=dict)

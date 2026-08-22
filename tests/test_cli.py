@@ -212,7 +212,7 @@ def test_cli_strict_success_writes_valid_output(
     assert "<!-- método: texto_nativo -->" in output_content
     assert report_path.is_file()
     report = json.loads(report_path.read_text(encoding="utf-8"))
-    assert report["status"] == "sucesso"
+    assert report["result"]["quality_gate"] == "PASS"
 
 
 def test_cli_strict_failure_writes_nothing(
@@ -249,7 +249,7 @@ def test_cli_allow_partial_writes_incomplete_output(
     assert ILLEGIBLE_TEXT_MARKER in output_path.read_text(encoding="utf-8")
     assert report_path.is_file()
     report = json.loads(report_path.read_text(encoding="utf-8"))
-    assert report["status"] == "incompleto"
+    assert report["result"]["quality_gate"] == "FAIL"
 
 
 def test_cli_overwrite_protection_then_success(

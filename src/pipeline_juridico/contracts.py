@@ -85,6 +85,12 @@ class GateState(str, Enum):
     FAIL = "FAIL"
 
 
+@dataclass(frozen=True)
+class Phase1Artifacts:
+    markdown: str
+    report_json: str
+
+
 class CriticalValidationStatus(str, Enum):
     OK = "OK"
     WARNING = "WARNING"

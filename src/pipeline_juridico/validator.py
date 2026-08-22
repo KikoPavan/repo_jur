@@ -112,7 +112,7 @@ def validate_markdown_matches_report(
         int(page_number): method
         for page_number, method in _PAGE_WITH_METHOD_PATTERN.findall(markdown)
     }
-    report_pages = {page.number: page.method.value for page in pages}
+    report_pages = {page.page_number: page.method.value for page in pages}
 
     missing_in_report = sorted(markdown_pages.keys() - report_pages.keys())
     missing_in_markdown = sorted(report_pages.keys() - markdown_pages.keys())

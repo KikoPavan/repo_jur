@@ -29,15 +29,15 @@ def _page(
     characters: int = 20,
     warnings: list[object] | None = None,
     error: str | None = None,
+    truncated: bool = False,
 ) -> dict[str, object]:
     return {
-        "number": number,
+        "page_number": number,
         "method": method,
-        "status": status,
-        "characters": characters,
-        "duration_ms": 10,
+        "char_count": characters,
         "warnings": [] if warnings is None else warnings,
-        "error": error,
+        "errors": ([] if error is None and status == "sucesso" else [error or status]),
+        "truncated": truncated,
     }
 
 
@@ -49,32 +49,14 @@ def _report(
 ) -> dict[str, object]:
     return {
         "schema_version": "1.0",
-        "run_id": "00000000-0000-0000-0000-000000000001",
-        "status": status,
-        "source": {
-            "path": "/evidence/source.pdf",
-            "size_bytes": 1234,
+        "execution_id": "00000000-0000-0000-0000-000000000001",
+        "input": {
+            "byte_size": 1234,
             "sha256": "a" * 64,
-            "pages": page_count,
+            "page_count": page_count,
         },
-        "output": {"path": "/output/source.md", "sha256": "b" * 64},
-        "runtime": {
-            "python": "3.12.0",
-            "markitdown": "1.0",
-            "markitdown_ocr": "1.0",
-            "pymupdf": "1.0",
-        },
-        "ocr": {
-            "enabled": False,
-            "provider": "none",
-            "model": "none",
-            "prompt_sha256": "c" * 64,
-        },
-        "timing": {
-            "started_at": "2026-08-21T00:00:00Z",
-            "finished_at": "2026-08-21T00:00:01Z",
-            "duration_ms": 1000,
-        },
+        "phase1": {}, "artifacts": {"markdown_sha256": "b" * 64},
+        "telemetry": {},
         "pages": (
             [_page(number) for number in range(1, page_count + 1)]
             if pages is None
@@ -161,12 +143,12 @@ def test_zero_physical_pages_fails() -> None:
 
 @pytest.mark.parametrize("status", ["falha", "incompleto", "pendente"])
 @pytest.mark.parametrize("error", [None, "informational detail"])
-def test_not_completed_page_status_fails_independently_of_error(
+def test_not_completed_page_errors_fail_independently_of_other_fields(
     status: str, error: str | None
 ) -> None:
     _assert_fail(
         _artifacts(report=_report(pages=[_page(1, status=status, error=error)])),
-        "status",
+        "errors",
     )
 
 
@@ -224,14 +206,14 @@ def test_null_report_root_fails() -> None:
     assert any("root must be an object" in error for error in result.errors)
 
 
-@pytest.mark.parametrize("field", ["sha256", "pages"])
+@pytest.mark.parametrize("field", ["sha256", "page_count"])
 def test_missing_required_source_field_fails(field: str) -> None:
     report = _report()
-    del report["source"][field]  # type: ignore[index]
+    del report["input"][field]  # type: ignore[index]
     _assert_fail(_artifacts(report=report), field)
 
 
-@pytest.mark.parametrize("field", ["number", "method", "status", "characters"])
+@pytest.mark.parametrize("field", ["page_number", "method", "char_count", "errors", "truncated"])
 def test_missing_required_page_field_fails(field: str) -> None:
     page = _page(1)
     del page[field]
@@ -267,21 +249,21 @@ def test_inventory_record_order_is_not_normative() -> None:
     ("field", "value"),
     [
         ("sha256", 123),
-        ("pages", "1"),
+        ("page_count", "1"),
     ],
 )
 def test_required_source_fields_have_exact_types(field: str, value: object) -> None:
     report = _report()
-    report["source"][field] = value  # type: ignore[index]
+    report["input"][field] = value  # type: ignore[index]
     _assert_fail(_artifacts(report=report), field)
 
 
 def test_invalid_method_and_page_field_types_fail() -> None:
     for field, value in (
-        ("number", True),
+        ("page_number", True),
         ("method", "unknown"),
-        ("status", 1),
-        ("characters", False),
+        ("char_count", False),
+        ("errors", "bad"),
     ):
         page = _page(1)
         page[field] = value
@@ -313,9 +295,8 @@ def test_ocr_and_blank_methods_do_not_synthesize_warnings(method: str) -> None:
 
 def test_markers_and_observability_fields_do_not_synthesize_warnings() -> None:
     report = _report()
-    report["source"]["size_bytes"] = 10**12  # type: ignore[index]
-    report["runtime"]["markitdown"] = "engine-identity"  # type: ignore[index]
-    report["timing"]["duration_ms"] = 10**12  # type: ignore[index]
+    report["input"]["byte_size"] = 10**12  # type: ignore[index]
+    report["telemetry"] = {"runtime": {"markitdown": "engine-identity"}, "duration_ms": 10**12}
     artifacts = _artifacts(markdown="[[Pág. 1]]\n[[TEXTO ILEGÍVEL]]\n", report=report)
     result = evaluate(artifacts)
     assert result.state is GateState.PASS
@@ -415,7 +396,6 @@ def test_gate_never_writes_or_creates_lifecycle_values(
 
 
 def test_no_truncation_signal_is_inferred_and_empty_return_stays_distinct() -> None:
-    """proposal.md Residual Risk 2: the absent signal remains deferred-evaluable."""
     conformant = evaluate(_artifacts())
     empty = evaluate(_artifacts(report=_report(pages=[_page(1, characters=0)])))
 
@@ -423,6 +403,23 @@ def test_no_truncation_signal_is_inferred_and_empty_return_stays_distinct() -> N
     assert empty.state is GateState.FAIL
     assert any("empty" in error.lower() for error in empty.errors)
     assert all("truncat" not in error.lower() for error in empty.errors)
+
+
+def test_explicit_known_truncation_is_fatal():
+    _assert_fail(_artifacts(report=_report(pages=[_page(1, truncated=True)])), "truncat")
+
+
+@pytest.mark.parametrize("value", [None, 0, "false"])
+def test_missing_or_non_boolean_truncation_fails(value):
+    page = _page(1)
+    if value is None: del page["truncated"]
+    else: page["truncated"] = value
+    _assert_fail(_artifacts(report=_report(pages=[page])), "truncated")
+
+
+def test_result_and_telemetry_are_ignored():
+    report = _report(); report["result"] = {"quality_gate": "FAIL"}; report["telemetry"] = {"anything": object().__class__.__name__}
+    assert evaluate(_artifacts(report=report)).state is GateState.PASS
 
 
 def test_result_is_frozen_and_has_contract_shape() -> None:

@@ -8,10 +8,19 @@ from dotenv import load_dotenv
 
 from .cleaner import UnauthorizedIllegibleMarkerError
 from .config import RoutingConfig
+from .contracts import Phase1Artifacts
 from .converter import convert_document
 from .engines import OcrConfigurationError
 from .inspector import PdfInspectionError
-from .report import ReportContractError, build_report_json, validate_report_contract
+from .quality_gate import evaluate
+from .report import (
+    ReportContractError,
+    attach_gate_result,
+    build_candidate_report_json,
+    build_report_json,
+    strip_technical_routing_metadata,
+    validate_report_contract,
+)
 from .validator import (
     MarkdownValidationError,
     OutputAlreadyExistsError,
@@ -126,7 +135,18 @@ def main(argv: list[str] | None = None) -> int:
             routing_config=routing_config,
             keep_temp=args.keep_temp,
         )
-        report_json = build_report_json(relatorio)
+        literal = strip_technical_routing_metadata(markdown)
+        candidate_json = build_candidate_report_json(relatorio)
+        gate_result = evaluate(
+            Phase1Artifacts(markdown=literal, report_json=candidate_json)
+        )
+        final = attach_gate_result(
+            relatorio,
+            quality_gate=gate_result.state.value,
+            warnings=gate_result.warnings,
+            errors=gate_result.errors,
+        )
+        report_json = build_report_json(final)
         validate_report_contract(json.loads(report_json))
 
         write_atomic(
