@@ -40,6 +40,8 @@ def _build_parser() -> argparse.ArgumentParser:
         description="Comandos operacionais do pipeline jurídico.",
     )
     subparsers = parser.add_subparsers(dest="command", required=True)
+    from .legal_producer_cli import build_producer_parser
+    build_producer_parser(subparsers)
     route_parser = subparsers.add_parser(
         "route",
         help="Roteia artefatos da Fase 1 para o domínio de destino.",
@@ -261,6 +263,9 @@ def main(argv: list[str] | None = None) -> int:
     logger = logging.getLogger(__name__)
     if args.command == "route":
         return _run_route(args, logger)
+    if args.command == "producer":
+        from .legal_producer_cli import run
+        return run(args, logger)
     return EXIT_UNEXPECTED
 
 
