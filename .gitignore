@@ -19,6 +19,7 @@ output/*
 logs/*
 var/tmp/*
 var/object-storage/*
+var/retrieval/*
 !input/.gitkeep
 !output/.gitkeep
 !logs/.gitkeep

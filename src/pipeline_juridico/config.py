@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import os
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
 
@@ -126,5 +126,81 @@ class PreflightLimits:
             ),
             max_compression_ratio=float(
                 os.environ.get("PREFLIGHT_MAX_COMPRESSION_RATIO", "100.0")
+            ),
+        )
+
+
+FILTER_SCHEMA_VERSION = "1"
+RETRIEVAL_FILTER_SCHEMA_VERSION = FILTER_SCHEMA_VERSION
+PUBLIC_TO_CANONICAL_FIELD = {
+    "lei_numero": "repo_jur_lei_numero",
+    "lei_ano": "repo_jur_lei_ano",
+    "lei_esfera": "repo_jur_lei_esfera",
+    "lei_tipo": "repo_jur_lei_tipo",
+    "processo_numero": "repo_jur_processo_numero",
+    "tribunal": "repo_jur_tribunal",
+    "relator": "repo_jur_relator",
+    "data_julgamento": "repo_jur_data_julgamento",
+    "ramo_direito": "repo_jur_ramo_direito",
+    "precedente_numero": "repo_jur_precedente_numero",
+    "precedente_status": "repo_jur_precedente_status",
+    "tema_numero": "repo_jur_tema_numero",
+}
+RETRIEVAL_FILTER_VOCABULARY = (
+    "type",
+    "status",
+    "tags",
+    "lei_numero",
+    "lei_ano",
+    "lei_esfera",
+    "lei_tipo",
+    "processo_numero",
+    "tribunal",
+    "relator",
+    "data_julgamento",
+    "ramo_direito",
+    "precedente_numero",
+    "precedente_status",
+    "tema_numero",
+)
+
+
+@dataclass(frozen=True)
+class RetrievalConfig:
+    """Validated, derived-only configuration for Legal Knowledge retrieval."""
+
+    derived_root: Path = Path("var/retrieval")
+    search_default_limit: int = 10
+    search_max_limit: int = 50
+    filter_schema_version: str = RETRIEVAL_FILTER_SCHEMA_VERSION
+    filter_vocabulary: tuple[str, ...] = RETRIEVAL_FILTER_VOCABULARY
+    public_to_canonical_field: dict[str, str] = field(
+        default_factory=lambda: PUBLIC_TO_CANONICAL_FIELD.copy()
+    )
+
+    def __post_init__(self) -> None:
+        object.__setattr__(
+            self,
+            "derived_root",
+            ensure_outside_canonical_bundle(self.derived_root),
+        )
+        if not 1 <= self.search_default_limit <= self.search_max_limit:
+            raise ValueError(
+                "search limits require maximum >= default >= 1"
+            )
+        if not self.filter_schema_version or not self.filter_vocabulary:
+            raise ValueError("retrieval filter schema must be declared")
+
+    @classmethod
+    def from_env(cls) -> RetrievalConfig:
+        return cls(
+            derived_root=Path(
+                os.environ.get("RETRIEVAL_STATE_DIR", "var/retrieval")
+            ),
+            search_default_limit=int(
+                os.environ.get("RETRIEVAL_SEARCH_DEFAULT_LIMIT", "10")
+            ),
+            search_max_limit=int(
+                os.environ.get("RETRIEVAL_SEARCH_MAX_LIMIT", "50")
             ),
         )

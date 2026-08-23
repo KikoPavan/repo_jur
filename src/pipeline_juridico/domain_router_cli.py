@@ -44,6 +44,8 @@ def _build_parser() -> argparse.ArgumentParser:
     build_producer_parser(subparsers)
     from .process_producer_cli import build_process_parser
     build_process_parser(subparsers)
+    from .retrieval_cli import build_retrieval_parsers
+    build_retrieval_parsers(subparsers)
     route_parser = subparsers.add_parser(
         "route",
         help="Roteia artefatos da Fase 1 para o domínio de destino.",
@@ -270,6 +272,9 @@ def main(argv: list[str] | None = None) -> int:
         return run(args, logger)
     if args.command == "process":
         from .process_producer_cli import run
+        return run(args, logger)
+    if args.command in {"retrieval", "search", "search-diagnose"}:
+        from .retrieval_cli import run
         return run(args, logger)
     return EXIT_UNEXPECTED
 
