@@ -28,3 +28,9 @@ dev = [
     "pytest>=9.1.1",
     "pytest-cov>=7.1.0",
 ]
+
+[tool.pytest.ini_options]
+markers = [
+    "conformance: Stage-10 conformance/invariant contract checks",
+    "regression: Stage-10 deterministic regression/golden checks",
+]
