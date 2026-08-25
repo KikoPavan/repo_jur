@@ -3,10 +3,15 @@
 from __future__ import annotations
 
 import argparse
+import ast
 import datetime
+import importlib.util
 import json
 import logging
 import os
+import subprocess
+import sys
+from importlib.metadata import distributions
 from pathlib import Path
 
 from .config import ensure_outside_canonical_bundle
@@ -33,6 +38,41 @@ EXIT_UNEXPECTED = 2
 EXIT_CONFIG = 3
 EXIT_BLOCKED = 5
 
+CONFORMANCE_REPORT_DEFAULT = "var/conformance/report.json"
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+CONTRACTS_SOURCE = PROJECT_ROOT / "src/pipeline_juridico/contracts.py"
+REAL_CORPUS_FILENAMES = (
+    "AINTARESP_1462304-PA.pdf",
+    "REsp_1704551-SP.pdf",
+    "Inf0024E.pdf",
+    "L10.406_CC_2002.pdf",
+)
+PROHIBITED_CONTRACT_IMPORTS = (
+    "pipeline_juridico.retrieval",
+)
+PROHIBITED_VECTOR_PACKAGES = (
+    "faiss",
+    "faiss-cpu",
+    "faiss-gpu",
+    "chromadb",
+    "sentence-transformers",
+    "sentence_transformers",
+    "qdrant-client",
+    "qdrant_client",
+    "pinecone",
+    "pinecone-client",
+    "weaviate",
+    "weaviate-client",
+    "milvus",
+    "milvus-lite",
+    "pymilvus",
+    "lancedb",
+    "pgvector",
+    "annoy",
+    "hnswlib",
+    "flagembedding",
+)
+
 
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
@@ -46,6 +86,28 @@ def _build_parser() -> argparse.ArgumentParser:
     build_process_parser(subparsers)
     from .retrieval_cli import build_retrieval_parsers
     build_retrieval_parsers(subparsers)
+    test_parser = subparsers.add_parser(
+        "test",
+        help="Executa verificações operacionais locais.",
+    )
+    test_actions = test_parser.add_subparsers(
+        dest="test_action", required=True
+    )
+    conformance_parser = test_actions.add_parser(
+        "conformance",
+        help="Executa as suítes de conformidade e regressão.",
+    )
+    conformance_parser.add_argument(
+        "--json-report",
+        default=CONFORMANCE_REPORT_DEFAULT,
+        metavar="PATH",
+        help=f"Relatório JSON derivado (padrão: {CONFORMANCE_REPORT_DEFAULT}).",
+    )
+    conformance_parser.add_argument(
+        "--verbose",
+        action="store_true",
+        help="Exibe a saída dos processos pytest durante a execução.",
+    )
     route_parser = subparsers.add_parser(
         "route",
         help="Roteia artefatos da Fase 1 para o domínio de destino.",
@@ -91,6 +153,193 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Emite a saída do comando em JSON legível por máquina.",
     )
     return parser
+
+
+def validate_contract_imports(source_path: Path | None = None) -> list[str]:
+    """Return prohibited domain-specific imports found in the common contracts."""
+    path = source_path or CONTRACTS_SOURCE
+    try:
+        tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+    except (OSError, UnicodeError, SyntaxError) as exc:
+        return [f"could not inspect {path}: {exc}"]
+
+    imported_modules: list[tuple[int, str]] = []
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            imported_modules.extend((node.lineno, alias.name) for alias in node.names)
+        elif isinstance(node, ast.ImportFrom):
+            base = node.module or ""
+            if node.level:
+                base = f"pipeline_juridico.{base}".rstrip(".")
+            if base == "pipeline_juridico":
+                imported_modules.extend(
+                    (node.lineno, f"{base}.{alias.name}") for alias in node.names
+                )
+            elif base:
+                imported_modules.append((node.lineno, base))
+
+    def prohibited_import(module: str) -> bool:
+        if any(
+            module == prohibited or module.startswith(f"{prohibited}.")
+            for prohibited in PROHIBITED_CONTRACT_IMPORTS
+        ):
+            return True
+        relative_name = module.removeprefix("pipeline_juridico.")
+        return relative_name.startswith(("legal_", "process_"))
+
+    return [
+        f"{path}:{line}: prohibited import {module}"
+        for line, module in imported_modules
+        if prohibited_import(module)
+    ]
+
+
+def _normalized_package_name(name: str) -> str:
+    return name.strip().lower().replace("_", "-").replace(".", "-")
+
+
+def validate_no_vector_infrastructure(
+    *,
+    installed_distributions: set[str] | None = None,
+    loaded_modules: set[str] | None = None,
+) -> list[str]:
+    """Return installed or loaded vector/embedding infrastructure violations."""
+    if installed_distributions is None:
+        installed_distributions = {
+            distribution.metadata.get("Name", "") for distribution in distributions()
+        }
+    if loaded_modules is None:
+        loaded_modules = set(sys.modules)
+
+    prohibited = {_normalized_package_name(name) for name in PROHIBITED_VECTOR_PACKAGES}
+    violations: list[str] = []
+    for name in sorted(installed_distributions):
+        if _normalized_package_name(name) in prohibited:
+            violations.append(f"prohibited distribution installed: {name}")
+    for name in sorted(loaded_modules):
+        root_name = name.split(".", 1)[0]
+        if _normalized_package_name(root_name) in prohibited:
+            violations.append(f"prohibited module loaded: {name}")
+    return violations
+
+
+def _configuration_errors() -> list[str]:
+    errors: list[str] = []
+    if importlib.util.find_spec("pytest") is None:
+        errors.append("pytest is not installed in the active Python environment")
+    input_root = PROJECT_ROOT / "input"
+    missing = [name for name in REAL_CORPUS_FILENAMES if not (input_root / name).is_file()]
+    if missing:
+        errors.append(
+            f"missing PDF fixtures under {input_root}: {', '.join(missing)}"
+        )
+    return errors
+
+
+def _write_conformance_report(path: Path, report: dict[str, object]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(
+        json.dumps(report, ensure_ascii=False, indent=2) + "\n",
+        encoding="utf-8",
+    )
+
+
+def _run_conformance(args: argparse.Namespace, logger: logging.Logger) -> int:
+    failures: list[dict[str, str]] = []
+    runs: list[dict[str, object]] = []
+
+    for detail in _configuration_errors():
+        failures.append(
+            {"category": "ENVIRONMENT_CONFIGURATION_ERROR", "detail": detail}
+        )
+
+    if not failures:
+        for detail in validate_contract_imports():
+            failures.append({"category": "CONFORMANCE_FAILURE", "detail": detail})
+        for detail in validate_no_vector_infrastructure():
+            failures.append({"category": "CONFORMANCE_FAILURE", "detail": detail})
+
+    if not any(
+        failure["category"] == "ENVIRONMENT_CONFIGURATION_ERROR"
+        for failure in failures
+    ):
+        for marker, failure_category in (
+            ("conformance", "CONFORMANCE_FAILURE"),
+            ("regression", "REGRESSION_FAILURE"),
+        ):
+            command = [
+                sys.executable,
+                "-m",
+                "pytest",
+                "-m",
+                marker,
+                "tests/test_conformance/",
+            ]
+            try:
+                completed = subprocess.run(
+                    command,
+                    check=False,
+                    text=True,
+                    capture_output=not args.verbose,
+                )
+            except OSError as exc:
+                failures.append(
+                    {
+                        "category": "ENVIRONMENT_CONFIGURATION_ERROR",
+                        "detail": f"could not execute {marker} pytest run: {exc}",
+                    }
+                )
+                break
+            runs.append(
+                {
+                    "marker": marker,
+                    "command": command,
+                    "return_code": completed.returncode,
+                    "stdout": completed.stdout,
+                    "stderr": completed.stderr,
+                }
+            )
+            if completed.returncode == 1:
+                failures.append(
+                    {
+                        "category": failure_category,
+                        "detail": f"{marker} pytest run failed",
+                    }
+                )
+            elif completed.returncode != 0:
+                failures.append(
+                    {
+                        "category": "ENVIRONMENT_CONFIGURATION_ERROR",
+                        "detail": (
+                            f"{marker} pytest run exited with configuration/operational "
+                            f"code {completed.returncode}"
+                        ),
+                    }
+                )
+
+    if any(
+        failure["category"] == "ENVIRONMENT_CONFIGURATION_ERROR"
+        for failure in failures
+    ):
+        exit_code = 2
+    elif failures:
+        exit_code = 1
+    else:
+        exit_code = 0
+
+    report: dict[str, object] = {
+        "schema_version": "1.0",
+        "status": "PASS" if exit_code == 0 else "FAIL",
+        "exit_code": exit_code,
+        "runs": runs,
+        "failures": failures,
+    }
+    try:
+        _write_conformance_report(Path(args.json_report), report)
+    except (OSError, UnicodeError) as exc:
+        logger.error("Falha ao escrever relatório de conformidade: %s", exc)
+        return 2
+    return exit_code
 
 
 def _resolve_state_dir(override: str | None) -> Path:
@@ -263,8 +512,10 @@ def _run_route(args: argparse.Namespace, logger: logging.Logger) -> int:
 def main(argv: list[str] | None = None) -> int:
     parser = _build_parser()
     args = parser.parse_args(argv)
-    logging.basicConfig(level=args.log_level)
+    logging.basicConfig(level=getattr(args, "log_level", "INFO"))
     logger = logging.getLogger(__name__)
+    if args.command == "test" and args.test_action == "conformance":
+        return _run_conformance(args, logger)
     if args.command == "route":
         return _run_route(args, logger)
     if args.command == "producer":

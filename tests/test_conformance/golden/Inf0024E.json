@@ -1,0 +1,309 @@
+{
+  "schema_version": "1.0",
+  "execution_id": "4d967e6e-6943-4537-9dfc-64fcb0af5870",
+  "input": {
+    "sha256": "8650209671730baf15b84a4e4f59d0035f7481efebf7f42e327a5e0a2153c4a5",
+    "byte_size": 914904,
+    "page_count": 29
+  },
+  "phase1": {
+    "implementation": "pipeline-juridico",
+    "implementation_version": "0.1.0",
+    "logical_processing_version": "1",
+    "relevant_config_fingerprint": "ec9cd69d38a9f9109b885c5d2db9937d5c98cff6b2cc73a1c73345459e00712c"
+  },
+  "result": {
+    "quality_gate": "PASS",
+    "warnings": [],
+    "errors": []
+  },
+  "artifacts": {
+    "markdown_sha256": "dd63514c643438e4409f25c6cc115bf81d4eb3f070de181ddd25528d9863ae22"
+  },
+  "pages": [
+    {
+      "page_number": 1,
+      "method": "texto_nativo",
+      "char_count": 1983,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 2,
+      "method": "texto_nativo",
+      "char_count": 1725,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 3,
+      "method": "texto_nativo",
+      "char_count": 1656,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 4,
+      "method": "texto_nativo",
+      "char_count": 1864,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 5,
+      "method": "texto_nativo",
+      "char_count": 1086,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 6,
+      "method": "texto_nativo",
+      "char_count": 2661,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 7,
+      "method": "texto_nativo",
+      "char_count": 1350,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 8,
+      "method": "texto_nativo",
+      "char_count": 3412,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 9,
+      "method": "texto_nativo",
+      "char_count": 2705,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 10,
+      "method": "texto_nativo",
+      "char_count": 1597,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 11,
+      "method": "texto_nativo",
+      "char_count": 1585,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 12,
+      "method": "texto_nativo",
+      "char_count": 2065,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 13,
+      "method": "texto_nativo",
+      "char_count": 2575,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 14,
+      "method": "texto_nativo",
+      "char_count": 1714,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 15,
+      "method": "texto_nativo",
+      "char_count": 1726,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 16,
+      "method": "texto_nativo",
+      "char_count": 1500,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 17,
+      "method": "texto_nativo",
+      "char_count": 2894,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 18,
+      "method": "texto_nativo",
+      "char_count": 2075,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 19,
+      "method": "texto_nativo",
+      "char_count": 2956,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 20,
+      "method": "texto_nativo",
+      "char_count": 3319,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 21,
+      "method": "texto_nativo",
+      "char_count": 1628,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 22,
+      "method": "texto_nativo",
+      "char_count": 2386,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 23,
+      "method": "texto_nativo",
+      "char_count": 2495,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 24,
+      "method": "texto_nativo",
+      "char_count": 2259,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 25,
+      "method": "texto_nativo",
+      "char_count": 1511,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 26,
+      "method": "texto_nativo",
+      "char_count": 1793,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 27,
+      "method": "texto_nativo",
+      "char_count": 3143,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 28,
+      "method": "texto_nativo",
+      "char_count": 1537,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 29,
+      "method": "texto_nativo",
+      "char_count": 2378,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    }
+  ],
+  "telemetry": {
+    "runtime": {
+      "python": "3.13.11",
+      "markitdown": "0.1.5",
+      "markitdown_ocr": "0.1.0",
+      "pymupdf": "1.28.0"
+    },
+    "ocr": {
+      "enabled": false,
+      "provider": "openai-compatible",
+      "model": "",
+      "prompt_sha256": "34c6b4c284bc3ec8070ea7f8523684067c8471f6d820d83ab97c76b9e7dc6233"
+    },
+    "timing": {
+      "started_at": "2026-08-24T16:48:44.323393+00:00",
+      "finished_at": "2026-08-24T16:48:48.593471+00:00",
+      "duration_ms": 4270
+    },
+    "input_path": "/home/kiko/devops/repo_jur/input/Inf0024E.pdf",
+    "output_path": "/home/kiko/devops/repo_jur/input/Inf0024E.pdf.md",
+    "page_durations_ms": [
+      174,
+      104,
+      109,
+      159,
+      79,
+      162,
+      103,
+      168,
+      145,
+      108,
+      257,
+      113,
+      151,
+      114,
+      111,
+      94,
+      153,
+      123,
+      150,
+      204,
+      109,
+      127,
+      276,
+      139,
+      106,
+      118,
+      164,
+      105,
+      154
+    ]
+  }
+}
