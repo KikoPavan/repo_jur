@@ -1,0 +1,174 @@
+{
+  "schema_version": "1.0",
+  "execution_id": "c1abf46e-c98b-418b-8f49-4d866f007028",
+  "input": {
+    "sha256": "aea0258bffbf7dc0fb74c44bf407ca6c38ac96ec8ada70803828710479e26660",
+    "byte_size": 87242,
+    "page_count": 14
+  },
+  "phase1": {
+    "implementation": "pipeline-juridico",
+    "implementation_version": "0.1.0",
+    "logical_processing_version": "1",
+    "relevant_config_fingerprint": "ec9cd69d38a9f9109b885c5d2db9937d5c98cff6b2cc73a1c73345459e00712c"
+  },
+  "result": {
+    "quality_gate": "PASS",
+    "warnings": [],
+    "errors": []
+  },
+  "artifacts": {
+    "markdown_sha256": "72a5f44641cdc3186b8b598330b90bfb6a34f0292d4adc5fc1db917bbc53a766"
+  },
+  "pages": [
+    {
+      "page_number": 1,
+      "method": "texto_nativo",
+      "char_count": 2392,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 2,
+      "method": "texto_nativo",
+      "char_count": 376,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 3,
+      "method": "texto_nativo",
+      "char_count": 1287,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 4,
+      "method": "texto_nativo",
+      "char_count": 1497,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 5,
+      "method": "texto_nativo",
+      "char_count": 1139,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 6,
+      "method": "texto_nativo",
+      "char_count": 2055,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 7,
+      "method": "texto_nativo",
+      "char_count": 1586,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 8,
+      "method": "texto_nativo",
+      "char_count": 1713,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 9,
+      "method": "texto_nativo",
+      "char_count": 2484,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 10,
+      "method": "texto_nativo",
+      "char_count": 2074,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 11,
+      "method": "texto_nativo",
+      "char_count": 1693,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 12,
+      "method": "texto_nativo",
+      "char_count": 2594,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 13,
+      "method": "texto_nativo",
+      "char_count": 1485,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 14,
+      "method": "texto_nativo",
+      "char_count": 1574,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    }
+  ],
+  "telemetry": {
+    "runtime": {
+      "python": "3.13.11",
+      "markitdown": "0.1.5",
+      "markitdown_ocr": "0.1.0",
+      "pymupdf": "1.28.0"
+    },
+    "ocr": {
+      "enabled": false,
+      "provider": "openai-compatible",
+      "model": "",
+      "prompt_sha256": "34c6b4c284bc3ec8070ea7f8523684067c8471f6d820d83ab97c76b9e7dc6233"
+    },
+    "timing": {
+      "started_at": "2026-08-24T16:48:42.439352+00:00",
+      "finished_at": "2026-08-24T16:48:44.319753+00:00",
+      "duration_ms": 1880
+    },
+    "input_path": "/home/kiko/devops/repo_jur/input/REsp_1704551-SP.pdf",
+    "output_path": "/home/kiko/devops/repo_jur/input/REsp_1704551-SP.pdf.md",
+    "page_durations_ms": [
+      113,
+      61,
+      106,
+      113,
+      90,
+      98,
+      118,
+      113,
+      153,
+      138,
+      253,
+      156,
+      99,
+      115
+    ]
+  }
+}

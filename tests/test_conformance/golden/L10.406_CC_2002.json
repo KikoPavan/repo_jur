@@ -1,0 +1,1722 @@
+{
+  "schema_version": "1.0",
+  "execution_id": "1a061907-5bf8-4840-99e3-54fe4e0cf27c",
+  "input": {
+    "sha256": "c8b4294c308f6ee6cf380ab3d946d637c7be506c62b9df86f655d515626b375f",
+    "byte_size": 3561133,
+    "page_count": 186
+  },
+  "phase1": {
+    "implementation": "pipeline-juridico",
+    "implementation_version": "0.1.0",
+    "logical_processing_version": "1",
+    "relevant_config_fingerprint": "ec9cd69d38a9f9109b885c5d2db9937d5c98cff6b2cc73a1c73345459e00712c"
+  },
+  "result": {
+    "quality_gate": "PASS",
+    "warnings": [],
+    "errors": []
+  },
+  "artifacts": {
+    "markdown_sha256": "701e3c591368a3241b875cfd4c8ee4cfadec4b12c2d725b6eed28f5cb75f7eba"
+  },
+  "pages": [
+    {
+      "page_number": 1,
+      "method": "texto_nativo",
+      "char_count": 1933,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 2,
+      "method": "texto_nativo",
+      "char_count": 3139,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 3,
+      "method": "texto_nativo",
+      "char_count": 3666,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 4,
+      "method": "texto_nativo",
+      "char_count": 4134,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 5,
+      "method": "texto_nativo",
+      "char_count": 3193,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 6,
+      "method": "texto_nativo",
+      "char_count": 4189,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 7,
+      "method": "texto_nativo",
+      "char_count": 3863,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 8,
+      "method": "texto_nativo",
+      "char_count": 3801,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 9,
+      "method": "texto_nativo",
+      "char_count": 3043,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 10,
+      "method": "texto_nativo",
+      "char_count": 2897,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 11,
+      "method": "texto_nativo",
+      "char_count": 3293,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 12,
+      "method": "texto_nativo",
+      "char_count": 3460,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 13,
+      "method": "texto_nativo",
+      "char_count": 3712,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 14,
+      "method": "texto_nativo",
+      "char_count": 3710,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 15,
+      "method": "texto_nativo",
+      "char_count": 3347,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 16,
+      "method": "texto_nativo",
+      "char_count": 3807,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 17,
+      "method": "texto_nativo",
+      "char_count": 2690,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 18,
+      "method": "texto_nativo",
+      "char_count": 3041,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 19,
+      "method": "texto_nativo",
+      "char_count": 2995,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 20,
+      "method": "texto_nativo",
+      "char_count": 3752,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 21,
+      "method": "texto_nativo",
+      "char_count": 3226,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 22,
+      "method": "texto_nativo",
+      "char_count": 3709,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 23,
+      "method": "texto_nativo",
+      "char_count": 3510,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 24,
+      "method": "texto_nativo",
+      "char_count": 3812,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 25,
+      "method": "texto_nativo",
+      "char_count": 3907,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 26,
+      "method": "texto_nativo",
+      "char_count": 3413,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 27,
+      "method": "texto_nativo",
+      "char_count": 3252,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 28,
+      "method": "texto_nativo",
+      "char_count": 3582,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 29,
+      "method": "texto_nativo",
+      "char_count": 3635,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 30,
+      "method": "texto_nativo",
+      "char_count": 3462,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 31,
+      "method": "texto_nativo",
+      "char_count": 3690,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 32,
+      "method": "texto_nativo",
+      "char_count": 4025,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 33,
+      "method": "texto_nativo",
+      "char_count": 3488,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 34,
+      "method": "texto_nativo",
+      "char_count": 3465,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 35,
+      "method": "texto_nativo",
+      "char_count": 4005,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 36,
+      "method": "texto_nativo",
+      "char_count": 3746,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 37,
+      "method": "texto_nativo",
+      "char_count": 3443,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 38,
+      "method": "texto_nativo",
+      "char_count": 4269,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 39,
+      "method": "texto_nativo",
+      "char_count": 3726,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 40,
+      "method": "texto_nativo",
+      "char_count": 4315,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 41,
+      "method": "texto_nativo",
+      "char_count": 3556,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 42,
+      "method": "texto_nativo",
+      "char_count": 3279,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 43,
+      "method": "texto_nativo",
+      "char_count": 3915,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 44,
+      "method": "texto_nativo",
+      "char_count": 3566,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 45,
+      "method": "texto_nativo",
+      "char_count": 4265,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 46,
+      "method": "texto_nativo",
+      "char_count": 4406,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 47,
+      "method": "texto_nativo",
+      "char_count": 4323,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 48,
+      "method": "texto_nativo",
+      "char_count": 3468,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 49,
+      "method": "texto_nativo",
+      "char_count": 4197,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 50,
+      "method": "texto_nativo",
+      "char_count": 3994,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 51,
+      "method": "texto_nativo",
+      "char_count": 4358,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 52,
+      "method": "texto_nativo",
+      "char_count": 4319,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 53,
+      "method": "texto_nativo",
+      "char_count": 3781,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 54,
+      "method": "texto_nativo",
+      "char_count": 4569,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 55,
+      "method": "texto_nativo",
+      "char_count": 4300,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 56,
+      "method": "texto_nativo",
+      "char_count": 4171,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 57,
+      "method": "texto_nativo",
+      "char_count": 3795,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 58,
+      "method": "texto_nativo",
+      "char_count": 3952,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 59,
+      "method": "texto_nativo",
+      "char_count": 3456,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 60,
+      "method": "texto_nativo",
+      "char_count": 3519,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 61,
+      "method": "texto_nativo",
+      "char_count": 3887,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 62,
+      "method": "texto_nativo",
+      "char_count": 3581,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 63,
+      "method": "texto_nativo",
+      "char_count": 4093,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 64,
+      "method": "texto_nativo",
+      "char_count": 3880,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 65,
+      "method": "texto_nativo",
+      "char_count": 3640,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 66,
+      "method": "texto_nativo",
+      "char_count": 3709,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 67,
+      "method": "texto_nativo",
+      "char_count": 3634,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 68,
+      "method": "texto_nativo",
+      "char_count": 4202,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 69,
+      "method": "texto_nativo",
+      "char_count": 3754,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 70,
+      "method": "texto_nativo",
+      "char_count": 3610,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 71,
+      "method": "texto_nativo",
+      "char_count": 4324,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 72,
+      "method": "texto_nativo",
+      "char_count": 3473,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 73,
+      "method": "texto_nativo",
+      "char_count": 3612,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 74,
+      "method": "texto_nativo",
+      "char_count": 4084,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 75,
+      "method": "texto_nativo",
+      "char_count": 4235,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 76,
+      "method": "texto_nativo",
+      "char_count": 3987,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 77,
+      "method": "texto_nativo",
+      "char_count": 3517,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 78,
+      "method": "texto_nativo",
+      "char_count": 3515,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 79,
+      "method": "texto_nativo",
+      "char_count": 4099,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 80,
+      "method": "texto_nativo",
+      "char_count": 3795,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 81,
+      "method": "texto_nativo",
+      "char_count": 3965,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 82,
+      "method": "texto_nativo",
+      "char_count": 3771,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 83,
+      "method": "texto_nativo",
+      "char_count": 3234,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 84,
+      "method": "texto_nativo",
+      "char_count": 3499,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 85,
+      "method": "texto_nativo",
+      "char_count": 4353,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 86,
+      "method": "texto_nativo",
+      "char_count": 3701,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 87,
+      "method": "texto_nativo",
+      "char_count": 3829,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 88,
+      "method": "texto_nativo",
+      "char_count": 3614,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 89,
+      "method": "texto_nativo",
+      "char_count": 4171,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 90,
+      "method": "texto_nativo",
+      "char_count": 3838,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 91,
+      "method": "texto_nativo",
+      "char_count": 3868,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 92,
+      "method": "texto_nativo",
+      "char_count": 4440,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 93,
+      "method": "texto_nativo",
+      "char_count": 4048,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 94,
+      "method": "texto_nativo",
+      "char_count": 3605,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 95,
+      "method": "texto_nativo",
+      "char_count": 2806,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 96,
+      "method": "texto_nativo",
+      "char_count": 3902,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 97,
+      "method": "texto_nativo",
+      "char_count": 4088,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 98,
+      "method": "texto_nativo",
+      "char_count": 2892,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 99,
+      "method": "texto_nativo",
+      "char_count": 3720,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 100,
+      "method": "texto_nativo",
+      "char_count": 3332,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 101,
+      "method": "texto_nativo",
+      "char_count": 3431,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 102,
+      "method": "texto_nativo",
+      "char_count": 4281,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 103,
+      "method": "texto_nativo",
+      "char_count": 4793,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 104,
+      "method": "texto_nativo",
+      "char_count": 3368,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 105,
+      "method": "texto_nativo",
+      "char_count": 3388,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 106,
+      "method": "texto_nativo",
+      "char_count": 3645,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 107,
+      "method": "texto_nativo",
+      "char_count": 4522,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 108,
+      "method": "texto_nativo",
+      "char_count": 3556,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 109,
+      "method": "texto_nativo",
+      "char_count": 4365,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 110,
+      "method": "texto_nativo",
+      "char_count": 3290,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 111,
+      "method": "texto_nativo",
+      "char_count": 3769,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 112,
+      "method": "texto_nativo",
+      "char_count": 4014,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 113,
+      "method": "texto_nativo",
+      "char_count": 3348,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 114,
+      "method": "texto_nativo",
+      "char_count": 3738,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 115,
+      "method": "texto_nativo",
+      "char_count": 3819,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 116,
+      "method": "texto_nativo",
+      "char_count": 4243,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 117,
+      "method": "texto_nativo",
+      "char_count": 3792,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 118,
+      "method": "texto_nativo",
+      "char_count": 4309,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 119,
+      "method": "texto_nativo",
+      "char_count": 3831,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 120,
+      "method": "texto_nativo",
+      "char_count": 3291,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 121,
+      "method": "texto_nativo",
+      "char_count": 3733,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 122,
+      "method": "texto_nativo",
+      "char_count": 3315,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 123,
+      "method": "texto_nativo",
+      "char_count": 3714,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 124,
+      "method": "texto_nativo",
+      "char_count": 2855,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 125,
+      "method": "texto_nativo",
+      "char_count": 3277,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 126,
+      "method": "texto_nativo",
+      "char_count": 4274,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 127,
+      "method": "texto_nativo",
+      "char_count": 3264,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 128,
+      "method": "texto_nativo",
+      "char_count": 3867,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 129,
+      "method": "texto_nativo",
+      "char_count": 4260,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 130,
+      "method": "texto_nativo",
+      "char_count": 3384,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 131,
+      "method": "texto_nativo",
+      "char_count": 3846,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 132,
+      "method": "texto_nativo",
+      "char_count": 4460,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 133,
+      "method": "texto_nativo",
+      "char_count": 3193,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 134,
+      "method": "texto_nativo",
+      "char_count": 3629,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 135,
+      "method": "texto_nativo",
+      "char_count": 3747,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 136,
+      "method": "texto_nativo",
+      "char_count": 4001,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 137,
+      "method": "texto_nativo",
+      "char_count": 3126,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 138,
+      "method": "texto_nativo",
+      "char_count": 3767,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 139,
+      "method": "texto_nativo",
+      "char_count": 3121,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 140,
+      "method": "texto_nativo",
+      "char_count": 3552,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 141,
+      "method": "texto_nativo",
+      "char_count": 4721,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 142,
+      "method": "texto_nativo",
+      "char_count": 3504,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 143,
+      "method": "texto_nativo",
+      "char_count": 3497,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 144,
+      "method": "texto_nativo",
+      "char_count": 2712,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 145,
+      "method": "texto_nativo",
+      "char_count": 3410,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 146,
+      "method": "texto_nativo",
+      "char_count": 3479,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 147,
+      "method": "texto_nativo",
+      "char_count": 3110,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 148,
+      "method": "texto_nativo",
+      "char_count": 3338,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 149,
+      "method": "texto_nativo",
+      "char_count": 3883,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 150,
+      "method": "texto_nativo",
+      "char_count": 4019,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 151,
+      "method": "texto_nativo",
+      "char_count": 4239,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 152,
+      "method": "texto_nativo",
+      "char_count": 2981,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 153,
+      "method": "texto_nativo",
+      "char_count": 3066,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 154,
+      "method": "texto_nativo",
+      "char_count": 3388,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 155,
+      "method": "texto_nativo",
+      "char_count": 3762,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 156,
+      "method": "texto_nativo",
+      "char_count": 2368,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 157,
+      "method": "texto_nativo",
+      "char_count": 4053,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 158,
+      "method": "texto_nativo",
+      "char_count": 3327,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 159,
+      "method": "texto_nativo",
+      "char_count": 3533,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 160,
+      "method": "texto_nativo",
+      "char_count": 3665,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 161,
+      "method": "texto_nativo",
+      "char_count": 4135,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 162,
+      "method": "texto_nativo",
+      "char_count": 3647,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 163,
+      "method": "texto_nativo",
+      "char_count": 3185,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 164,
+      "method": "texto_nativo",
+      "char_count": 2943,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 165,
+      "method": "texto_nativo",
+      "char_count": 4112,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 166,
+      "method": "texto_nativo",
+      "char_count": 3389,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 167,
+      "method": "texto_nativo",
+      "char_count": 3678,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 168,
+      "method": "texto_nativo",
+      "char_count": 3640,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 169,
+      "method": "texto_nativo",
+      "char_count": 3806,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 170,
+      "method": "texto_nativo",
+      "char_count": 4244,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 171,
+      "method": "texto_nativo",
+      "char_count": 3291,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 172,
+      "method": "texto_nativo",
+      "char_count": 3656,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 173,
+      "method": "texto_nativo",
+      "char_count": 3856,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 174,
+      "method": "texto_nativo",
+      "char_count": 4217,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 175,
+      "method": "texto_nativo",
+      "char_count": 3945,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 176,
+      "method": "texto_nativo",
+      "char_count": 4231,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 177,
+      "method": "texto_nativo",
+      "char_count": 1652,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 178,
+      "method": "texto_nativo",
+      "char_count": 1682,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 179,
+      "method": "texto_nativo",
+      "char_count": 1575,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 180,
+      "method": "texto_nativo",
+      "char_count": 1505,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 181,
+      "method": "texto_nativo",
+      "char_count": 1672,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 182,
+      "method": "texto_nativo",
+      "char_count": 1459,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 183,
+      "method": "texto_nativo",
+      "char_count": 1654,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 184,
+      "method": "texto_nativo",
+      "char_count": 1711,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 185,
+      "method": "texto_nativo",
+      "char_count": 1731,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    },
+    {
+      "page_number": 186,
+      "method": "texto_nativo",
+      "char_count": 722,
+      "warnings": [],
+      "errors": [],
+      "truncated": false
+    }
+  ],
+  "telemetry": {
+    "runtime": {
+      "python": "3.13.11",
+      "markitdown": "0.1.5",
+      "markitdown_ocr": "0.1.0",
+      "pymupdf": "1.28.0"
+    },
+    "ocr": {
+      "enabled": false,
+      "provider": "openai-compatible",
+      "model": "",
+      "prompt_sha256": "34c6b4c284bc3ec8070ea7f8523684067c8471f6d820d83ab97c76b9e7dc6233"
+    },
+    "timing": {
+      "started_at": "2026-08-24T16:48:48.597938+00:00",
+      "finished_at": "2026-08-24T16:50:22.118485+00:00",
+      "duration_ms": 93520
+    },
+    "input_path": "/home/kiko/devops/repo_jur/input/L10.406_CC_2002.pdf",
+    "output_path": "/home/kiko/devops/repo_jur/input/L10.406_CC_2002.pdf.md",
+    "page_durations_ms": [
+      407,
+      425,
+      448,
+      647,
+      420,
+      593,
+      555,
+      526,
+      369,
+      361,
+      649,
+      470,
+      447,
+      507,
+      424,
+      454,
+      519,
+      379,
+      387,
+      461,
+      444,
+      484,
+      410,
+      644,
+      489,
+      483,
+      391,
+      428,
+      441,
+      409,
+      733,
+      520,
+      515,
+      414,
+      535,
+      464,
+      570,
+      510,
+      445,
+      584,
+      423,
+      393,
+      621,
+      460,
+      521,
+      532,
+      514,
+      563,
+      545,
+      490,
+      547,
+      641,
+      718,
+      536,
+      503,
+      505,
+      484,
+      464,
+      589,
+      425,
+      529,
+      463,
+      480,
+      458,
+      586,
+      481,
+      448,
+      507,
+      444,
+      448,
+      734,
+      439,
+      436,
+      481,
+      556,
+      637,
+      427,
+      443,
+      537,
+      474,
+      509,
+      635,
+      428,
+      477,
+      519,
+      450,
+      458,
+      458,
+      693,
+      478,
+      467,
+      594,
+      506,
+      617,
+      373,
+      466,
+      531,
+      365,
+      455,
+      548,
+      503,
+      566,
+      573,
+      408,
+      406,
+      632,
+      542,
+      444,
+      584,
+      515,
+      540,
+      730,
+      518,
+      674,
+      552,
+      575,
+      485,
+      780,
+      465,
+      393,
+      448,
+      394,
+      477,
+      511,
+      408,
+      507,
+      405,
+      538,
+      550,
+      580,
+      466,
+      629,
+      413,
+      457,
+      447,
+      681,
+      436,
+      498,
+      407,
+      469,
+      692,
+      624,
+      510,
+      372,
+      496,
+      426,
+      371,
+      404,
+      730,
+      592,
+      547,
+      412,
+      763,
+      604,
+      524,
+      610,
+      691,
+      491,
+      500,
+      522,
+      647,
+      679,
+      453,
+      415,
+      519,
+      459,
+      448,
+      447,
+      646,
+      592,
+      522,
+      461,
+      471,
+      495,
+      677,
+      553,
+      281,
+      299,
+      281,
+      265,
+      348,
+      266,
+      443,
+      309,
+      311,
+      140
+    ]
+  }
+}
