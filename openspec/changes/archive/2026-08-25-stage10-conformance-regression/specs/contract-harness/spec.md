@@ -1,6 +1,6 @@
 # contract-harness Specification
 
-## MODIFIED Requirements
+## ADDED Requirements
 
 ### Requirement: Bounded-context conformance and regression verification
 
