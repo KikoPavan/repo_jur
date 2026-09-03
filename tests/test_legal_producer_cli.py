@@ -9,7 +9,7 @@ import pytest
 from pipeline_juridico.domain_router_cli import main
 
 
-MARKDOWN = "[[Pág. 1]]\n<!-- método: texto_nativo -->\nSegredo literal XYZ\n"
+MARKDOWN = "[[Pág. 1]]\n<!-- método: texto_nativo -->\nPresidência da República\nLEI Nº 10.406, DE 10 DE JANEIRO DE 2002\nSegredo literal XYZ\n"
 
 
 def _write_artifacts(tmp_path: Path, *, gate: str = "PASS") -> tuple[Path, Path, Path]:

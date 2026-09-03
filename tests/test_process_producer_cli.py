@@ -9,7 +9,7 @@ import pytest
 from pipeline_juridico.domain_router_cli import _build_parser, main
 
 
-MARKDOWN = "[[Pág. 1]]\n<!-- método: texto_nativo -->\nSegredo literal XYZ\n"
+MARKDOWN = "[[Pág. 1]]\n<!-- método: texto_nativo -->\nSentença judicial de mérito\nTribunal de Justiça\nSegredo de justiça literal XYZ\n"
 
 
 def _write_artifacts(tmp_path: Path, gate: str = "PASS") -> tuple[Path, Path, Path, dict]:
@@ -77,7 +77,7 @@ def test_build_reads_route_emits_candidate_record_and_never_publishes(
     assert record["record_type"] == "process.build"
     assert record["routing_decision"] == "judicial_process"
     assert record["review"] == {"patch_count": 0, "review_required": False}
-    assert "Segredo literal XYZ" not in json.dumps(record)
+    assert "Segredo de justiça literal XYZ" not in json.dumps(record)
 
 
 def test_absent_or_non_process_route_is_blocked_and_recorded(
@@ -211,7 +211,7 @@ def test_publish_human_review_blocks_without_write_or_record(
     candidate.write_text(json.loads(capsys.readouterr().out)["candidate"])
     target = root / "decisao" / "decisao.md"
     target.parent.mkdir(parents=True)
-    target.write_text(candidate.read_text().replace("Segredo literal XYZ",
+    target.write_text(candidate.read_text().replace("Segredo de justiça literal XYZ",
                                                     "material antigo"))
     (state / "process-execution-1.json").unlink()
     assert main(["process", "publish", str(candidate), "--process-root",
@@ -246,7 +246,7 @@ def test_publish_record_is_content_safe(tmp_path: Path, capsys) -> None:
         '"relevant_config_fingerprint":"config-a",'
         '"quality_gate":"PASS"}',
         "---",
-        "Segredo literal XYZ",
+        "Segredo de justiça literal XYZ",
         "",
     ]
     candidate.write_text("\n".join(frontmatter_lines), encoding="utf-8")
@@ -258,7 +258,7 @@ def test_publish_record_is_content_safe(tmp_path: Path, capsys) -> None:
     assert record["record_type"] == "process.publish"
     assert record["routing_decision"] == "judicial_process"
     assert record["publication_result"] == "published"
-    assert "Segredo literal XYZ" not in json.dumps(record)
+    assert "Segredo de justiça literal XYZ" not in json.dumps(record)
     assert "CPF" not in json.dumps(record) and "selo" not in json.dumps(record)
     assert "patch_body" not in json.dumps(record)
     assert "token" not in json.dumps(record).lower()
@@ -287,7 +287,19 @@ def test_route_and_producer_surfaces_are_unchanged(
     assert main(["route", str(markdown), str(report_path), "--domain",
                  "judicial_process", "--state-dir",
                  str(tmp_path / "routing")]) == 0
-    assert main(["producer", "build", str(markdown), str(report_path),
+
+    # Supply a Legal Knowledge Markdown specifically for the producer surface test
+    lk_markdown = tmp_path / "lk_phase1.md"
+    lk_markdown.write_text(
+        "[[Pág. 1]]\n<!-- método: texto_nativo -->\nPresidência da República\nLEI COMPLEMENTAR Nº 123, DE 10 DE JANEIRO DE 2002\nConteúdo legal desu",
+        encoding="utf-8"
+    )
+    lk_report = dict(report)
+    lk_report["artifacts"] = {"markdown_sha256": hashlib.sha256(lk_markdown.read_bytes()).hexdigest()}
+    lk_report_path = tmp_path / "lk_phase1.json"
+    lk_report_path.write_text(json.dumps(lk_report), encoding="utf-8")
+
+    assert main(["producer", "build", str(lk_markdown), str(lk_report_path),
                  "--type", "Legislacao", "--evidence-resource", str(evidence),
                  "--bundle-root", str(tmp_path / "bundle"),
                  "--state-dir", str(tmp_path / "pstate")]) == 0

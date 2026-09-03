@@ -32,6 +32,7 @@ from .legal_semantic_review import (
     LegalSemanticReviewBlockedError,
     LegalSemanticReviewConfigurationError,
     LegalSemanticReviewEngine,
+    ReviewState,
 )
 from .report import ReportContractError, validate_report_contract
 from .validator import OutputAlreadyExistsError, write_atomic
@@ -136,8 +137,9 @@ def _record(
     patch_count: int = 0, review_required: bool = False,
     publication_result: str, verified_action: str = "none",
     generated_at_action: str = "none",
+    extracted_fields: list[dict[str, object]] | None = None,
 ) -> dict[str, object]:
-    return {
+    res = {
         "schema_version": "1.0",
         "record_type": record_type,
         "input": {"sha256": provenance},
@@ -154,6 +156,9 @@ def _record(
         "generated": {"at": {"action": generated_at_action}},
         "concept_path": str(concept_path),
     }
+    if extracted_fields is not None:
+        res["extracted_fields"] = extracted_fields
+    return res
 
 
 def _write_record(record: Mapping[str, object], state_dir: Path, filename: str) -> Path:
@@ -189,7 +194,14 @@ def _run_build(args: argparse.Namespace, logger: logging.Logger) -> int:
             review = LegalSemanticReviewEngine().review(
                 artifacts, LegalReviewProfile("default", "1.0", ())
             )
-        except LegalSemanticReviewBlockedError:
+            if review.state is ReviewState.REVIEW_REQUIRED:
+                raise LegalSemanticReviewBlockedError("review is required for this candidate", reason="review_required")
+            candidate = _base_candidate(artifacts, _report(artifacts), review, context, args.bundle_root)
+            phase1_metadata = candidate.frontmatter.get("repo_jur_phase1")
+            if isinstance(phase1_metadata, dict):
+                phase1_metadata["quality_gate"] = report["result"]["quality_gate"]  # type: ignore[index]
+            validate_candidate(candidate)
+        except (LegalSemanticReviewBlockedError, LegalProducerBlockedError):
             concept_path = resolve_concept_path(
                 context.type, context.evidence_resource, args.bundle_root
             )
@@ -205,17 +217,17 @@ def _run_build(args: argparse.Namespace, logger: logging.Logger) -> int:
             )
             _write_record(record, state_dir, _filename(report))
             raise
-        candidate = _base_candidate(artifacts, _report(artifacts), review, context, args.bundle_root)
-        phase1_metadata = candidate.frontmatter.get("repo_jur_phase1")
-        if isinstance(phase1_metadata, dict):
-            phase1_metadata["quality_gate"] = report["result"]["quality_gate"]  # type: ignore[index]
-        validate_candidate(candidate)
+        extracted_fields_data = [
+            {"name": f.name, "value": f.value, "page_refs": list(f.page_refs)}
+            for f in review.extracted_fields
+        ]
         record = _record(
             record_type="producer.build", provenance=report["input"]["sha256"],  # type: ignore[index]
             gate=report["result"]["quality_gate"], concept_path=candidate.path,  # type: ignore[index]
             resolution=DuplicateResolution.NEW_CONCEPT, materiality=None,
             patch_count=len(review.patches), review_required=False,
             publication_result="blocked",
+            extracted_fields=extracted_fields_data,
         )
         record_path = _write_record(record, state_dir, _filename(report))
     except (LegalProducerConfigurationError, LegalSemanticReviewConfigurationError) as error:
@@ -300,6 +312,7 @@ def _run_publish(args: argparse.Namespace, logger: logging.Logger) -> int:
             record_type="producer.publish", provenance=provenance, gate=gate,
             concept_path=authorized, resolution=resolution, materiality=materiality,
             publication_result=publication,
+            extracted_fields=None,
         )
         record_path = _write_record(record, state_dir, f"{provenance}.json")
     except (OSError, UnicodeError, FileNotFoundError) as error:

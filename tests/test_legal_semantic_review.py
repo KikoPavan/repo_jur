@@ -321,3 +321,36 @@ def test_review_performs_no_filesystem_write(tmp_path: Path) -> None:
     result = LegalSemanticReviewEngine().review(_artifacts(), _profile())
     assert result.state is ReviewState.OK
     assert tuple(tmp_path.rglob("*")) == before
+
+
+# --- AUDIT COMPLIANCE TESTS FOR SEMANTIC REVIEW desu~! (◕‿◕)✿ ---
+
+def test_semantic_review_extracts_beyond_page_3() -> None:
+    from pipeline_juridico.legal_semantic_review import _deterministic_extract
+    # Make a document with 5 pages and metadata on page 5 desu~!
+    markdown = "[[Pág. 1]]\nEmpty...\n[[Pág. 2]]\nEmpty...\n[[Pág. 3]]\nEmpty...\n[[Pág. 4]]\nEmpty...\n[[Pág. 5]]\nLEI COMPLEMENTAR Nº 123, DE 14 DE DEZEMBRO DE 2006\nRELATOR: MINISTRO KIKO"
+    ext = _deterministic_extract(markdown)
+
+    extracted_names = {f.name for f in ext}
+    assert "repo_jur_lei_numero" in extracted_names
+    assert "repo_jur_lei_ano" in extracted_names
+    assert "repo_jur_relator" in extracted_names
+
+    num_field = next(f for f in ext if f.name == "repo_jur_lei_numero")
+    assert num_field.value == "123"
+    assert num_field.page_refs == ("5",)
+
+
+def test_semantic_review_incomplete_numbered_act_review_required() -> None:
+    from pipeline_juridico.legal_semantic_review import LegalSemanticReviewEngine, LegalReviewProfile, ReviewState
+    from pipeline_juridico.contracts import Phase1Artifacts
+    import json
+
+    # Text recognized as numbered act ("LEI COMPLEMENTAR Nº ...") but missing year desu~!
+    markdown = "[[Pág. 1]]\nLEI COMPLEMENTAR Nº 123"
+    artifacts = Phase1Artifacts(markdown, json.dumps({"result": {"quality_gate": "PASS"}}))
+    profile = LegalReviewProfile("default", "1.0", ())
+
+    result = LegalSemanticReviewEngine().review(artifacts, profile)
+    # Must result in REVIEW_REQUIRED desu~!
+    assert result.state == ReviewState.REVIEW_REQUIRED

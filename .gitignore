@@ -20,11 +20,15 @@ logs/*
 var/tmp/*
 var/object-storage/*
 var/retrieval/*
+var/producer/*
+var/routing/*
 !input/.gitkeep
 !output/.gitkeep
 !logs/.gitkeep
 !var/tmp/.gitkeep
 !var/object-storage/.gitkeep
+!var/producer/.gitkeep
+!var/routing/.gitkeep
 
 # Sistema e editor
 .DS_Store

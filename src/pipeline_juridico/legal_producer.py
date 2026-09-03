@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import datetime
 import re
 import unicodedata
 from collections.abc import Mapping
@@ -102,11 +103,42 @@ class ProducerRunResult:
     concept_path: Path | None
 
 
+LEGACY_KEYS = frozenset({
+    "jurisdicao",
+    "ambito",
+    "tipo_norma",
+    "ementa",
+    "tema",
+    "subtema",
+    "tese_fixada",
+    "tribunal",
+    "relator",
+})
+
+
 PROFILE_FIELDS: dict[LegalConceptType, tuple[str, ...]] = {
-    LegalConceptType.Legislacao: ("jurisdicao", "ambito", "tipo_norma"),
-    LegalConceptType.Jurisprudencia: ("tribunal", "relator"),
-    LegalConceptType.TemaJuridico: ("ementa", "tema", "subtema"),
-    LegalConceptType.PrecedenteVinculante: ("tese_fixada", "tribunal"),
+    LegalConceptType.Legislacao: (
+        "repo_jur_lei_numero",
+        "repo_jur_lei_ano",
+        "repo_jur_lei_esfera",
+        "repo_jur_lei_tipo",
+    ),
+    LegalConceptType.Jurisprudencia: (
+        "repo_jur_processo_numero",
+        "repo_jur_tribunal",
+        "repo_jur_relator",
+        "repo_jur_data_julgamento",
+        "repo_jur_ramo_direito",
+    ),
+    LegalConceptType.TemaJuridico: (
+        "repo_jur_tema_numero",
+        "repo_jur_tribunal",
+    ),
+    LegalConceptType.PrecedenteVinculante: (
+        "repo_jur_precedente_numero",
+        "repo_jur_precedente_status",
+        "repo_jur_tribunal",
+    ),
 }
 PRODUCER_OWNED_KEYS = frozenset(
     {
@@ -117,11 +149,25 @@ PRODUCER_OWNED_KEYS = frozenset(
         "repo_jur_pdf_hashes",
         "repo_jur_evidence_sha256",
         "repo_jur_phase1",
+        "resource",
+        "repo_jur_lei_numero",
+        "repo_jur_lei_ano",
+        "repo_jur_lei_esfera",
+        "repo_jur_processo_numero",
+        "repo_jur_tribunal",
+        "repo_jur_relator",
+        "repo_jur_data_julgamento",
+        "repo_jur_tema_numero",
+        "repo_jur_precedente_numero",
     }
-    | {name for names in PROFILE_FIELDS.values() for name in names}
 )
 HUMAN_OWNED_KEYS = frozenset({"status", "verified"})
-SHARED_KEYS = frozenset({"title", "aliases", "tags", "related"})
+SHARED_KEYS = frozenset({
+    "title", "tags", "description", "stale_after",
+    "repo_jur_lei_tipo",
+    "repo_jur_ramo_direito",
+    "repo_jur_precedente_status",
+})
 
 _PERMITTED_CONTEXT_KEYS = frozenset({"type", "evidence_resource"})
 _TYPE_DIRECTORIES = {
@@ -265,6 +311,20 @@ def parse_candidate_text(text: str, path: str | Path) -> ConceptCandidate:
     return ConceptCandidate(concept_type, frontmatter, text[boundary + 5:], Path(path))
 
 
+def validate_iso8601(val: str) -> bool:
+    if not isinstance(val, str):
+        return False
+    try:
+        # Strict ISO 8601 datetime parsing
+        # Must contain time component to be a valid datetime
+        if "T" not in val and " " not in val:
+            return False
+        datetime.datetime.fromisoformat(val.replace("Z", "+00:00"))
+        return True
+    except ValueError:
+        return False
+
+
 def validate_candidate(candidate: ConceptCandidate) -> None:
     if not isinstance(candidate, ConceptCandidate):
         raise LegalProducerConfigurationError("candidate contract is invalid")
@@ -274,6 +334,10 @@ def validate_candidate(candidate: ConceptCandidate) -> None:
     generated = frontmatter.get("generated")
     if not isinstance(generated, dict) or not isinstance(generated.get("by"), str):
         raise LegalProducerConfigurationError("candidate generated actor is missing")
+    if "at" in generated:
+        at_val = generated["at"]
+        if not isinstance(at_val, str) or not validate_iso8601(at_val):
+            raise LegalProducerConfigurationError("candidate generated at timestamp is invalid")
     singular = frontmatter.get("repo_jur_pdf_hash")
     plural = frontmatter.get("repo_jur_pdf_hashes")
     if singular is not None and plural is not None:
@@ -300,6 +364,38 @@ def validate_candidate(candidate: ConceptCandidate) -> None:
            if kind is not candidate.type for field in names
            if field not in PROFILE_FIELDS[candidate.type]):
         raise LegalProducerConfigurationError("profile field is used by the wrong type")
+
+    # Rejection of legacy, un-prefixed, or inappropriate fields
+    for legacy_key in LEGACY_KEYS:
+        if legacy_key in frontmatter:
+            raise LegalProducerConfigurationError(f"legacy or unauthorized key '{legacy_key}' is rejected")
+
+    # Strict Mandatory and Conditional Mandatory field checks (raising LegalProducerBlockedError)
+    if candidate.type is LegalConceptType.Legislacao:
+        if "repo_jur_lei_esfera" not in frontmatter:
+            raise LegalProducerBlockedError("missing mandatory field repo_jur_lei_esfera", reason="review_required")
+
+        has_num = "repo_jur_lei_numero" in frontmatter
+        has_ano = "repo_jur_lei_ano" in frontmatter
+        if (has_num and not has_ano) or (has_ano and not has_num):
+            raise LegalProducerBlockedError("missing conditional mandatory field repo_jur_lei_numero or repo_jur_lei_ano", reason="review_required")
+
+    elif candidate.type is LegalConceptType.Jurisprudencia:
+        for field in ("repo_jur_processo_numero", "repo_jur_tribunal", "repo_jur_relator", "repo_jur_data_julgamento"):
+            if field not in frontmatter:
+                raise LegalProducerBlockedError(f"missing mandatory field {field}", reason="review_required")
+
+    elif candidate.type is LegalConceptType.TemaJuridico:
+        # repo_jur_tema_numero is required only for official numbered themes
+        # repo_jur_tribunal is required only for official court themes
+        # doctrinal/abstract TemaJuridico may omit them
+        if "repo_jur_tema_numero" in frontmatter and "repo_jur_tribunal" not in frontmatter:
+            raise LegalProducerBlockedError("missing conditional mandatory field repo_jur_tribunal for numbered theme", reason="review_required")
+
+    elif candidate.type is LegalConceptType.PrecedenteVinculante:
+        for field in ("repo_jur_precedente_numero", "repo_jur_precedente_status", "repo_jur_tribunal"):
+            if field not in frontmatter:
+                raise LegalProducerBlockedError(f"missing mandatory field {field}", reason="review_required")
     rendered = candidate.render_text()
     reparsed = parse_candidate_text(rendered, candidate.path)
     if reparsed.frontmatter != frontmatter or reparsed.body != candidate.body:
@@ -332,18 +428,21 @@ def merge_existing_candidate(
 ) -> ConceptCandidate:
     """Recompute owned fields while retaining curation and extension keys."""
     merged = dict(existing.frontmatter)
+    # Universal rejection/stripping of legacy, un-prefixed, or inappropriate fields
+    for legacy_key in LEGACY_KEYS:
+        merged.pop(legacy_key, None)
+
     for key in PRODUCER_OWNED_KEYS:
         if key in new.frontmatter:
             merged[key] = new.frontmatter[key]
         else:
             merged.pop(key, None)
     old_generated = existing.frontmatter.get("generated")
-    generated = dict(new.frontmatter["generated"])  # type: ignore[arg-type]
+    generated: dict[str, object] = dict(new.frontmatter["generated"])  # type: ignore[arg-type,assignment]
     if isinstance(old_generated, dict) and "at" in old_generated:
         generated["at"] = old_generated["at"]
     if materiality is MaterialityCategory.MATERIAL:
-        provenance = new.frontmatter.get("repo_jur_evidence_sha256", "unknown")
-        generated["at"] = f"evidence:{provenance}"
+        generated["at"] = datetime.datetime.now(datetime.timezone.utc).isoformat()
         verified = existing.frontmatter.get("verified")
         if isinstance(verified, dict) and isinstance(verified.get("by"), str) and isinstance(
             verified.get("at"), str
@@ -372,8 +471,8 @@ def _base_candidate(
         raise LegalProducerConfigurationError("PDF evidence resource is required")
     input_data = report["input"]
     input_hash = input_data["sha256"]
-    local = _local_reference(context.evidence_resource)
     physical_hash = input_hash
+    local = _local_reference(context.evidence_resource)
     if local is not None and local.exists():
         if not local.is_file():
             raise LegalProducerConfigurationError("evidence resource is not a file")
@@ -384,6 +483,7 @@ def _base_candidate(
     phase1 = report["phase1"]
     frontmatter: dict[str, object] = {
         "type": context.type.value,
+        "resource": context.evidence_resource,
         "generated": {"by": PRODUCER_ACTOR},
         "sources": [{
             "id": "pdf_1",
@@ -403,7 +503,13 @@ def _base_candidate(
     allowed = PROFILE_FIELDS[context.type]
     for extracted in review_result.extracted_fields:
         if extracted.name in allowed and extracted.name not in frontmatter:
-            frontmatter[extracted.name] = extracted.value
+            val: object = extracted.value
+            if extracted.name == "repo_jur_lei_ano":
+                try:
+                    val = int(extracted.value)
+                except ValueError:
+                    pass
+            frontmatter[extracted.name] = val
     return ConceptCandidate(context.type, frontmatter, artifacts.markdown, path)
 
 
@@ -438,6 +544,20 @@ def produce(
     path = candidate.path
     if path.exists():
         existing = parse_candidate_text(path.read_text(encoding="utf-8"), path)
+        # Strip legacy keys from existing to ensure clean upgrade
+        clean_frontmatter = {
+            k: v for k, v in existing.frontmatter.items()
+            if k not in LEGACY_KEYS
+        }
+        # Check and clean generated.at if present and starting with "evidence:"
+        if "generated" in clean_frontmatter and isinstance(clean_frontmatter["generated"], dict):
+            gen = dict(clean_frontmatter["generated"])
+            if gen.get("by") != PRODUCER_ACTOR:
+                gen["by"] = PRODUCER_ACTOR
+            if "at" in gen and isinstance(gen["at"], str) and gen["at"].startswith("evidence:"):
+                gen.pop("at", None)
+            clean_frontmatter["generated"] = gen
+        existing = ConceptCandidate(existing.type, clean_frontmatter, existing.body, existing.path)
         materiality = classify_materiality(existing, candidate)
         if materiality is MaterialityCategory.MATERIAL:
             return ProducerRunResult(candidate, DuplicateResolution.HUMAN_REVIEW,
