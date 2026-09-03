@@ -26,6 +26,7 @@ from .domain_router import (
     routing_state_filename,
     validate_routing_context,
 )
+from .config import ensure_outside_canonical_bundle
 from .report import ReportContractError, validate_report_contract
 from .validator import write_atomic
 
@@ -151,6 +152,25 @@ def _build_parser() -> argparse.ArgumentParser:
         "--json",
         action="store_true",
         help="Emite a saída do comando em JSON legível por máquina.",
+    )
+    ingress_parser = subparsers.add_parser(
+        "ingress",
+        help="Executa o preflight e preservação de um envelope ITP.",
+    )
+    ingress_parser.add_argument(
+        "envelope",
+        help="Caminho do envelope ITP (ZIP) a ser processado.",
+    )
+    ingress_parser.add_argument(
+        "--json",
+        action="store_true",
+        help="Emite a saída do preflight em JSON operacional.",
+    )
+    ingress_parser.add_argument(
+        "--log-level",
+        default="INFO",
+        choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
+        help="Nível do log técnico.",
     )
     return parser
 
@@ -516,6 +536,9 @@ def main(argv: list[str] | None = None) -> int:
     logger = logging.getLogger(__name__)
     if args.command == "test" and args.test_action == "conformance":
         return _run_conformance(args, logger)
+    if args.command == "ingress":
+        from .ingress_cli import run_ingress
+        return run_ingress(args, logger)
     if args.command == "route":
         return _run_route(args, logger)
     if args.command == "producer":
