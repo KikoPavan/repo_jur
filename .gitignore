@@ -22,6 +22,7 @@ var/object-storage/*
 var/retrieval/*
 var/producer/*
 var/routing/*
+var/ingress/*
 !input/.gitkeep
 !output/.gitkeep
 !logs/.gitkeep
@@ -29,6 +30,7 @@ var/routing/*
 !var/object-storage/.gitkeep
 !var/producer/.gitkeep
 !var/routing/.gitkeep
+!var/ingress/.gitkeep
 
 # Sistema e editor
 .DS_Store
