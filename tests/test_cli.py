@@ -209,7 +209,7 @@ def test_cli_strict_success_writes_valid_output(
     assert output_path.is_file()
     output_content = output_path.read_text(encoding="utf-8")
     assert "[[Pág. 1]]" in output_content
-    assert "<!-- método: texto_nativo -->" in output_content
+    assert "<!-- método:" not in output_content
     assert report_path.is_file()
     report = json.loads(report_path.read_text(encoding="utf-8"))
     assert report["result"]["quality_gate"] == "PASS"
@@ -277,3 +277,42 @@ def test_cli_overwrite_protection_then_success(
     assert overwrite_result == 0
     assert "[[Pág. 1]]" in new_content
     assert old_content not in new_content
+
+
+def test_cli_regression_and_conformance_requirements(
+    tmp_path,
+    monkeypatch,
+) -> None:
+    source = tmp_path / "nativo.pdf"
+    _create_native_pdf(source)
+    output_dir, logs_dir = _configure_directories(monkeypatch, tmp_path)
+
+    result = cli.main([str(source)])
+    assert result == 0
+
+    output_path = output_dir / "nativo.md"
+    report_path = logs_dir / "nativo.report.json"
+
+    assert output_path.is_file()
+    assert report_path.is_file()
+
+    output_content = output_path.read_text(encoding="utf-8")
+    report = json.loads(report_path.read_text(encoding="utf-8"))
+
+    # 1. `converter-juridico` não publica `<!-- método: ... -->`
+    assert "<!-- método:" not in output_content
+
+    # 2. marcadores `[[Pág. N]]` permanecem
+    assert "[[Pág. 1]]" in output_content
+
+    # 3. relatório JSON continua contendo `pages[].method`
+    assert "pages" in report
+    assert len(report["pages"]) == 1
+    assert report["pages"][0]["method"] == "texto_nativo"
+
+    # 4. Quality Gate continua avaliando exatamente o mesmo Markdown que será publicado
+    assert report["result"]["quality_gate"] == "PASS"
+
+    # 5. nenhuma informação técnica necessária é perdida
+    assert "telemetry" in report
+    assert "ocr" in report["telemetry"]

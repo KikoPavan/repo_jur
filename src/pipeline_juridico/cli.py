@@ -150,7 +150,7 @@ def main(argv: list[str] | None = None) -> int:
         validate_report_contract(json.loads(report_json))
 
         write_atomic(
-            markdown,
+            literal,
             output_path,
             temp_root,
             overwrite=args.overwrite,
