@@ -1,7 +1,7 @@
 # intake-lifecycle Specification
 
 ## Purpose
-TBD - created by archiving change 2026-09-04-operational-intake-lifecycle. Update Purpose after archive.
+Define the operational lifecycle for raw PDF ingestion into the Legal Knowledge pipeline, including explicit input classification, SHA-256 operational deduplication, strong claim/lease ownership, ITP envelope generation, crash recovery, mandatory semantic review, and publication exclusively through the public Legal Producer API.
 ## Requirements
 ### Requirement: Mandatory Operational Classification
 The system SHALL only process raw PDFs located in recognized subdirectories of `input/`.
