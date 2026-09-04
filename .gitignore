@@ -23,6 +23,7 @@ var/retrieval/*
 var/producer/*
 var/routing/*
 var/ingress/*
+var/conformance/*
 !input/.gitkeep
 !output/.gitkeep
 !logs/.gitkeep
@@ -31,6 +32,7 @@ var/ingress/*
 !var/producer/.gitkeep
 !var/routing/.gitkeep
 !var/ingress/.gitkeep
+!var/conformance/.gitkeep
 
 # Sistema e editor
 .DS_Store
