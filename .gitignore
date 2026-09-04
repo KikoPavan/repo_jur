@@ -14,7 +14,6 @@ __pycache__/
 !.env.example
 
 # Diretórios operacionais
-input/*
 output/*
 logs/*
 var/tmp/*
@@ -24,7 +23,7 @@ var/producer/*
 var/routing/*
 var/ingress/*
 var/conformance/*
-!input/.gitkeep
+var/intake/*
 !output/.gitkeep
 !logs/.gitkeep
 !var/tmp/.gitkeep
@@ -33,6 +32,23 @@ var/conformance/*
 !var/routing/.gitkeep
 !var/ingress/.gitkeep
 !var/conformance/.gitkeep
+!var/intake/.gitkeep
+
+# Gerenciamento de input (Ignora conteúdo, preserva estrutura)
+input/*
+!input/.gitkeep
+!input/legislacao/
+!input/jurisprudencia/
+!input/temas/
+!input/precedentes/
+input/legislacao/*
+input/jurisprudencia/*
+input/temas/*
+input/precedentes/*
+!input/legislacao/.gitkeep
+!input/jurisprudencia/.gitkeep
+!input/temas/.gitkeep
+!input/precedentes/.gitkeep
 
 # Sistema e editor
 .DS_Store

@@ -87,6 +87,8 @@ def _build_parser() -> argparse.ArgumentParser:
     build_process_parser(subparsers)
     from .retrieval_cli import build_retrieval_parsers
     build_retrieval_parsers(subparsers)
+    from .intake_cli import build_intake_parser
+    build_intake_parser(subparsers)
     test_parser = subparsers.add_parser(
         "test",
         help="Executa verificações operacionais locais.",
@@ -547,9 +549,12 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "process":
         from .process_producer_cli import run
         return run(args, logger)
-    if args.command in {"retrieval", "search", "search-diagnose"}:
+    if args.command == "retrieval" or args.command == "search" or args.command == "search-diagnose":
         from .retrieval_cli import run
         return run(args, logger)
+    if args.command == "intake":
+        from .intake_cli import run_intake
+        return run_intake(args, logger)
     return EXIT_UNEXPECTED
 
 

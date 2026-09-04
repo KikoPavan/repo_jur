@@ -93,6 +93,36 @@ class IngressConfig:
 
 
 @dataclass(frozen=True)
+class IntakeConfig:
+    """Operational Intake Queue configuration."""
+
+    input_dir: Path = Path("input")
+    registry_dir: Path = Path("var/intake/registry")
+    processing_dir: Path = Path("var/intake/processing")
+    failed_dir: Path = Path("var/intake/failed")
+    lease_timeout_seconds: int = 300
+
+    def __post_init__(self) -> None:
+        for field_name in (
+            "registry_dir",
+            "processing_dir",
+            "failed_dir",
+        ):
+            value = ensure_outside_canonical_bundle(getattr(self, field_name))
+            object.__setattr__(self, field_name, value)
+
+    @classmethod
+    def from_env(cls) -> IntakeConfig:
+        return cls(
+            input_dir=Path(os.environ.get("INTAKE_INPUT_DIR", "input")),
+            registry_dir=Path(os.environ.get("INTAKE_REGISTRY_DIR", "var/intake/registry")),
+            processing_dir=Path(os.environ.get("INTAKE_PROCESSING_DIR", "var/intake/processing")),
+            failed_dir=Path(os.environ.get("INTAKE_FAILED_DIR", "var/intake/failed")),
+            lease_timeout_seconds=int(os.environ.get("INTAKE_LEASE_TIMEOUT", "300")),
+        )
+
+
+@dataclass(frozen=True)
 class PreflightLimits:
     """Configurable archive bounds; defaults are implementation choices."""
 

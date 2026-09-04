@@ -1,0 +1,23 @@
+# Tasks: Operational Intake Queue Lifecycle
+
+- [ ] 1.1 Create `var/intake/{registry,processing,failed}` with `.gitkeep`.
+- [ ] 1.2 Implement `IntakeConfig` in `src/pipeline_juridico/config.py`.
+- [ ] 1.3 Implement `IntakeRegistry` and `IntakeState` in `src/pipeline_juridico/intake_manager.py` (Isolated).
+- [ ] 1.4 Implement strong Lease mechanism (`claim_id`, `heartbeat_at`, `owner_pid`, `owner_host`).
+- [ ] 1.5 Implement atomic "Claim" using file-based locks and unique UUID `handoff_id`.
+- [ ] 1.6 Implement ITP Envelope Builder with immutable manifest persistence in registry.
+- [ ] 1.7 Implement Reconciler for crash recovery (resolving stale leases).
+- [ ] 1.8 Implement complete `IntakeManager.scan()` coordination (Intake -> Ingress -> Phase1 -> Router -> Producer).
+- [ ] 1.9 Implement CLI subcommands: `intake add`, `intake scan`, `intake status`, `intake retry`.
+- [ ] 1.10 Add unit tests for:
+    - [ ] UUID-based `handoff_id` uniqueness for same SHA occurrences.
+    - [ ] Manifest immutability (same timestamps after recovery).
+    - [ ] Strong Lease concurrency (thwarting PID reuse).
+    - [ ] Atomic claim safety.
+- [ ] 1.11 Add integration tests for:
+    - [ ] Complete flow: raw PDF -> `PUBLISHED`.
+    - [ ] Deduplication against healthy `PUBLISHED` states.
+    - [ ] Recovery/Takeover of stale `PROCESSING` states.
+    - [ ] Failure on unhealthy `PUBLISHED` state (missing artifacts).
+- [ ] 1.12 Verify Zero-Write in `bundle/` during Intake operations.
+- [ ] 1.13 Validate OpenSpec conformance with `openspec validate --all --strict`.
