@@ -5,6 +5,7 @@ import fitz
 from pipeline_juridico.config import RoutingConfig
 from pipeline_juridico.models import Metodo
 from pipeline_juridico.router import (
+    has_significant_vector_content,
     inspect_native_text,
     inspect_raster_content,
     route_page,
@@ -68,6 +69,20 @@ def test_inspect_raster_content_with_small_image() -> None:
 
     assert signal.image_count == 1
     assert signal.largest_image_area_ratio < 0.15
+    doc.close()
+
+
+def test_substantial_vector_content_is_detected() -> None:
+    doc = fitz.open()
+    page = doc.new_page()
+
+    for row in range(12):
+        for column in range(10):
+            x0 = 20 + column * 54
+            y0 = 20 + row * 65
+            page.draw_rect(fitz.Rect(x0, y0, x0 + 20, y0 + 15))
+
+    assert has_significant_vector_content(page)
     doc.close()
 
 

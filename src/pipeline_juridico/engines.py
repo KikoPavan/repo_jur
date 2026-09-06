@@ -1,6 +1,10 @@
+import io
+import subprocess
 from pathlib import Path
 
+import fitz
 from markitdown import MarkItDown
+from markitdown_ocr import LLMVisionOCRService
 from openai import OpenAI
 
 from .models import Metodo
@@ -71,6 +75,92 @@ def load_ocr_prompt(
     path: str | Path = "prompts/ocr_literal_ptbr.txt",
 ) -> str:
     return Path(path).read_text(encoding="utf-8")
+
+
+def create_ocr_service(
+    api_key: str | None,
+    model: str | None,
+    base_url: str | None = None,
+    prompt: str | None = None,
+) -> LLMVisionOCRService:
+    missing_items = []
+    if api_key is None or not api_key.strip():
+        missing_items.append("GEMINI_API_KEY ausente")
+    if model is None or not model.strip():
+        missing_items.append("modelo (GEMINI_MODEL) ausente")
+    if missing_items:
+        raise OcrConfigurationError(
+            f"Configuração de OCR incompleta: {', '.join(missing_items)}"
+        )
+
+    client = OpenAI(api_key=api_key, base_url=base_url)
+    return LLMVisionOCRService(
+        client=client,
+        model=model,
+        default_prompt=prompt,
+    )
+
+
+def render_pdf_page_to_png(
+    page_path: str | Path,
+    *,
+    dpi: int = 300,
+) -> io.BytesIO:
+    if dpi <= 0:
+        raise ValueError("dpi deve ser maior que zero")
+
+    doc = fitz.open(page_path)
+    try:
+        if doc.page_count != 1:
+            raise ValueError(
+                "render_pdf_page_to_png exige um PDF isolado de uma página"
+            )
+
+        page = doc[0]
+        matrix = fitz.Matrix(dpi / 72, dpi / 72)
+        pixmap = page.get_pixmap(matrix=matrix, alpha=False)
+        stream = io.BytesIO(pixmap.tobytes("png"))
+        stream.seek(0)
+        return stream
+    finally:
+        doc.close()
+
+
+def extract_text_with_tesseract(
+    image_stream: io.BytesIO,
+    *,
+    languages: str = "por+eng",
+    psm: int = 3,
+) -> str:
+    if psm <= 0:
+        raise ValueError("psm deve ser maior que zero")
+
+    image_stream.seek(0)
+    try:
+        completed = subprocess.run(
+            [
+                "tesseract",
+                "stdin",
+                "stdout",
+                "-l",
+                languages,
+                "--psm",
+                str(psm),
+            ],
+            input=image_stream.read(),
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            check=False,
+        )
+    except OSError:
+        return ""
+    finally:
+        image_stream.seek(0)
+
+    if completed.returncode != 0:
+        return ""
+
+    return completed.stdout.decode("utf-8", errors="replace").strip()
 
 
 def create_ocr_engine(

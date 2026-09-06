@@ -21,6 +21,12 @@ class RasterSignal:
     largest_image_area_ratio: float
 
 
+@dataclass
+class VectorSignal:
+    drawing_count: int
+    union_area_ratio: float
+
+
 def inspect_native_text(page: fitz.Page) -> NativeTextSignal:
     blocks = page.get_text("blocks")
     text_blocks = [b for b in blocks if len(b) > 6 and b[6] == 0]
@@ -50,6 +56,47 @@ def inspect_raster_content(page: fitz.Page) -> RasterSignal:
     )
 
 
+def inspect_vector_content(page: fitz.Page) -> VectorSignal:
+    page_area = page.rect.width * page.rect.height
+    drawings = page.get_drawings()
+
+    if not drawings or page_area <= 0:
+        return VectorSignal(0, 0.0)
+
+    rects = [
+        drawing["rect"]
+        for drawing in drawings
+        if drawing.get("rect") is not None
+    ]
+    if not rects:
+        return VectorSignal(len(drawings), 0.0)
+
+    union = fitz.Rect(rects[0])
+    for rect in rects[1:]:
+        union |= rect
+
+    union_area = max(0.0, union.width) * max(0.0, union.height)
+
+    return VectorSignal(
+        drawing_count=len(drawings),
+        union_area_ratio=min(1.0, union_area / page_area),
+    )
+
+
+def has_significant_vector_content(
+    page: fitz.Page,
+    config: RoutingConfig | None = None,
+) -> bool:
+    if config is None:
+        config = RoutingConfig()
+
+    vector = inspect_vector_content(page)
+    return (
+        vector.drawing_count >= config.vector_min_drawing_count
+        and vector.union_area_ratio >= config.vector_min_union_area_ratio
+    )
+
+
 def route_page(
     page: fitz.Page,
     config: RoutingConfig | None = None,
@@ -59,7 +106,6 @@ def route_page(
 
     native = inspect_native_text(page)
     raster = inspect_raster_content(page)
-
     has_native = native.char_count >= config.native_min_text_chars
     has_full_page_image = (
         raster.largest_image_area_ratio >= config.full_page_image_min_ratio
@@ -68,6 +114,7 @@ def route_page(
         raster.total_image_area_ratio >= config.significant_image_min_ratio
     )
     has_raster_signal = has_full_page_image or has_significant_raster
+    has_significant_vector = has_significant_vector_content(page, config)
     # Ten times the native minimum (500 chars with the default config) plus
     # three text blocks distinguishes substantial page text from a long
     # caption or isolated label. In that case, summed decorative images must
@@ -78,6 +125,8 @@ def route_page(
     )
 
     if not has_native and not has_raster_signal:
+        if has_significant_vector:
+            return Metodo.ocr_integral
         return Metodo.vazia
     if has_native and not has_raster_signal:
         return Metodo.texto_nativo

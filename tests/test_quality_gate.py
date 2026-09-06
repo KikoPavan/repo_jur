@@ -169,7 +169,8 @@ def test_empty_return_is_fatal_but_blank_page_passes_without_warning() -> None:
 
     assert empty.state is GateState.FAIL
     assert any("empty" in error.lower() for error in empty.errors)
-    assert blank.state is GateState.PASS
+    assert blank.state is GateState.FAIL
+    assert any("every page as blank" in error for error in blank.errors)
     assert blank.warnings == ()
 
 
@@ -283,14 +284,49 @@ def test_warning_aggregation_uses_completed_pages_in_report_order() -> None:
     assert result.warnings == ("segundo", "primeiro")
 
 
-@pytest.mark.parametrize("method", ["ocr_integral", "hibrido", "vazia"])
-def test_ocr_and_blank_methods_do_not_synthesize_warnings(method: str) -> None:
+def test_document_with_every_page_blank_fails() -> None:
+    report = _report(
+        page_count=2,
+        pages=[
+            _page(1, method="vazia", characters=0),
+            _page(2, method="vazia", characters=0),
+        ],
+    )
+    result = evaluate(
+        _artifacts(
+            markdown="[[Pág. 1]]\n[[Pág. 2]]\n",
+            report=report,
+        )
+    )
+    assert result.state is GateState.FAIL
+    assert "every page as blank" in " ".join(result.errors)
+
+
+@pytest.mark.parametrize("method", ["ocr_integral", "hibrido"])
+def test_ocr_methods_do_not_synthesize_warnings(method: str) -> None:
     characters = 0 if method == "vazia" else 20
     result = evaluate(
         _artifacts(report=_report(pages=[_page(1, method=method, characters=characters)]))
     )
     assert result.state is GateState.PASS
     assert result.warnings == ()
+
+
+def test_single_blank_page_can_exist_inside_non_blank_document() -> None:
+    report = _report(
+        page_count=2,
+        pages=[
+            _page(1, method="texto_nativo", characters=20),
+            _page(2, method="vazia", characters=0),
+        ],
+    )
+    result = evaluate(
+        _artifacts(
+            markdown="[[Pág. 1]]\nConteúdo\n[[Pág. 2]]\n",
+            report=report,
+        )
+    )
+    assert result.state is GateState.PASS
 
 
 def test_markers_and_observability_fields_do_not_synthesize_warnings() -> None:

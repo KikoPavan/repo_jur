@@ -23,8 +23,12 @@ from .cleaner import (
 )
 from .config import RoutingConfig
 from .engines import (
+    OcrConfigurationError,
     create_native_engine,
     create_ocr_engine,
+    create_ocr_service,
+    extract_text_with_tesseract,
+    render_pdf_page_to_png,
     verify_ocr_evidence,
 )
 from . import __version__
@@ -45,7 +49,7 @@ from .report import (
     compute_relevant_config_fingerprint,
     strip_technical_routing_metadata,
 )
-from .router import route_page
+from .router import has_significant_vector_content, route_page
 
 
 @dataclass
@@ -498,6 +502,7 @@ def convert_document(
     source_info = inspect_source(pdf_path)
     native_engine = create_native_engine()
     ocr_engine = None
+    ocr_service = None
     page_results = []
     blocks: list[PageBlock] = []
     vertical_geometry_by_page: dict[int, list[str]] = {}
@@ -516,6 +521,10 @@ def convert_document(
             try:
                 page = doc[0]
                 method = route_page(page, routing_config)
+                use_vector_ocr = (
+                    method is Metodo.ocr_integral
+                    and has_significant_vector_content(page, routing_config)
+                )
                 reference_content = (
                     _geometric_reading_order_text(page)
                     if method is Metodo.texto_nativo
@@ -585,23 +594,43 @@ def convert_document(
                     "OCR desabilitado via --no-ocr; página não pôde ser processada."
                 )
             else:
-                if ocr_engine is None:
-                    prompt_text = Path(ocr_prompt_path).read_text(encoding="utf-8")
-                    ocr_engine = create_ocr_engine(
-                        api_key=ocr_api_key,
-                        model=ocr_model,
-                        base_url=ocr_base_url,
-                        prompt=prompt_text,
-                    )
+                prompt_text = Path(ocr_prompt_path).read_text(encoding="utf-8")
                 try:
-                    result = ocr_engine.convert(page_path)
+                    if use_vector_ocr:
+                        if ocr_service is None:
+                            ocr_service = create_ocr_service(
+                                api_key=ocr_api_key,
+                                model=ocr_model,
+                                base_url=ocr_base_url,
+                                prompt=prompt_text,
+                            )
+                        image_stream = render_pdf_page_to_png(page_path, dpi=300)
+                        ocr_result = ocr_service.extract_text(image_stream)
+                        raw_content = ocr_result.text or ""
+                        if not raw_content.strip():
+                            raw_content = extract_text_with_tesseract(
+                                image_stream,
+                                languages="por+eng",
+                                psm=3,
+                            )
+                    else:
+                        if ocr_engine is None:
+                            ocr_engine = create_ocr_engine(
+                                api_key=ocr_api_key,
+                                model=ocr_model,
+                                base_url=ocr_base_url,
+                                prompt=prompt_text,
+                            )
+                        result = ocr_engine.convert(page_path)
+                        raw_content = result.text_content or ""
+                except OcrConfigurationError:
+                    raise
                 except Exception:
                     method = Metodo.erro
                     errors.append(
                         "Falha técnica durante o processamento de OCR."
                     )
                 else:
-                    raw_content = result.text_content or ""
                     method, evidence_warnings = verify_ocr_evidence(
                         raw_content,
                         method,

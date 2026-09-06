@@ -20,6 +20,8 @@ class RoutingConfig:
     native_min_text_chars: int = 50
     full_page_image_min_ratio: float = 0.70
     significant_image_min_ratio: float = 0.15
+    vector_min_drawing_count: int = 100
+    vector_min_union_area_ratio: float = 0.05
 
     def __post_init__(self) -> None:
         if self.native_min_text_chars < 0:
@@ -37,6 +39,14 @@ class RoutingConfig:
                 "o limite de imagem significativa não pode ser maior que o de "
                 "página inteira"
             )
+        if self.vector_min_drawing_count < 1:
+            raise ValueError(
+                "vector_min_drawing_count deve ser maior ou igual a um"
+            )
+        if not 0.0 <= self.vector_min_union_area_ratio <= 1.0:
+            raise ValueError(
+                "vector_min_union_area_ratio deve estar entre 0.0 e 1.0"
+            )
 
     @classmethod
     def from_env(cls) -> RoutingConfig:
@@ -49,6 +59,12 @@ class RoutingConfig:
             ),
             significant_image_min_ratio=float(
                 os.environ.get("SIGNIFICANT_IMAGE_MIN_RATIO", "0.15")
+            ),
+            vector_min_drawing_count=int(
+                os.environ.get("VECTOR_MIN_DRAWING_COUNT", "100")
+            ),
+            vector_min_union_area_ratio=float(
+                os.environ.get("VECTOR_MIN_UNION_AREA_RATIO", "0.05")
             ),
         )
 

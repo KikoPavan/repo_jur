@@ -151,6 +151,15 @@ def evaluate(phase1_artifacts: Phase1Artifacts) -> QualityGateResult:
     else:
         expected_numbers = []
 
+    all_pages_blank = bool(pages) and all(
+        isinstance(page, dict)
+        and page.get("method") == "vazia"
+        and page.get("char_count") == 0
+        for page in pages
+    )
+    if all_pages_blank:
+        errors.append("Technical report classifies every page as blank")
+
     marker_numbers = [int(value) for value in _MARKER_PATTERN.findall(markdown)]
     if not marker_numbers:
         errors.append("Markdown has zero canonical page markers")
