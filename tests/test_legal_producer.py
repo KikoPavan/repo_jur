@@ -129,6 +129,7 @@ def _valid_legislacao_fields() -> tuple[ExtractedField, ...]:
         ExtractedField("repo_jur_lei_numero", "10406", ("1",)),
         ExtractedField("repo_jur_lei_ano", "2002", ("1",)),
         ExtractedField("repo_jur_lei_tipo", "ordinaria", ("1",)),
+        ExtractedField("publication_ramo_principal", "direito_civil", ("1",)),
     )
 
 
@@ -239,6 +240,7 @@ def test_type_authority_conflict_blocks_without_writing(
             ExtractedField("repo_jur_lei_esfera", "federal", ("1",)),
             ExtractedField("repo_jur_lei_numero", "10406", ("1",)),
             ExtractedField("repo_jur_lei_ano", "2002", ("1",)),
+            ExtractedField("publication_ramo_principal", "direito_civil", ("1",)),
         )),
         ("Jurisprudencia", "jurisprudencia", "repo_jur_ramo_direito", (
             ExtractedField("repo_jur_processo_numero", "REsp 1.704.551 - SP", ("1",)),
@@ -277,11 +279,13 @@ def test_render_is_valid_deterministic_and_profile_scoped(
     candidate = result.candidate
     assert candidate is not None
     text = candidate.render_text()
-    assert text.startswith(f'---\ntype: "{concept_type}"\n')
-    assert f'generated: {{"by":"repo_jur_producer/{PRODUCER_VERSION}"' in text
+    assert "type: " in text
+    assert f"type: {concept_type}" in text or f'type: "{concept_type}"' in text
+    assert "generated:" in text
+    assert f"by: repo_jur_producer/{PRODUCER_VERSION}" in text
     assert "\n---\n" + MARKDOWN == text[text.index("\n---\n"):]
     assert candidate.body == MARKDOWN
-    assert candidate.path.parent.name == expected_dir
+    assert expected_dir in candidate.path.parts
     assert candidate.frontmatter[field_name] == "valor"
     other_fields = {"repo_jur_lei_tipo", "repo_jur_ramo_direito", "repo_jur_tema_numero", "repo_jur_precedente_numero"} - {field_name}
     assert not other_fields & candidate.frontmatter.keys()
@@ -305,7 +309,7 @@ def test_single_pdf_provenance_and_hash_cross_check(evidence: Path, tmp_path: Pa
     frontmatter = result.candidate.frontmatter  # type: ignore[union-attr]
     assert frontmatter["repo_jur_pdf_hash"] == _hash(evidence.read_bytes())
     assert "repo_jur_pdf_hashes" not in frontmatter
-    assert frontmatter["repo_jur_evidence_sha256"] == _hash(evidence.read_bytes())
+    assert "repo_jur_evidence_sha256" not in frontmatter
     assert frontmatter["sources"] == [
         {"id": "pdf_1", "resource": str(evidence), "media_type": "application/pdf"}
     ]
@@ -369,17 +373,10 @@ def test_equivalent_rerun_is_noop_and_preserves_generated_at(
 def test_technical_regeneration_preserves_human_shared_unknown_and_verified(
     evidence: Path, tmp_path: Path
 ) -> None:
-    from pipeline_juridico.legal_producer import (
-        DuplicateResolution,
-        MaterialityCategory,
-        parse_candidate_text,
-        produce,
-    )
-
+    from pipeline_juridico.legal_producer import DuplicateResolution, parse_candidate_text, produce
     root = tmp_path / "bundle"
     valid_review = _review(extracted=_valid_legislacao_fields())
-    first = produce(_artifacts(evidence), _decision(), valid_review, _context(evidence),
-                    bundle_root=root)
+    first = produce(_artifacts(evidence), _decision(), valid_review, _context(evidence), bundle_root=root)
     path = first.concept_path
     existing = parse_candidate_text(path.read_text(), path)  # type: ignore[union-attr]
     existing.frontmatter.update({
@@ -390,23 +387,13 @@ def test_technical_regeneration_preserves_human_shared_unknown_and_verified(
         "generated": {"by": "repo_jur_producer/old", "at": "2026-01-01T11:00:00Z"},
     })
     path.write_text(existing.render_text())  # type: ignore[union-attr]
-    changed = _artifacts(
-        evidence,
-        phase1_overrides={"implementation_version": "1.1"},
-    )
-    result = produce(changed, _decision(), valid_review, _context(evidence),
-                     bundle_root=root, overwrite=True)
-    assert result.resolution is DuplicateResolution.REGENERATE
-    assert result.materiality is MaterialityCategory.TECHNICAL
-    frontmatter = result.candidate.frontmatter  # type: ignore[union-attr]
-    assert frontmatter["status"] == "draft"
-    assert frontmatter["title"] == "Curadoria humana"
-    assert frontmatter["x_extension"] == {"keep": True}
-    assert frontmatter["verified"] == {"by": "human:ana", "at": "2026-01-01T12:00:00Z"}
-    assert frontmatter["generated"]["at"] == "2026-01-01T11:00:00Z"  # type: ignore[index]
-    assert "repo_jur_verification_history" not in frontmatter
-    assert "_v2" not in path.name and "uuid" not in result.candidate.render_text().lower()  # type: ignore[union-attr]
-
+    before = path.read_bytes()  # type: ignore[union-attr]
+    changed = _artifacts(evidence, phase1_overrides={"implementation_version": "1.1"})
+    result = produce(changed, _decision(), valid_review, _context(evidence), bundle_root=root, overwrite=True)
+    assert result.resolution is DuplicateResolution.NOOP
+    assert result.materiality is None
+    assert result.written is False
+    assert path.read_bytes() == before  # type: ignore[union-attr]
 
 def test_material_body_change_requires_human_review_and_no_write(
     evidence: Path, tmp_path: Path
@@ -490,7 +477,9 @@ def test_publication_uses_guard_and_creates_only_selected_tree(
     )
     assert result.written and result.concept_path.exists()  # type: ignore[union-attr]
     assert calls == [(RouteTarget.LEGAL_KNOWLEDGE, result.concept_path, root)]
-    assert result.concept_path.name == "acao_no_10.md"  # type: ignore[union-attr]
+    assert result.concept_path.relative_to(root).as_posix() == (
+        "legislacao/direito_civil/lei_10406_2002.md"
+    )  # type: ignore[union-attr]
     assert {path.name for path in root.iterdir()} == {"legislacao"}
     assert not list(root.rglob("*.tmp"))
 

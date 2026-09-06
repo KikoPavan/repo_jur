@@ -291,7 +291,7 @@ def test_route_and_producer_surfaces_are_unchanged(
     # Supply a Legal Knowledge Markdown specifically for the producer surface test
     lk_markdown = tmp_path / "lk_phase1.md"
     lk_markdown.write_text(
-        "[[Pág. 1]]\n<!-- método: texto_nativo -->\nPresidência da República\nLEI COMPLEMENTAR Nº 123, DE 10 DE JANEIRO DE 2002\nConteúdo legal desu",
+        "[[Pág. 1]]\n<!-- método: texto_nativo -->\nPresidência da República\nLEI Nº 10.406, DE 10 DE JANEIRO DE 2002\nInstitui o Código Civil.\nConteúdo legal",
         encoding="utf-8"
     )
     lk_report = dict(report)

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import re
+import unicodedata
 from collections import Counter
 from dataclasses import dataclass
 from enum import Enum
@@ -128,6 +129,34 @@ def _preserves_words(patch: LegalPatch) -> bool:
     return Counter(patch.before.split()) == Counter(patch.after.split())
 
 
+
+def _fold_publication_text(value: str) -> str:
+    return unicodedata.normalize("NFKD", value).encode("ascii", "ignore").decode().lower()
+
+
+def _detect_publication_ramo_principal(pages: list[tuple[str, str]]) -> tuple[str, str] | None:
+    """Use only high-confidence title/ementa signals; ambiguity yields no classification."""
+    rules = (
+        (r"\binstitui\s+o\s+codigo\s+civil\b|^\s*codigo\s+civil\s*[.\-]?\s*$", "direito_civil"),
+        (r"\binstitui\s+o\s+codigo\s+de\s+processo\s+civil\b|^\s*codigo\s+de\s+processo\s+civil\s*[.\-]?\s*$", "direito_processual_civil"),
+        (r"^\s*codigo\s+penal\s*[.\-]?\s*$", "direito_penal"),
+        (r"^\s*codigo\s+de\s+processo\s+penal\s*[.\-]?\s*$", "direito_processual_penal"),
+        (r"^\s*codigo\s+tributario\s+nacional\s*[.\-]?\s*$", "direito_tributario"),
+        (r"\baprova\s+a\s+consolidacao\s+das\s+leis\s+do\s+trabalho\b", "direito_trabalhista"),
+        (r"^\s*constituicao\s+da\s+republica\s+federativa\s+do\s+brasil\s*[.\-]?\s*$", "direito_constitucional"),
+    )
+    hits: dict[str, str] = {}
+    for page_num, page_text in pages:
+        folded = _fold_publication_text(page_text)
+        for pattern, ramo in rules:
+            if re.search(pattern, folded, re.MULTILINE):
+                hits.setdefault(ramo, page_num)
+    if len(hits) != 1:
+        return None
+    ramo, page_num = next(iter(hits.items()))
+    return ramo, page_num
+
+
 def _deterministic_extract(markdown: str) -> list[ExtractedField]:
     MONTHS = {
         "janeiro": "01", "fevereiro": "02", "março": "03", "marco": "03",
@@ -150,6 +179,11 @@ def _deterministic_extract(markdown: str) -> list[ExtractedField]:
             pages.append((page_num, page_text))
 
     extracted = []
+
+    publication_branch = _detect_publication_ramo_principal(pages)
+    if publication_branch is not None:
+        ramo, ramo_page = publication_branch
+        extracted.append(ExtractedField("publication_ramo_principal", ramo, (ramo_page,)))
 
     # Let's extract Legislative fields
     tipo = None

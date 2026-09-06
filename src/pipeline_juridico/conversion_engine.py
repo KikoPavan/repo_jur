@@ -40,12 +40,10 @@ class EvidenceReferenceError(Exception):
 
 def resolve_evidence_reference(evidence_ref: str) -> Path:
     """Resolve the local ``file://`` representation used by current storage."""
-
     try:
         parsed = urlparse(evidence_ref)
     except (TypeError, ValueError) as exc:
         raise EvidenceReferenceError("malformed evidence reference") from exc
-
     if (
         parsed.scheme != "file"
         or parsed.netloc not in ("", "localhost")
@@ -55,12 +53,10 @@ def resolve_evidence_reference(evidence_ref: str) -> Path:
         or parsed.fragment
     ):
         raise EvidenceReferenceError("unsupported or malformed evidence reference")
-
     try:
         path = Path(unquote(parsed.path)).resolve(strict=True)
     except (OSError, RuntimeError, ValueError) as exc:
         raise EvidenceReferenceError("evidence reference cannot be resolved") from exc
-
     if not path.is_file() or not os.access(path, os.R_OK):
         raise EvidenceReferenceError("evidence reference is not a readable file")
     return path

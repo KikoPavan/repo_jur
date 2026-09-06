@@ -6,6 +6,7 @@ import json
 import os
 import sqlite3
 import tempfile
+import yaml
 from dataclasses import asdict, dataclass
 from hashlib import sha256
 from pathlib import Path
@@ -101,22 +102,19 @@ def derive_concept_id(path: Path, bundle_root: Path) -> str:
 
 
 def parse_canonical_document(text: str) -> tuple[dict[str, Any], str]:
-    """Parse the Producer's deterministic JSON-scalar YAML subset."""
+    """Parse the Producer's deterministic YAML."""
 
     if not text.startswith("---\n"):
         return {}, text
     boundary = text.find("\n---\n", 4)
     if boundary < 0:
         return {}, text
-    metadata: dict[str, Any] = {}
-    for line in text[4:boundary].splitlines():
-        if ":" not in line:
-            continue
-        key, raw = line.split(":", 1)
-        try:
-            metadata[key.strip()] = json.loads(raw.strip())
-        except json.JSONDecodeError:
-            metadata[key.strip()] = raw.strip()
+    try:
+        metadata = yaml.safe_load(text[4:boundary])
+        if not isinstance(metadata, dict):
+            metadata = {}
+    except yaml.YAMLError:
+        metadata = {}
     return metadata, text[boundary + 5 :]
 
 

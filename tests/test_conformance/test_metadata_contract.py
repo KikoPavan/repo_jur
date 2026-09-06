@@ -85,8 +85,7 @@ def test_ci_safe_golden_legislacao_conformance(tmp_path: Path) -> None:
     assert frontmatter["repo_jur_lei_ano"] == 2002
     assert frontmatter["repo_jur_lei_esfera"] == "federal"
     assert frontmatter["repo_jur_lei_tipo"] == "ordinaria"
-    assert frontmatter["resource"] == "input/L10.406_CC_2002.pdf"
-
+    assert "resource" not in frontmatter
     # Confirm page_refs are transient and not written to canonical YAML frontmatter
     assert "page_refs" not in frontmatter
 

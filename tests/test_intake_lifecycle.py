@@ -10,9 +10,12 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 from pipeline_juridico.config import IntakeConfig, IngressConfig
+from pipeline_juridico.conversion_engine import Phase1Artifacts
+from pipeline_juridico.report import build_report_json
 from pipeline_juridico.intake_manager import IntakeManager, IntakeState, IntakeRegistryEntry, ObservedSource, ManifestData
 from pipeline_juridico.intake_orchestrator import IntakeOrchestrator
 from pipeline_juridico.hashing import sha256_file
+from pipeline_juridico.evidence import LocalFilesystemObjectStorageGateway
 from pipeline_juridico.legal_producer import LegalConceptType, DuplicateResolution, ProducerRunResult, LegalProducerBlockedError
 from pipeline_juridico.models import Relatorio, InputInfo, ResultadoPagina, Phase1Info, Metodo, ResultadoInfo
 
@@ -210,7 +213,7 @@ def test_published_missing_bundle_becomes_failed(temp_env):
 
 # --- 5. E2E Operational Test ---
 
-@patch("pipeline_juridico.intake_orchestrator.convert_document")
+@patch("pipeline_juridico.intake_orchestrator.ConversionEngine.convert")
 @patch("pipeline_juridico.intake_orchestrator.LegalSemanticReviewEngine")
 @patch("pipeline_juridico.intake_orchestrator.produce")
 @patch("pipeline_juridico.intake_orchestrator.preflight_envelope")
@@ -222,7 +225,11 @@ def test_full_e2e_flow(mock_preflight, mock_produce, mock_review, mock_convert, 
     pdf.write_bytes(content)
     sha = sha256_file(pdf)
 
-    mock_preflight.return_value = MagicMock(evidence_reference="evidence.pdf")
+    # Use real gateway to get the real URI representation
+    storage = LocalFilesystemObjectStorageGateway(ingress_config.object_storage_root)
+    real_evidence_uri = storage.put(content, content_type="application/pdf")
+
+    mock_preflight.return_value = MagicMock(evidence_reference=real_evidence_uri)
 
     rel = Relatorio(
         input=InputInfo(sha256=sha, page_count=1),
@@ -230,7 +237,10 @@ def test_full_e2e_flow(mock_preflight, mock_produce, mock_review, mock_convert, 
         phase1=Phase1Info(implementation="test"),
         result=ResultadoInfo(quality_gate="PASS")
     )
-    mock_convert.return_value = ("[[Pág. 1]]\n# My Legislative Markdown", rel)
+    mock_convert.return_value = Phase1Artifacts(
+        markdown="[[Pág. 1]]\n# My Legislative Markdown",
+        report_json=build_report_json(rel),
+    )
 
     mock_review_inst = MagicMock()
     mock_review.return_value = mock_review_inst
@@ -240,7 +250,7 @@ def test_full_e2e_flow(mock_preflight, mock_produce, mock_review, mock_convert, 
     mock_produce.return_value = ProducerRunResult(candidate=None, resolution=DuplicateResolution.NEW_CONCEPT, materiality=None, written=True, concept_path=concept_path)
     concept_path.touch()
 
-    (ingress_config.object_storage_root / "evidence.pdf").touch()
+    # (ingress_config.object_storage_root / "evidence.pdf").touch()  <- storage.put already did this!
 
     orch = IntakeOrchestrator(config, ingress_config, logging.getLogger("test"), bundle_root=tmp_path / "bundle")
     orch.output_dir = tmp_path / "output"
@@ -257,7 +267,7 @@ def test_full_e2e_flow(mock_preflight, mock_produce, mock_review, mock_convert, 
 
 # --- 6. Review Required Handling ---
 
-@patch("pipeline_juridico.intake_orchestrator.convert_document")
+@patch("pipeline_juridico.intake_orchestrator.ConversionEngine.convert")
 @patch("pipeline_juridico.intake_orchestrator.LegalSemanticReviewEngine")
 @patch("pipeline_juridico.intake_orchestrator.produce")
 @patch("pipeline_juridico.intake_orchestrator.preflight_envelope")
@@ -267,14 +277,19 @@ def test_review_required_remains_preserved(mock_preflight, mock_produce, mock_re
     pdf.write_bytes(b"%PDF-1.4\nreview")
     sha = sha256_file(pdf)
 
-    mock_preflight.return_value = MagicMock(evidence_reference="evidence.pdf")
+    storage = LocalFilesystemObjectStorageGateway(ingress_config.object_storage_root)
+    real_evidence_uri = storage.put(b"%PDF-1.4\nreview", content_type="application/pdf")
+    mock_preflight.return_value = MagicMock(evidence_reference=real_evidence_uri)
     rel = Relatorio(
         input=InputInfo(sha256=sha, page_count=1),
         pages=[ResultadoPagina(page_number=1, method=Metodo.texto_nativo, char_count=100, errors=[], warnings=[])],
         phase1=Phase1Info(implementation="test"),
         result=ResultadoInfo(quality_gate="PASS")
     )
-    mock_convert.return_value = ("[[Pág. 1]]\n# Markdown", rel)
+    mock_convert.return_value = Phase1Artifacts(
+        markdown="[[Pág. 1]]\n# Markdown",
+        report_json=build_report_json(rel),
+    )
     mock_review_inst = MagicMock()
     mock_review.return_value = mock_review_inst
     mock_review_inst.review.return_value = MagicMock()

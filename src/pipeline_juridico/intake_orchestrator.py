@@ -13,7 +13,7 @@ from .contracts import (
     Phase1Artifacts,
     RouteTarget,
 )
-from .converter import convert_document
+from .conversion_engine import ConversionEngine, ConversionConfig
 from .domain_router import (
     RoutingContext,
     build_routing_record,
@@ -38,6 +38,7 @@ from .legal_semantic_review import (
 from .quality_gate import evaluate
 from .report import attach_gate_result
 from .models import Relatorio
+from urllib.parse import urlparse, unquote
 
 
 class IntakeOrchestrator:
@@ -115,6 +116,25 @@ class IntakeOrchestrator:
 
                 self.process_entry(entry)
 
+    def _resolve_evidence_path(self, evidence_reference: str) -> Path:
+        parsed = urlparse(evidence_reference)
+        if parsed.scheme == "file":
+            if parsed.netloc not in ("", "localhost"):
+                raise ValueError(f"Somente URIs locais são permitidas (netloc={parsed.netloc})")
+            path = Path(unquote(parsed.path))
+        elif parsed.scheme == "":
+            if ".." in evidence_reference.split(os.sep):
+                raise ValueError(f"Referências relativas com '..' são proibidas: {evidence_reference}")
+            path = self.ingress_config.object_storage_root / evidence_reference
+        else:
+            raise ValueError(f"Esquema de URI não suportado: {parsed.scheme}")
+
+        resolved = path.resolve()
+        storage_root = self.ingress_config.object_storage_root.resolve()
+        if not (resolved == storage_root or resolved.is_relative_to(storage_root)):
+            raise ValueError(f"Referência de evidência fora do Object Storage: {resolved}")
+        return resolved
+
     def reconcile(self):
         for registry_file in sorted(self.intake_manager.config.registry_dir.glob("*.json")):
             sha = registry_file.stem
@@ -131,7 +151,7 @@ class IntakeOrchestrator:
     def verify_published_integrity(self, entry: IntakeRegistryEntry) -> bool:
         if not entry.evidence_reference:
             return False
-        ev_path = self.ingress_config.object_storage_root / entry.evidence_reference
+        ev_path = self._resolve_evidence_path(entry.evidence_reference)
         if not ev_path.exists():
             return False
         if entry.concept_id:
@@ -173,46 +193,41 @@ class IntakeOrchestrator:
             self.intake_manager.update_heartbeat(entry)
 
             if not entry.evidence_reference:
-                 raise RuntimeError("Referência de evidência ausente após preservação.")
+                raise RuntimeError("Referência de evidência ausente após preservação.")
 
-            preserved_pdf = self.ingress_config.object_storage_root / entry.evidence_reference
             md_path = self.output_dir / f"{entry.handoff_id}.md"
             rep_path = self.logs_dir / f"{entry.handoff_id}.report.json"
 
-            markdown, report = convert_document(
-                pdf_path=preserved_pdf,
-                output_path=md_path,
+            preserved_pdf = self._resolve_evidence_path(entry.evidence_reference)
+
+            conv_config = ConversionConfig(
                 temp_root="var/tmp",
                 allow_partial=True,
                 use_ocr=True,
                 ocr_api_key=os.environ.get("GEMINI_API_KEY"),
                 ocr_model=os.environ.get("GEMINI_MODEL"),
             )
+            artifacts = ConversionEngine().convert(preserved_pdf.resolve().as_uri(), conv_config)
 
-            artifacts = Phase1Artifacts(markdown, json.dumps(asdict(report)))
-            gate_result = evaluate(artifacts)
+            markdown = artifacts.markdown
+            report_json = artifacts.report_json
 
-            final_report = attach_gate_result(
-                report,
-                quality_gate=gate_result.state.value,
-                warnings=gate_result.warnings,
-                errors=gate_result.errors
-            )
-            report_json = json.dumps(asdict(final_report))
-            # Requisito: Não usar write_atomic da Intake
+            # Persist clean Markdown in output/ (Phase 1)
+            self._safe_write(markdown, md_path)
+            # Persist report in logs/
             self._safe_write(report_json, rep_path)
 
             self.intake_manager.update_heartbeat(entry)
 
             # 3. Domain Router
             context = RoutingContext(requested_domain=RouteTarget.LEGAL_KNOWLEDGE)
-            decision = route(Phase1Artifacts(markdown, report_json), critical_status=CriticalValidationStatus.OK, routing_context=context)
+            decision = route(artifacts, critical_status=CriticalValidationStatus.OK, routing_context=context)
 
             # 4. Legal Knowledge Flow
             if decision.target == RouteTarget.LEGAL_KNOWLEDGE:
                 # Semantic Review
                 review_engine = LegalSemanticReviewEngine()
-                review_result = review_engine.review(Phase1Artifacts(markdown, report_json), LegalReviewProfile("default", "1.0", ()))
+                review_result = review_engine.review(artifacts, LegalReviewProfile("default", "1.0", ()))
 
                 if not entry.okf_type:
                      raise RuntimeError(f"Tipo OKF não definido para {entry.sha256}.")
@@ -221,7 +236,7 @@ class IntakeOrchestrator:
 
                 # Requisito 1: Usar produce() público
                 result = produce(
-                    Phase1Artifacts(markdown, report_json),
+                    artifacts,
                     decision,
                     review_result,
                     prod_context,

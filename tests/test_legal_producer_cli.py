@@ -9,7 +9,7 @@ import pytest
 from pipeline_juridico.domain_router_cli import main
 
 
-MARKDOWN = "[[Pág. 1]]\n<!-- método: texto_nativo -->\nPresidência da República\nLEI Nº 10.406, DE 10 DE JANEIRO DE 2002\nSegredo literal XYZ\n"
+MARKDOWN = "[[Pág. 1]]\n<!-- método: texto_nativo -->\nPresidência da República\nLEI Nº 10.406, DE 10 DE JANEIRO DE 2002\nInstitui o Código Civil.\nSegredo literal XYZ\n"
 
 
 def _write_artifacts(tmp_path: Path, *, gate: str = "PASS") -> tuple[Path, Path, Path]:
@@ -67,7 +67,7 @@ def test_build_surface_context_merge_json_record_and_no_bundle_write(tmp_path: P
 
     assert code == 0
     outcome = json.loads(capsys.readouterr().out)
-    assert outcome["candidate"].startswith("---\ntype: \"Legislacao\"")
+    assert outcome["candidate"].startswith("---\ntype: Legislacao")
     assert not bundle.exists()
     assert before == (markdown.read_bytes(), report.read_bytes())
     record = json.loads((state / "producer-execution-1.json").read_text())

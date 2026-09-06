@@ -197,9 +197,6 @@ def _run_build(args: argparse.Namespace, logger: logging.Logger) -> int:
             if review.state is ReviewState.REVIEW_REQUIRED:
                 raise LegalSemanticReviewBlockedError("review is required for this candidate", reason="review_required")
             candidate = _base_candidate(artifacts, _report(artifacts), review, context, args.bundle_root)
-            phase1_metadata = candidate.frontmatter.get("repo_jur_phase1")
-            if isinstance(phase1_metadata, dict):
-                phase1_metadata["quality_gate"] = report["result"]["quality_gate"]  # type: ignore[index]
             validate_candidate(candidate)
         except (LegalSemanticReviewBlockedError, LegalProducerBlockedError):
             concept_path = resolve_concept_path(
@@ -260,23 +257,68 @@ def _run_validate(args: argparse.Namespace, logger: logging.Logger) -> int:
     return EXIT_OK
 
 
-def _candidate_provenance(candidate: ConceptCandidate) -> tuple[str, str]:
-    provenance = candidate.frontmatter.get("repo_jur_evidence_sha256")
-    phase1 = candidate.frontmatter.get("repo_jur_phase1")
-    if not isinstance(provenance, str) or len(provenance) != 64 or not isinstance(phase1, dict):
+def _candidate_provenance(candidate: ConceptCandidate) -> str:
+    provenance = candidate.frontmatter.get("repo_jur_pdf_hash")
+    if (
+        not isinstance(provenance, str)
+        or len(provenance) != 64
+        or any(char not in "0123456789abcdef" for char in provenance.lower())
+    ):
         raise LegalProducerConfigurationError("proveniência do candidato é inválida")
-    gate = phase1.get("quality_gate", "PASS")
-    if gate not in ("PASS", "PASS_WITH_WARNINGS"):
-        raise LegalProducerConfigurationError("gate do candidato é inválido")
-    return provenance, str(gate)
+    return provenance
+
+
+def _candidate_gate(state_dir: Path, provenance: str) -> str:
+    # Recover technical Quality Gate state from operational build records.
+    gates: list[str] = []
+    for record_path in sorted(state_dir.glob("*.json")):
+        try:
+            payload = json.loads(record_path.read_text(encoding="utf-8"))
+        except (OSError, UnicodeError, json.JSONDecodeError):
+            continue
+        if not isinstance(payload, dict):
+            continue
+        if payload.get("record_type") != "producer.build":
+            continue
+        if payload.get("provenance_sha256") != provenance:
+            continue
+        gate = payload.get("gate")
+        if gate in ("PASS", "PASS_WITH_WARNINGS"):
+            gates.append(str(gate))
+
+    if not gates:
+        raise LegalProducerConfigurationError(
+            "registro operacional do Quality Gate não encontrado para o candidato"
+        )
+
+    if "PASS_WITH_WARNINGS" in gates:
+        return "PASS_WITH_WARNINGS"
+    return "PASS"
 
 
 def _publish_target(candidate: ConceptCandidate, bundle_root: str) -> Path:
     sources = candidate.frontmatter.get("sources")
-    resource = sources[0].get("resource") if isinstance(sources, list) and sources and isinstance(sources[0], dict) else None
+    resource = (
+        sources[0].get("resource")
+        if isinstance(sources, list) and sources and isinstance(sources[0], dict)
+        else None
+    )
     if not isinstance(resource, str):
         raise LegalProducerConfigurationError("fonte do candidato é inválida")
-    return resolve_concept_path(candidate.type, resource, bundle_root)
+    metadata = dict(candidate.frontmatter)
+    if candidate.type.value == "Legislacao":
+        from .legal_semantic_review import _deterministic_extract
+        publication_fields = [
+            field for field in _deterministic_extract(candidate.body)
+            if field.name == "publication_ramo_principal"
+        ]
+        if len(publication_fields) != 1:
+            raise LegalProducerBlockedError(
+                "missing or ambiguous publication_ramo_principal",
+                reason="review_required",
+            )
+        metadata["publication_ramo_principal"] = publication_fields[0].value
+    return resolve_concept_path(candidate.type, resource, bundle_root, metadata=metadata)
 
 
 def _run_publish(args: argparse.Namespace, logger: logging.Logger) -> int:
@@ -284,8 +326,19 @@ def _run_publish(args: argparse.Namespace, logger: logging.Logger) -> int:
         state_dir = _state_dir(args.state_dir)
         candidate = _load_candidate(args)
         validate_candidate(candidate)
-        provenance, gate = _candidate_provenance(candidate)
+        provenance = _candidate_provenance(candidate)
         target = _publish_target(candidate, args.bundle_root)
+        # T8 migration guard: do not create a second positional identity
+        # before controlled HUMAN-approved migration.
+        from .legal_producer import _find_migration_collision
+        if not target.exists():
+            collision = _find_migration_collision(candidate, args.bundle_root)
+            if collision is not None:
+                logger.error(
+                    "Publicação requer migração humana controlada: %s",
+                    collision,
+                )
+                return EXIT_BLOCKED
         resolution = DuplicateResolution.NEW_CONCEPT
         materiality = None
         publication = "published"
@@ -300,6 +353,7 @@ def _run_publish(args: argparse.Namespace, logger: logging.Logger) -> int:
                 publication = "noop"
             else:
                 resolution = DuplicateResolution.REGENERATE
+        gate = _candidate_gate(state_dir, provenance)
         authorized = guard_legal_bundle_write(
             acting_domain=RouteTarget.LEGAL_KNOWLEDGE,
             target=target,

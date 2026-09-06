@@ -6,6 +6,7 @@ import json
 import datetime
 import re
 import unicodedata
+import yaml
 from collections.abc import Mapping
 from dataclasses import dataclass
 from enum import Enum
@@ -66,19 +67,18 @@ class ConceptCandidate:
     path: Path
 
     def render_text(self) -> str:
-        """Render a deterministic YAML subset: one JSON scalar per YAML key."""
+        """Render deterministic YAML using standard nested mappings."""
         ordered = _ordered_frontmatter(self.frontmatter)
-        lines = ["---"]
-        for key, value in ordered.items():
-            encoded = json.dumps(
-                value,
-                ensure_ascii=False,
-                sort_keys=True,
-                separators=(",", ":"),
-            )
-            lines.append(f"{key}: {encoded}")
-        lines.append("---")
-        return "\n".join(lines) + "\n" + self.body
+        # Use PyYAML for standard rendering
+        header = yaml.dump(
+            ordered,
+            allow_unicode=True,
+            sort_keys=False,
+            default_flow_style=False,
+            indent=2,
+            width=1000,
+        )
+        return f"---\n{header}---" + "\n" + self.body
 
 
 class DuplicateResolution(str, Enum):
@@ -115,6 +115,11 @@ LEGACY_KEYS = frozenset({
     "relator",
 })
 
+DEPRECATED_TECHNICAL_KEYS = frozenset({
+    "repo_jur_evidence_sha256",
+    "repo_jur_phase1",
+})
+
 
 PROFILE_FIELDS: dict[LegalConceptType, tuple[str, ...]] = {
     LegalConceptType.Legislacao: (
@@ -147,8 +152,6 @@ PRODUCER_OWNED_KEYS = frozenset(
         "sources",
         "repo_jur_pdf_hash",
         "repo_jur_pdf_hashes",
-        "repo_jur_evidence_sha256",
-        "repo_jur_phase1",
         "resource",
         "repo_jur_lei_numero",
         "repo_jur_lei_ano",
@@ -265,15 +268,100 @@ def _slug(resource: str | None, report: Mapping[str, object]) -> str:
     return slug or str(report["input"]["sha256"])
 
 
+def _normalize_id(value: str) -> str:
+    """Normalize a path component to canonical [a-z0-9_] form."""
+    val = value.lower()
+    val = unicodedata.normalize("NFKD", val).encode("ascii", "ignore").decode()
+    val = re.sub(r"[^a-z0-9]+", "_", val)
+    return re.sub(r"_+", "_", val).strip("_")
+
+
+def _clean_number(value: str) -> str:
+    """Remove dots, slashes, and other non-alphanumeric characters from numbers."""
+    return re.sub(r"[^a-z0-9]", "", value.lower())
+
+
+def _resolve_legal_identity(
+    concept_type: LegalConceptType,
+    metadata: Mapping[str, object],
+    evidence_resource: str | None = None,
+    report: Mapping[str, object] | None = None,
+) -> str:
+    """Derive positional Legal Knowledge identity from canonical metadata."""
+    fake_report = report or {"input": {"sha256": "0" * 64}}
+
+    if concept_type is LegalConceptType.Legislacao:
+        ramo = _normalize_id(str(metadata.get("publication_ramo_principal", "")))
+        canonical_present = any(
+            key in metadata
+            for key in (
+                "repo_jur_lei_tipo",
+                "repo_jur_lei_numero",
+                "repo_jur_lei_ano",
+                "repo_jur_lei_esfera",
+            )
+        )
+        if canonical_present and not ramo:
+            raise LegalProducerBlockedError(
+                "missing or ambiguous publication_ramo_principal",
+                reason="review_required",
+            )
+        if not ramo:
+            return f"legislacao/{_slug(evidence_resource, fake_report)}"
+
+        raw_tipo = _normalize_id(str(metadata.get("repo_jur_lei_tipo", "")))
+        tipo_map = {
+            "ordinaria": "lei",
+            "complementar": "lei_complementar",
+            "constituicao": "constituicao",
+            "decreto": "decreto",
+            "portaria": "portaria",
+            "medida_provisoria": "medida_provisoria",
+        }
+        tipo = tipo_map.get(raw_tipo, raw_tipo)
+        numero = _clean_number(str(metadata.get("repo_jur_lei_numero", "")))
+        ano = _clean_number(str(metadata.get("repo_jur_lei_ano", "")))
+        if tipo and numero and ano:
+            filename = f"{tipo}_{numero}_{ano}"
+        elif tipo and ano:
+            filename = f"{tipo}_{ano}"
+        elif tipo:
+            filename = tipo
+        else:
+            filename = _slug(evidence_resource, fake_report)
+        return f"legislacao/{ramo}/{filename}"
+
+    if concept_type is LegalConceptType.Jurisprudencia:
+        tribunal = _normalize_id(str(metadata.get("repo_jur_tribunal", "")))
+        processo = _normalize_id(str(metadata.get("repo_jur_processo_numero", "")))
+        parts = [part for part in (tribunal, processo) if part]
+        filename = "_".join(parts) if parts else _slug(evidence_resource, fake_report)
+        return f"jurisprudencia/{filename}"
+
+    if concept_type is LegalConceptType.TemaJuridico:
+        tribunal = _normalize_id(str(metadata.get("repo_jur_tribunal", "")))
+        numero = _clean_number(str(metadata.get("repo_jur_tema_numero", "")))
+        filename = f"tema_{tribunal}_{numero}" if tribunal and numero else _slug(evidence_resource, fake_report)
+        return f"temas/{filename}"
+
+    if concept_type is LegalConceptType.PrecedenteVinculante:
+        tribunal = _normalize_id(str(metadata.get("repo_jur_tribunal", "")))
+        numero = _clean_number(str(metadata.get("repo_jur_precedente_numero", "")))
+        filename = f"precedente_{tribunal}_{numero}" if tribunal and numero else _slug(evidence_resource, fake_report)
+        return f"precedentes/{filename}"
+
+    return f"{_TYPE_DIRECTORIES[concept_type]}/{_slug(evidence_resource, fake_report)}"
+
+
 def resolve_concept_path(
     concept_type: LegalConceptType,
     evidence_resource: str | None,
     bundle_root: str | Path,
+    metadata: Mapping[str, object] | None = None,
 ) -> Path:
     root = Path(bundle_root).resolve()
-    fake_report: dict[str, object] = {"input": {"sha256": "0" * 64}}
-    candidate = (root / _TYPE_DIRECTORIES[concept_type] /
-                 f"{_slug(evidence_resource, fake_report)}.md").resolve()
+    identity = _resolve_legal_identity(concept_type, metadata or {}, evidence_resource)
+    candidate = (root / f"{identity}.md").resolve()
     if not candidate.is_relative_to(root):
         raise LegalProducerConfigurationError("concept path escapes bundle root")
     return candidate
@@ -288,21 +376,18 @@ def _ordered_frontmatter(frontmatter: Mapping[str, object]) -> dict[str, object]
 
 
 def parse_candidate_text(text: str, path: str | Path) -> ConceptCandidate:
-    """Parse the deterministic YAML subset emitted by ``render_text``."""
+    """Parse the standard YAML frontmatter."""
     if not isinstance(text, str) or not text.startswith("---\n"):
         raise LegalProducerConfigurationError("candidate YAML is invalid")
     boundary = text.find("\n---\n", 4)
     if boundary < 0:
         raise LegalProducerConfigurationError("candidate YAML boundary is missing")
-    frontmatter: dict[str, object] = {}
-    for line in text[4:boundary].splitlines():
-        key, separator, encoded = line.partition(": ")
-        if not separator or not _KEY.match(key) or key in frontmatter:
-            raise LegalProducerConfigurationError("candidate YAML entry is invalid")
-        try:
-            frontmatter[key] = json.loads(encoded)
-        except json.JSONDecodeError as error:
-            raise LegalProducerConfigurationError("candidate YAML value is invalid") from error
+    try:
+        frontmatter = yaml.safe_load(text[4:boundary])
+    except yaml.YAMLError as error:
+        raise LegalProducerConfigurationError("candidate YAML is invalid") from error
+    if not isinstance(frontmatter, dict):
+        raise LegalProducerConfigurationError("candidate frontmatter must be a mapping")
     raw_type = frontmatter.get("type")
     try:
         concept_type = LegalConceptType(raw_type)
@@ -370,6 +455,12 @@ def validate_candidate(candidate: ConceptCandidate) -> None:
         if legacy_key in frontmatter:
             raise LegalProducerConfigurationError(f"legacy or unauthorized key '{legacy_key}' is rejected")
 
+    for technical_key in DEPRECATED_TECHNICAL_KEYS:
+        if technical_key in frontmatter:
+            raise LegalProducerConfigurationError(
+                f"deprecated technical key '{technical_key}' is rejected"
+            )
+
     # Strict Mandatory and Conditional Mandatory field checks (raising LegalProducerBlockedError)
     if candidate.type is LegalConceptType.Legislacao:
         if "repo_jur_lei_esfera" not in frontmatter:
@@ -406,15 +497,20 @@ def classify_materiality(
     existing_candidate: ConceptCandidate,
     new_candidate: ConceptCandidate,
 ) -> MaterialityCategory:
-    """Classify body or provenance changes as material; other drift as technical."""
+    """Treat body, evidence provenance, type, or canonical legal metadata drift as material."""
     if existing_candidate.body != new_candidate.body:
         return MaterialityCategory.MATERIAL
     material_keys = {
-        "sources", "repo_jur_pdf_hash", "repo_jur_pdf_hashes",
-        "repo_jur_evidence_sha256", "type",
+        "type",
+        "sources",
+        "repo_jur_pdf_hash",
+        "repo_jur_pdf_hashes",
+        *{field for fields in PROFILE_FIELDS.values() for field in fields},
     }
-    if any(existing_candidate.frontmatter.get(key) != new_candidate.frontmatter.get(key)
-           for key in material_keys):
+    if any(
+        existing_candidate.frontmatter.get(key) != new_candidate.frontmatter.get(key)
+        for key in material_keys
+    ):
         return MaterialityCategory.MATERIAL
     return MaterialityCategory.TECHNICAL
 
@@ -479,11 +575,36 @@ def _base_candidate(
         physical_hash = sha256_file(local)
         if physical_hash != input_hash:
             raise LegalProducerConfigurationError("evidence hash does not match report")
-    path = resolve_concept_path(context.type, context.evidence_resource, bundle_root)
-    phase1 = report["phase1"]
+
+    metadata: dict[str, object] = {}
+    publication_ramo: str | None = None
+    allowed = PROFILE_FIELDS[context.type]
+    for extracted in review_result.extracted_fields:
+        if extracted.name in allowed:
+            val: object = extracted.value
+            if extracted.name == "repo_jur_lei_ano":
+                try:
+                    val = int(extracted.value)
+                except ValueError:
+                    pass
+            metadata[extracted.name] = val
+        elif context.type is LegalConceptType.Legislacao and extracted.name == "publication_ramo_principal":
+            normalized = _normalize_id(extracted.value)
+            if publication_ramo is not None and normalized != publication_ramo:
+                raise LegalProducerBlockedError("ambiguous publication_ramo_principal", reason="review_required")
+            publication_ramo = normalized
+
+    if context.type is LegalConceptType.Legislacao:
+        if not publication_ramo:
+            raise LegalProducerBlockedError(
+                "missing or ambiguous publication_ramo_principal",
+                reason="review_required",
+            )
+        metadata["publication_ramo_principal"] = publication_ramo
+
+    path = resolve_concept_path(context.type, context.evidence_resource, bundle_root, metadata=metadata)
     frontmatter: dict[str, object] = {
         "type": context.type.value,
-        "resource": context.evidence_resource,
         "generated": {"by": PRODUCER_ACTOR},
         "sources": [{
             "id": "pdf_1",
@@ -491,26 +612,50 @@ def _base_candidate(
             "media_type": "application/pdf",
         }],
         "repo_jur_pdf_hash": physical_hash,
-        "repo_jur_evidence_sha256": input_hash,
-        "repo_jur_phase1": {
-            key: phase1[key]
-            for key in (
-                "implementation", "implementation_version",
-                "logical_processing_version", "relevant_config_fingerprint",
-            )
-        },
     }
-    allowed = PROFILE_FIELDS[context.type]
-    for extracted in review_result.extracted_fields:
-        if extracted.name in allowed and extracted.name not in frontmatter:
-            val: object = extracted.value
-            if extracted.name == "repo_jur_lei_ano":
-                try:
-                    val = int(extracted.value)
-                except ValueError:
-                    pass
-            frontmatter[extracted.name] = val
+    for name, val in metadata.items():
+        if name != "publication_ramo_principal" and name not in frontmatter:
+            frontmatter[name] = val
     return ConceptCandidate(context.type, frontmatter, artifacts.markdown, path)
+
+
+def _identity_signature(candidate: ConceptCandidate) -> tuple[object, ...] | None:
+    fm = candidate.frontmatter
+    if candidate.type is LegalConceptType.Legislacao:
+        keys = ("repo_jur_lei_tipo", "repo_jur_lei_numero", "repo_jur_lei_ano", "repo_jur_lei_esfera")
+    elif candidate.type is LegalConceptType.Jurisprudencia:
+        keys = ("repo_jur_tribunal", "repo_jur_processo_numero")
+    elif candidate.type is LegalConceptType.TemaJuridico:
+        keys = ("repo_jur_tribunal", "repo_jur_tema_numero")
+    else:
+        keys = ("repo_jur_tribunal", "repo_jur_precedente_numero")
+    values = tuple(fm.get(key) for key in keys)
+    if not any(value not in (None, "") for value in values):
+        return None
+    return (candidate.type.value, *values)
+
+
+def _find_migration_collision(candidate: ConceptCandidate, bundle_root: str | Path) -> Path | None:
+    """Block only the same logical concept at an old path; allow 1 PDF -> N concepts."""
+    root = Path(bundle_root).resolve()
+    target = candidate.path.resolve()
+    candidate_hash = candidate.frontmatter.get("repo_jur_pdf_hash")
+    if not isinstance(candidate_hash, str) or not root.exists():
+        return None
+    signature = _identity_signature(candidate)
+    for current in root.rglob("*.md"):
+        if current.resolve() == target:
+            continue
+        try:
+            existing = parse_candidate_text(current.read_text(encoding="utf-8"), current)
+        except (OSError, UnicodeError, LegalProducerConfigurationError):
+            continue
+        if existing.frontmatter.get("repo_jur_pdf_hash") != candidate_hash or existing.type is not candidate.type:
+            continue
+        existing_signature = _identity_signature(existing)
+        if existing.body == candidate.body or (signature is not None and existing_signature == signature):
+            return current
+    return None
 
 
 def produce(
@@ -544,40 +689,20 @@ def produce(
     path = candidate.path
     if path.exists():
         existing = parse_candidate_text(path.read_text(encoding="utf-8"), path)
-        # Strip legacy keys from existing to ensure clean upgrade
-        clean_frontmatter = {
-            k: v for k, v in existing.frontmatter.items()
-            if k not in LEGACY_KEYS
-        }
-        # Check and clean generated.at if present and starting with "evidence:"
-        if "generated" in clean_frontmatter and isinstance(clean_frontmatter["generated"], dict):
-            gen = dict(clean_frontmatter["generated"])
-            if gen.get("by") != PRODUCER_ACTOR:
-                gen["by"] = PRODUCER_ACTOR
-            if "at" in gen and isinstance(gen["at"], str) and gen["at"].startswith("evidence:"):
-                gen.pop("at", None)
-            clean_frontmatter["generated"] = gen
-        existing = ConceptCandidate(existing.type, clean_frontmatter, existing.body, existing.path)
         materiality = classify_materiality(existing, candidate)
         if materiality is MaterialityCategory.MATERIAL:
-            return ProducerRunResult(candidate, DuplicateResolution.HUMAN_REVIEW,
-                                     materiality, False, path)
-        merged = merge_existing_candidate(
-            existing, candidate, materiality, reason="technical producer change"
+            return ProducerRunResult(candidate, DuplicateResolution.HUMAN_REVIEW, materiality, False, path)
+        return ProducerRunResult(existing, DuplicateResolution.NOOP, None, False, path)
+
+    collision = _find_migration_collision(candidate, bundle_root)
+    if collision is not None:
+        return ProducerRunResult(
+            candidate,
+            DuplicateResolution.HUMAN_REVIEW,
+            MaterialityCategory.MATERIAL,
+            False,
+            collision,
         )
-        old_phase1 = existing.frontmatter.get("repo_jur_phase1")
-        new_phase1 = candidate.frontmatter.get("repo_jur_phase1")
-        if old_phase1 == new_phase1:
-            return ProducerRunResult(existing, DuplicateResolution.NOOP, None, False, path)
-        validate_candidate(merged)
-        authorized = guard_legal_bundle_write(
-            acting_domain=RouteTarget.LEGAL_KNOWLEDGE,
-            target=path,
-            legal_bundle_root=bundle_root,
-        )
-        write_atomic(merged.render_text(), authorized, authorized.parent, overwrite=overwrite)
-        return ProducerRunResult(merged, DuplicateResolution.REGENERATE,
-                                 materiality, True, authorized)
 
     authorized = guard_legal_bundle_write(
         acting_domain=RouteTarget.LEGAL_KNOWLEDGE,
