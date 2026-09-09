@@ -7,5 +7,5 @@
 - [x] T5: Integrar Intake ao único Shared Conversion Core sem introduzir novo esquema URI
 - [x] T6: Implementar relações estruturadas com legislação e evolução controlada de `repo_jur_ramo_direito`
 - [x] T7: Atualizar suíte de testes de conformidade e E2E
-- [ ] T8: Auditar eventual migração de concepts existentes; executar somente se validada e aprovada por HUMAN
+- [x] T8: Auditar eventual migração de concepts existentes; executar somente se validada e aprovada por HUMAN
 - [ ] T9: Verificação final contra baselines FROZEN, documentação e relatório de divergências remanescentes
