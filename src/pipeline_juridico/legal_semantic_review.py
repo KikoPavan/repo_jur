@@ -6,10 +6,10 @@ import json
 import re
 import unicodedata
 from collections import Counter
+from collections.abc import Callable, Iterable, Mapping
 from dataclasses import dataclass
 from enum import Enum
 from types import MappingProxyType
-from typing import Callable, Iterable, Mapping
 
 from .contracts import GateState, Phase1Artifacts
 
@@ -33,7 +33,7 @@ class LegalPatch:
 @dataclass(frozen=True)
 class ExtractedField:
     name: str
-    value: str
+    value: str | list[str] | list[dict[str, object]]
     page_refs: tuple[str, ...] = ()
 
 
@@ -405,20 +405,19 @@ def _deterministic_extract(markdown: str) -> list[ExtractedField]:
         extracted.append(ExtractedField("repo_jur_data_julgamento", data_julgamento, (data_page,) if data_page is not None else ()))
 
     # Ramo do Direito:
-    ramo = None
-    ramo_page: str | None = None
+    ramos = []
+    ramo_pages = []
     for page_num, page_text in pages:
-        if "processual civil" in page_text.lower():
-            ramo = "DIREITO PROCESSUAL CIVIL"
-            ramo_page = page_num
-            break
-        elif "direito civil" in page_text.lower():
-            ramo = "DIREITO CIVIL"
-            ramo_page = page_num
-            break
+        if "processual civil" in page_text.lower() and "DIREITO PROCESSUAL CIVIL" not in ramos:
+            ramos.append("DIREITO PROCESSUAL CIVIL")
+            ramo_pages.append(page_num)
+        if "direito civil" in page_text.lower() and "DIREITO CIVIL" not in ramos:
+            ramos.append("DIREITO CIVIL")
+            ramo_pages.append(page_num)
 
-    if ramo:
-        extracted.append(ExtractedField("repo_jur_ramo_direito", ramo, (ramo_page,) if ramo_page is not None else ()))
+    if ramos:
+        # For now we keep it as a list of strings
+        extracted.append(ExtractedField("repo_jur_ramo_direito", ramos, tuple(ramo_pages)))
 
     # Tema:
     # Extract TemaJuridico fields:
@@ -444,6 +443,7 @@ def _deterministic_extract(markdown: str) -> list[ExtractedField]:
         sumula_match = re.search(r"Súmula\s*(?:n\.)?\s*(\d+)", page_text, re.IGNORECASE)
         if sumula_match:
             extracted.append(ExtractedField("repo_jur_precedente_numero", sumula_match.group(1), (page_num,)))
+            extracted.append(ExtractedField("repo_jur_precedente_especie", "sumula", (page_num,)))
             if tribunal:
                 extracted.append(ExtractedField("repo_jur_tribunal", tribunal, (page_num,)))
 
@@ -460,6 +460,44 @@ def _deterministic_extract(markdown: str) -> list[ExtractedField]:
             if status:
                 extracted.append(ExtractedField("repo_jur_precedente_status", status, (page_num,)))
             break
+
+    # Normas referenciadas:
+    normas = []
+    for page_num, page_text in pages:
+        # Search for occurrences of Civil Code and localized articles
+        # Matches: "art. 421 do Código Civil" or "art. 421 da Lei 10.406/2002"
+        # Or even "Lei 10.406/2002, art. 421"
+        cc_patterns = [
+            r"art[º\.]?\s*(\d+)\s+(?:da\s+|do\s+)?(?:Lei\s*(?:n[º°\.]?\s*)?10\.?406(?:\s*/\s*2002)?|C[óo]digo\s+Civil)",
+            r"(?:Lei\s*(?:n[º°\.]?\s*)?10\.?406(?:\s*/\s*2002)?|C[óo]digo\s+Civil)\s*[,]?\s*art[º\.]?\s*(\d+)"
+        ]
+
+        found_any_cc = False
+        if re.search(r"Lei\s*(?:n[º°\.]?\s*)?10\.?406\s*/\s*2002|C[óo]digo\s+Civil", page_text, re.IGNORECASE):
+            found_any_cc = True
+
+        cc_articles = set()
+        for pattern in cc_patterns:
+            for m in re.finditer(pattern, page_text, re.IGNORECASE):
+                cc_articles.add(m.group(1))
+
+        if found_any_cc:
+            ref = {"concept_id": "legislacao/direito_civil/lei_10406_2002"}
+            if cc_articles:
+                ref["artigos"] = sorted(list(cc_articles))
+
+            # Avoid duplicate refs for same concept_id across pages (merge articles if needed)
+            existing_ref = next((n for n in normas if n["concept_id"] == ref["concept_id"]), None)
+            if existing_ref:
+                if "artigos" in ref:
+                    existing_arts = set(existing_ref.get("artigos", []))
+                    existing_arts.update(ref["artigos"])
+                    existing_ref["artigos"] = sorted(list(existing_arts))
+            else:
+                normas.append(ref)
+
+    if normas:
+        extracted.append(ExtractedField("repo_jur_normas_referenciadas", normas, ()))
 
     return extracted
 

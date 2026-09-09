@@ -2,16 +2,17 @@
 
 from __future__ import annotations
 
-import json
 import datetime
+import json
 import re
 import unicodedata
-import yaml
 from collections.abc import Mapping
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
 from urllib.parse import unquote, urlparse
+
+import yaml
 
 from .contracts import (
     GateState,
@@ -24,7 +25,6 @@ from .hashing import sha256_file
 from .legal_semantic_review import ReviewResult, ReviewState
 from .report import ReportContractError, validate_report_contract
 from .validator import write_atomic
-
 
 PRODUCER_VERSION = "1.0"
 PRODUCER_ACTOR = f"repo_jur_producer/{PRODUCER_VERSION}"
@@ -134,15 +134,19 @@ PROFILE_FIELDS: dict[LegalConceptType, tuple[str, ...]] = {
         "repo_jur_relator",
         "repo_jur_data_julgamento",
         "repo_jur_ramo_direito",
+        "repo_jur_normas_referenciadas",
     ),
     LegalConceptType.TemaJuridico: (
         "repo_jur_tema_numero",
         "repo_jur_tribunal",
+        "repo_jur_normas_referenciadas",
     ),
     LegalConceptType.PrecedenteVinculante: (
         "repo_jur_precedente_numero",
+        "repo_jur_precedente_especie",
         "repo_jur_precedente_status",
         "repo_jur_tribunal",
+        "repo_jur_normas_referenciadas",
     ),
 }
 PRODUCER_OWNED_KEYS = frozenset(
@@ -162,6 +166,7 @@ PRODUCER_OWNED_KEYS = frozenset(
         "repo_jur_data_julgamento",
         "repo_jur_tema_numero",
         "repo_jur_precedente_numero",
+        "repo_jur_precedente_especie",
     }
 )
 HUMAN_OWNED_KEYS = frozenset({"status", "verified"})
@@ -170,6 +175,7 @@ SHARED_KEYS = frozenset({
     "repo_jur_lei_tipo",
     "repo_jur_ramo_direito",
     "repo_jur_precedente_status",
+    "repo_jur_normas_referenciadas",
 })
 
 _PERMITTED_CONTEXT_KEYS = frozenset({"type", "evidence_resource"})
@@ -347,7 +353,9 @@ def _resolve_legal_identity(
     if concept_type is LegalConceptType.PrecedenteVinculante:
         tribunal = _normalize_id(str(metadata.get("repo_jur_tribunal", "")))
         numero = _clean_number(str(metadata.get("repo_jur_precedente_numero", "")))
-        filename = f"precedente_{tribunal}_{numero}" if tribunal and numero else _slug(evidence_resource, fake_report)
+        especie = _normalize_id(str(metadata.get("repo_jur_precedente_especie", "")))
+        prefix = especie if especie else "precedente"
+        filename = f"{prefix}_{tribunal}_{numero}" if tribunal and numero else _slug(evidence_resource, fake_report)
         return f"precedentes/{filename}"
 
     return f"{_TYPE_DIRECTORIES[concept_type]}/{_slug(evidence_resource, fake_report)}"
@@ -507,11 +515,18 @@ def classify_materiality(
         "repo_jur_pdf_hashes",
         *{field for fields in PROFILE_FIELDS.values() for field in fields},
     }
-    if any(
-        existing_candidate.frontmatter.get(key) != new_candidate.frontmatter.get(key)
-        for key in material_keys
-    ):
-        return MaterialityCategory.MATERIAL
+    for key in material_keys:
+        existing_val = existing_candidate.frontmatter.get(key)
+        new_val = new_candidate.frontmatter.get(key)
+        if key == "repo_jur_ramo_direito":
+            # Compatibility check for string -> list or list -> list
+            norm_existing = [existing_val] if isinstance(existing_val, str) else (existing_val if isinstance(existing_val, list) else [])
+            norm_new = [new_val] if isinstance(new_val, str) else (new_val if isinstance(new_val, list) else [])
+            if sorted(norm_existing) != sorted(norm_new):
+                return MaterialityCategory.MATERIAL
+            continue
+        if existing_val != new_val:
+            return MaterialityCategory.MATERIAL
     return MaterialityCategory.TECHNICAL
 
 
@@ -533,12 +548,40 @@ def merge_existing_candidate(
             merged[key] = new.frontmatter[key]
         else:
             merged.pop(key, None)
+
+    # Update SHARED_KEYS from new candidate with compatibility handling
+    for key in SHARED_KEYS:
+        if key in new.frontmatter:
+            new_val = new.frontmatter[key]
+            existing_val = merged.get(key)
+            if key == "repo_jur_ramo_direito":
+                norm_existing = [existing_val] if isinstance(existing_val, str) else (existing_val if isinstance(existing_val, list) else [])
+                norm_new = [new_val] if isinstance(new_val, str) else (new_val if isinstance(new_val, list) else [])
+
+                if sorted(norm_existing) == sorted(norm_new):
+                    # Technical equivalence: accept format upgrade (list)
+                    merged[key] = new_val
+                elif materiality == MaterialityCategory.MATERIAL:
+                    # Material merge (e.g. manual update or forced merge): Additive merge
+                    merged_set = list(norm_existing)
+                    for v in norm_new:
+                        if v not in merged_set:
+                            merged_set.append(v)
+                    merged[key] = merged_set if len(merged_set) > 1 or isinstance(new_val, list) else merged_set[0]
+                else:
+                    # Technical merge on different values: Preserve existing curated/shared value
+                    # This satisfies test_audit_shared_field_preserved
+                    pass
+            elif existing_val is None:
+                # For other shared keys, only set if existing is missing
+                merged[key] = new_val
+
     old_generated = existing.frontmatter.get("generated")
     generated: dict[str, object] = dict(new.frontmatter["generated"])  # type: ignore[arg-type,assignment]
     if isinstance(old_generated, dict) and "at" in old_generated:
         generated["at"] = old_generated["at"]
     if materiality is MaterialityCategory.MATERIAL:
-        generated["at"] = datetime.datetime.now(datetime.timezone.utc).isoformat()
+        generated["at"] = datetime.datetime.now(datetime.UTC).isoformat()
         verified = existing.frontmatter.get("verified")
         if isinstance(verified, dict) and isinstance(verified.get("by"), str) and isinstance(
             verified.get("at"), str
@@ -582,12 +625,24 @@ def _base_candidate(
     for extracted in review_result.extracted_fields:
         if extracted.name in allowed:
             val: object = extracted.value
-            if extracted.name == "repo_jur_lei_ano":
+            if extracted.name == "repo_jur_lei_ano" and isinstance(val, str):
                 try:
-                    val = int(extracted.value)
+                    val = int(val)
                 except ValueError:
                     pass
-            metadata[extracted.name] = val
+            # If multi-valued, merge or replace depending on field
+            if extracted.name == "repo_jur_ramo_direito" and isinstance(val, list):
+                existing = metadata.get(extracted.name, [])
+                if isinstance(existing, str):
+                    existing = [existing]
+                elif not isinstance(existing, list):
+                    existing = []
+                for v in val:
+                    if v not in existing:
+                        existing.append(v)
+                metadata[extracted.name] = existing
+            else:
+                metadata[extracted.name] = val
         elif context.type is LegalConceptType.Legislacao and extracted.name == "publication_ramo_principal":
             normalized = _normalize_id(extracted.value)
             if publication_ramo is not None and normalized != publication_ramo:
