@@ -1,8 +1,7 @@
 """Conservative Markdown cleanup."""
 
-from collections import Counter
 import re
-
+from collections import Counter
 
 ILLEGIBLE_TEXT_MARKER = "[[TEXTO ILEGÍVEL]]"
 
@@ -16,6 +15,10 @@ _LEGISLATIVE_MARKER_PATTERN = re.compile(
     flags=re.IGNORECASE,
 )
 _DIGIT_SEQUENCE_PATTERN = re.compile(r"\d+")
+_OCR_IMAGE_PATTERN = re.compile(r"^[ 	]*\*[ 	]*\[Image OCR\][ 	]*", re.IGNORECASE | re.MULTILINE)
+_NON_CANONICAL_PAGE_HEADER = re.compile(
+    r"^##[ 	]+Page[ 	]+\d+[ 	]*$", re.IGNORECASE | re.MULTILINE
+)
 _PAGE_COUNTER = r"(?:\d+\s*/\s*\d+|Página\s*\d+\s*(?:de|/)\s*\d+)"
 _URL = (
     r"(?:https?://\S+|"
@@ -212,7 +215,7 @@ def recompose_native_paragraphs(
         previous_is_first,
         previous_belongs_to_colon_block,
         previous_block_index,
-        previous_line_x0,
+        _,
     ) = lines[0]
     for (
         (
@@ -279,7 +282,7 @@ def recompose_native_paragraphs(
             previous_is_first,
             previous_belongs_to_colon_block,
             previous_block_index,
-            previous_line_x0,
+            _,
         ) = (
             current_y0,
             current_y1,
@@ -727,3 +730,24 @@ def clean_markdown(text: str) -> str:
     cleaned = re.sub(r"[ \t]+(?=\n|$)", "", cleaned)
     cleaned = re.sub(r"\n{3,}", "\n\n", cleaned)
     return cleaned.rstrip("\n") + "\n"
+
+
+def normalize_technical_artifacts(markdown: str) -> str:
+    """Remove known technical artifacts introduced by conversion or OCR."""
+    if not markdown:
+        return markdown
+
+    # Remove [Image OCR] markers only at start of line
+    markdown = _OCR_IMAGE_PATTERN.sub("", markdown)
+
+    # Remove non-canonical page headers like ## Page 1
+    # We must ensure we don't leave double newlines if we remove a whole line
+    markdown = _NON_CANONICAL_PAGE_HEADER.sub("", markdown)
+
+
+
+    # Do NOT remove technical method comments here as they are needed
+    # for internal validation. They are stripped for the final artifact
+    # hash and publication by strip_technical_routing_metadata.
+
+    return markdown

@@ -17,6 +17,7 @@ from .cleaner import (
     join_symbol_across_page_break,
     mark_final_index,
     normalize_legal_symbols,
+    normalize_technical_artifacts,
     normalize_thin_space_entities,
     recompose_native_paragraphs,
     remove_repetitive_margins,
@@ -675,6 +676,7 @@ def convert_document(
         vertical_geometry_by_page,
     )
     raw_markdown = _strip_internal_ocr_markers(raw_markdown, blocks)
+    raw_markdown = normalize_technical_artifacts(raw_markdown)
     raw_markdown = join_symbol_across_page_break(raw_markdown)
     raw_markdown = normalize_legal_symbols(raw_markdown)
     raw_markdown = build_legislative_headings(raw_markdown)

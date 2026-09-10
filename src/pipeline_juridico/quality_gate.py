@@ -8,11 +8,14 @@ from dataclasses import dataclass, field
 
 from .contracts import GateState, Phase1Artifacts
 
-
 _MARKER_PATTERN = re.compile(r"\[\[Pág\. (\d+)\]\]")
 _METHOD_COMMENT_PATTERN = re.compile(r"<!--\s*método\s*:")
 _METHODS = frozenset(
     {"texto_nativo", "ocr_integral", "hibrido", "vazia", "erro"}
+)
+_OCR_IMAGE_PATTERN = re.compile(r"^[ 	]*\*[ 	]*\[Image OCR\][ 	]*", re.IGNORECASE | re.MULTILINE)
+_NON_CANONICAL_PAGE_HEADER = re.compile(
+    r"^##[ 	]+Page[ 	]+\d+[ 	]*$", re.IGNORECASE | re.MULTILINE
 )
 
 
@@ -176,6 +179,10 @@ def evaluate(phase1_artifacts: Phase1Artifacts) -> QualityGateResult:
         errors.append("Markdown contains a CR line ending")
     if _METHOD_COMMENT_PATTERN.search(markdown):
         errors.append("Markdown contains a technical method comment")
+    if _OCR_IMAGE_PATTERN.search(markdown):
+        errors.append("Markdown contains an Image OCR technical marker")
+    if _NON_CANONICAL_PAGE_HEADER.search(markdown):
+        errors.append("Markdown contains a non-canonical Page header")
 
     diagnostics: dict[str, object] = {
         "marker_count": len(marker_numbers),

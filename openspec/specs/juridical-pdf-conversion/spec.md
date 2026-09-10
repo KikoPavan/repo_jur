@@ -491,6 +491,38 @@ O sistema SHALL substituir entidades HTML literais equivalentes ao caractere THI
 - **WHEN** a entidade de espaçamento fino aparece adjacente a pontuação (ex. `n.&#8201;11.343`) ou em um documento que também contém `[[Pág. N]]` e comentários `<!-- método: ... -->`
 - **THEN** a pontuação permanece inalterada e os marcadores de página e método permanecem intactos
 
+### Requirement: Normalização conservadora de artefatos técnicos (ADDED)
+
+O sistema SHALL aplicar uma normalização conservadora no Markdown final para remover artefatos técnicos inequivocamente introduzidos pelo pipeline ou pelo processo de OCR.
+
+- O sistema MUST remover ocorrências de `*[Image OCR]` somente quando ocorrerem como marcador estrutural no início de linha, preservando o conteúdo subsequente na mesma linha.
+- O sistema MUST remover cabeçalhos não canônicos exclusivamente do tipo `## Page N` em linha própria.
+- O sistema SHALL PRESERVE o marcador canônico `[[Pág. N]]`.
+- O sistema SHALL PRESERVE ocorrências de `*[Image OCR]` no meio de texto jurídico, citações ou exemplos.
+- O sistema SHALL PRESERVE cabeçalhos do tipo `# Page N`, `### Page N`, `## Página N` ou `## Page N - texto`.
+- O sistema SHALL NOT alterar o conteúdo jurídico, realizar correção semântica, resumos ou interpretações.
+
+#### Scenario: Remoção de artefatos de OCR no início de linha
+- **GIVEN** um Markdown contendo `[[Pág. 1]]` e o texto `*[Image OCR] Conteúdo Jurídico`
+- **WHEN** a normalização é executada
+- **THEN** o Markdown final contém `[[Pág. 1]]` e `Conteúdo Jurídico`
+- **AND** a string `*[Image OCR]` é removida
+
+#### Scenario: Preservação de artefatos de OCR no meio de frase
+- **GIVEN** um Markdown contendo `Citação de *[Image OCR] aqui.`
+- **WHEN** a normalização é executada
+- **THEN** o Markdown final é idêntico ao original
+
+#### Scenario: Remoção de cabeçalhos redundantes exatos
+- **GIVEN** um Markdown contendo `## Page 1` em linha isolada
+- **WHEN** a normalização é executada
+- **THEN** o cabeçalho `## Page 1` é removido
+
+#### Scenario: Preservação de variantes de cabeçalho
+- **GIVEN** um Markdown contendo `# Page 1`, `### Page 1`, `## Página 1` e `## Page 1 - texto`
+- **WHEN** a normalização é executada
+- **THEN** todos esses cabeçalhos são preservados
+
 ### Requirement: Deduplicação geométrica de texto rotacionado sobreposto
 
 Em páginas roteadas como `texto_nativo`, quando o PDF de origem contiver duas ou mais linhas de texto com direção de escrita não horizontal, texto extraído idêntico entre si e geometria (bbox) coincidente dentro de uma tolerância determinística, o sistema SHALL tratar essas linhas como uma única ocorrência de conteúdo. O sistema SHALL, nesse caso, usar como fonte do conteúdo da página uma representação geométrica já deduplicada — obtida diretamente da camada de texto do PDF de origem, sem depender do motor de conversão nativo — em vez de repassar a duplicação ao motor de conversão nativo, evitando que esse motor produza fragmentação em caracteres isolados ou duplicação de texto na saída a partir desse padrão geométrico.
