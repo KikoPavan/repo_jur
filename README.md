@@ -130,3 +130,15 @@ visual.
 As decisões de arquitetura e os artefatos de planejamento permanecem em
 `docs/` e `openspec/`. A implementação e este guia de uso são a referência
 operacional da ferramenta.
+
+## Estrutura do Bundle e Identidade
+
+O projeto utiliza uma identidade posicional para os conceitos jurídicos (`concept_id`), derivada do caminho relativo dentro do diretório `bundle/`.
+
+As árvores canônicas são:
+- `bundle/legislacao/`: Organizada por ramo jurídico principal (ex.: `direito_civil/`).
+- `bundle/jurisprudencia/`: Decisões de tribunais.
+- `bundle/temas/`: Temas jurídicos e teses.
+- `bundle/precedentes/`: Súmulas e precedentes vinculantes.
+
+Os conceitos jurídicos canônicos publicados pelo Producer utilizam frontmatter YAML convencional seguindo o perfil Legal OKF.

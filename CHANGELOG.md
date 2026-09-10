@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+- Refactored legal concept identity to be strictly positional (derived from path relative to `bundle/`).
+- Organized `Legislacao` physical structure by primary branch of law (`bundle/legislacao/<ramo_principal>/`).
+- Migrated Civil Code (Lei 10.406/2002) to `bundle/legislacao/direito_civil/lei_10406_2002.md`.
+- Updated `repo_jur_ramo_direito` to support multi-valued representation with compatibility logic.
+- Implemented structured relations via `repo_jur_normas_referenciadas`.
+- Aligned `Retrieval` index with the new positional `concept_id`.
+- Removed deprecated technical execution keys from canonical Legal OKF frontmatter.
+- Integrated `Intake` with the `Shared Conversion Core` without introducing new URI schemes.
+
 ## [0.1.0] - 2026-07-27
 
 ### Added
