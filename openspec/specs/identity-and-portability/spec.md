@@ -1,7 +1,7 @@
 # identity-and-portability Specification
 
 ## Purpose
-TBD - created by archiving change 2026-09-04-integrated-architectural-correction. Update Purpose after archive.
+Define the canonical positional identity, physical organization, provenance, metadata, structured relations, and controlled migration rules for Legal Knowledge concepts.
 ## Requirements
 ### Requirement: Positional legal concept identity
 
