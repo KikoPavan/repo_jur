@@ -121,10 +121,14 @@ def evaluate(phase1_artifacts: Phase1Artifacts) -> QualityGateResult:
                         errors.append(f"{label}.fidelity_audit.issues must be a list")
                     else:
                         for issue in issues:
-                            if (
-                                isinstance(issue, dict)
-                                and issue.get("resolution") == "flagged"
-                            ):
+                            if not isinstance(issue, dict):
+                                errors.append(f"{label}.fidelity_audit.issue must be an object")
+                                continue
+                            if "fingerprint" in issue:
+                                errors.append(f"{label}.fidelity_audit.issue must not contain fingerprint")
+                            if "issue_id" not in issue:
+                                errors.append(f"{label}.fidelity_audit.issue missing required issue_id")
+                            if issue.get("resolution") == "flagged":
                                 warnings.append(
                                     f"Fidelity issue in {label}: {issue.get('issue_type')} detected by {issue.get('detector')}"
                                 )

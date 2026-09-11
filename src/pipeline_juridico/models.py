@@ -20,13 +20,14 @@ class StatusExecucao(str, Enum):
 
 @dataclass
 class FidelityIssue:
+    issue_id: str
     issue_type: str  # duplication, entity_inconsistency, sensitive_token_uncertainty, visual_uncertainty
     detector: str
     page_number: int
     offset_start: int | None = None
     offset_end: int | None = None
     size: int | None = None
-    fingerprint: str | None = None
+    related_offsets: list[int] = field(default_factory=list)
     resolution: str = "flagged"  # accepted, flagged, illegible
 
 

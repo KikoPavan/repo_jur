@@ -67,6 +67,7 @@ def test_quality_gate_warns_on_flagged_fidelity_issue():
                 "fidelity_audit": {
                     "issues": [
                         {
+                            "issue_id": "test-id",
                             "issue_type": "duplication",
                             "detector": "test_detector",
                             "page_number": 1,

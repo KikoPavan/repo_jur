@@ -31,7 +31,7 @@ def _require_field(data: dict, field: str, path: str) -> object:
 
 
 def _require_type(value: object, expected_type: type, path: str) -> None:
-    if type(value) is not expected_type:
+    if not isinstance(value, expected_type):
         raise ReportContractError(
             f"Tipo incorreto em {path}: esperado "
             f"{expected_type.__name__}, recebido {type(value).__name__}"
@@ -135,6 +135,26 @@ def validate_report_contract(data: dict) -> None:
         fidelity_audit = page.get("fidelity_audit")
         if fidelity_audit is not None:
             _require_type(fidelity_audit, dict, f"{page_path}.fidelity_audit")
+            issues = _require_field(fidelity_audit, "issues", f"{page_path}.fidelity_audit.issues")
+            if not isinstance(issues, list):
+                 raise ReportContractError(f"Tipo incorreto em {page_path}.fidelity_audit.issues")
+            for i, issue in enumerate(issues):
+                issue_path = f"{page_path}.fidelity_audit.issues[{i}]"
+                _validate_object_fields(
+                    issue,
+                    issue_path,
+                    (
+                        ("issue_id", str),
+                        ("issue_type", str),
+                        ("detector", str),
+                        ("page_number", int),
+                        ("resolution", str),
+                    ),
+                )
+                # Optional fields but must be correct type if present
+                for opt_f, opt_t in [("offset_start", int), ("offset_end", int), ("size", int), ("related_offsets", list)]:
+                    if opt_f in issue and issue[opt_f] is not None:
+                        _require_type(issue[opt_f], opt_t, f"{issue_path}.{opt_f}")
 
         if page["method"] not in allowed_methods:
             raise ReportContractError(

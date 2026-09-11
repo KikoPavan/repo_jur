@@ -2,47 +2,92 @@
 
 from __future__ import annotations
 
-import hashlib
 import re
+import unicodedata
+import uuid
 
 from .models import FidelityAudit, FidelityIssue
 
 
-def get_fingerprint(text: str) -> str:
-    """Generate a privacy-safe fingerprint for a text snippet."""
-    return hashlib.sha256(text.encode()).hexdigest()[:16]
+def _generate_issue_id() -> str:
+    """Generate a non-content-derived unique identifier for an issue."""
+    return str(uuid.uuid4())
+
+
+def _normalize_entity(text: str) -> str:
+    """Normalize entity for comparison: NFKD, casefold, no accents, collapsed whitespace."""
+    text = unicodedata.normalize("NFKD", text)
+    text = "".join([c for c in text if not unicodedata.combining(c)])
+    text = text.casefold()
+    return re.sub(r"\s+", " ", text).strip()
+
+
+def _get_norm_map(text: str) -> tuple[str, list[int]]:
+    """Normalize whitespace and return (normalized_text, norm_to_source_mapping)."""
+    norm_chars = []
+    mapping = []
+
+    i = 0
+    while i < len(text):
+        if text[i].isspace():
+            start_ws = i
+            while i < len(text) and text[i].isspace():
+                i += 1
+            if norm_chars and i < len(text):
+                norm_chars.append(" ")
+                mapping.append(start_ws)
+        else:
+            norm_chars.append(text[i])
+            mapping.append(i)
+            i += 1
+
+    return "".join(norm_chars), mapping
 
 
 def detect_duplications(text: str, page_number: int) -> list[FidelityIssue]:
-    """Detect substantial internal repetitions within a page."""
+    """Detect substantial internal repetitions within a page using gap-based decision."""
     issues = []
-    # Normalize whitespace only
-    norm_text = re.sub(r"\s+", " ", text).strip()
+    norm_text, mapping = _get_norm_map(text)
 
-    # Minimum length for a duplication to be considered "substantial"
-    min_len = 100
-
-    # Use step=1 to ensure we don't miss any overlapping windows
-    # for a typical page (3-5k chars), this is ~3000-5000 iterations, which is fine.
+    min_len = 120
     seen_windows: dict[str, int] = {}
 
-    for i in range(len(norm_text) - min_len + 1):
+    step = 1
+    for i in range(0, len(norm_text) - min_len + 1, step):
         window = norm_text[i : i + min_len]
         if window in seen_windows:
             prev_i = seen_windows[window]
-            if i - prev_i >= min_len:
+
+            match_len = min_len
+            while (
+                i + match_len < len(norm_text)
+                and prev_i + match_len < i
+                and norm_text[i + match_len] == norm_text[prev_i + match_len]
+            ):
+                match_len += 1
+
+            # Use source offsets for gap calculation
+            source_prev_i = mapping[prev_i]
+            source_i = mapping[i]
+            source_match_end = mapping[prev_i + match_len - 1] + 1
+
+            gap = source_i - source_match_end
+
+            if match_len >= 120 and 0 <= gap <= 1.5 * match_len:
                 issues.append(
                     FidelityIssue(
+                        issue_id=_generate_issue_id(),
                         issue_type="duplication",
                         detector="internal_repetition_detector",
                         page_number=page_number,
-                        size=len(window),
-                        fingerprint=get_fingerprint(window),
+                        size=match_len,
+                        related_offsets=[source_prev_i, source_i],
                         resolution="flagged",
                     )
                 )
-                # Found one, skip to avoid spamming the same block
                 return issues
+
+            seen_windows[window] = i
         else:
             seen_windows[window] = i
 
@@ -53,27 +98,24 @@ def monitor_sensitive_tokens(text: str, page_number: int) -> list[FidelityIssue]
     """Monitor specific deterministic patterns known to be OCR-sensitive."""
     issues = []
 
-    # Pattern: 8 followed by digits (common OCR error for §)
-    # Requires legal context: near 'art', 'artigo', ',', CPC, CC, etc.
-    legal_context_pattern = r"(?i)art(?:igo|\.)?|CPC|CC|CPP|CLT|CP|Lei|STF|STJ|TJMG|TJSP|,\s*8|8\s+\d+,"
-
     suspicious_section_marker = re.finditer(r"\b8\s+(\d{1,3})\b", text)
-    for m in suspicious_section_marker:
-        # Check context around the match (20 chars window)
-        start = max(0, m.start() - 20)
-        end = min(len(text), m.end() + 20)
-        context = text[start:end]
 
-        if re.search(legal_context_pattern, context):
+    for m in suspicious_section_marker:
+        start = max(0, m.start() - 60)
+        prefix = text[start : m.start()]
+
+        if re.search(
+            r"(?i)\b(?:art(?:igo|\.)?|lei|fls\.?)\b\s*[\d\.]*[\s,]*$", prefix.strip()
+        ):
             issues.append(
                 FidelityIssue(
+                    issue_id=_generate_issue_id(),
                     issue_type="sensitive_token_uncertainty",
                     detector="section_marker_confusion_detector",
                     page_number=page_number,
                     offset_start=m.start(),
                     offset_end=m.end(),
                     size=m.end() - m.start(),
-                    fingerprint=get_fingerprint(m.group(0)),
                     resolution="flagged",
                 )
             )
@@ -82,63 +124,86 @@ def monitor_sensitive_tokens(text: str, page_number: int) -> list[FidelityIssue]
 
 
 def check_entity_consistency(
-    text: str, page_number: int, global_entities: dict[str, int]
+    text: str, page_number: int, global_entities: dict[str, tuple]
 ) -> list[FidelityIssue]:
-    """Check for inconsistent variants of entities (Names, Process IDs)."""
+    """Check for inconsistent variants of entities using structural comparison."""
     issues = []
 
-    legal_keywords = {
-        "ACÓRDÃO", "RELATÓRIO", "EMENTA", "DECISÃO", "SENTENÇA", "PROCESSO",
-        "TRIBUNAL", "JUSTIÇA", "FEDERAL", "ESTADUAL", "RECURSO", "APELAÇÃO",
-        "AGRAVO", "ORDEM", "HABEAS", "CORPUS", "SUPREMO", "CONSELHO",
-        "ESTADO", "MUNICÍPIO", "UNIÃO", "MINISTÉRIO", "PÚBLICO", "DEFENSORIA",
-        "ADVOGADO", "PROCURADOR", "ESCRIVÃO", "CARTÓRIO", "REGISTRO", "IMÓVEIS"
-    }
+    title_case_name = r"\b[A-Z][a-zà-ÿ]{1,}(?:\s+(?:da|de|do|dos|das|e)\s+[A-Z][a-zà-ÿ]{1,}|\s+[A-Z][a-zà-ÿ]{1,})+\b"
+    all_caps_name = r"\b[A-Z]{2,}(?:\s+(?:DA|DE|DO|DOS|DAS|E)\s+[A-Z]{2,}|\s+[A-Z]{2,})+\b"
 
-    # Title Case candidates (Allowing connectors)
-    title_case_regex = r"\b[A-Z][a-zà-ÿ]{1,}(?:\s+(?:da|de|do|dos|das|e)\s+[A-Z][a-zà-ÿ]{1,}|\s+[A-Z][a-zà-ÿ]{1,}){1,}\b"
-    candidates = re.findall(title_case_regex, text)
+    found_spans: list[tuple[str, int, int]] = []
 
-    # ALL CAPS candidates (4+ chars for siglas like JKMG/JKMQ)
-    candidates.extend(re.findall(r"\b[A-Z]{4,}\b", text))
+    for reg in [title_case_name, all_caps_name]:
+        for m in re.finditer(reg, text):
+            found_spans.append((m.group(0), m.start(), m.end()))
 
-    unique_candidates = set(candidates)
+    for m in re.finditer(r"\b[A-Z]{4,5}\b", text):
+        entity = m.group(0)
+        vowels = len(re.findall(r"[AEIOU]", entity))
+        if vowels <= 1:
+            found_spans.append((entity, m.start(), m.end()))
 
-    # Legitimate abbreviations/vocabulary protection
-    legitimate_abbreviations = {
-        "TJMG", "TJSP", "TRF1", "TRF2", "TRF3", "TRF4", "TRF5", "STJ", "STF",
-        "OAB", "CNJ", "MPF", "MPE", "IPCA", "IGPM", "INPC", "IRPJ", "CSLL",
-        "FGTS", "INSS", "PIS", "COFINS", "PAG", "DOC", "REF", "MOD", "VOL",
-        "CAP", "ART", "CPC", "CPP", "CLT", "NCPC"
-    }
+    for span, start, end in found_spans:
+        norm_span = _normalize_entity(span)
+        tokens = norm_span.split()
 
-    for entity in unique_candidates:
-        if entity.upper() in legal_keywords or entity.upper() in legitimate_abbreviations:
-            continue
+        for seen_span, data in global_entities.items():
+            if len(data) == 2:
+                _seen_page, seen_offset = data
+                seen_tokens = _normalize_entity(seen_span).split()
+            else:
+                _seen_page, seen_offset, seen_tokens = data
 
-        if any(kw in entity.upper() for kw in ["ARTIGO", "PARÁGRAFO", "LEI N"]):
-            continue
+            norm_seen = _normalize_entity(seen_span)
 
-        for seen_entity in global_entities:
-            if entity == seen_entity:
+            if norm_span == norm_seen:
                 continue
 
-            # Compare only same length or very close (diff <= 1)
-            if abs(len(entity) - len(seen_entity)) <= 1:
-                dist = _levenshtein(entity, seen_entity)
-                if dist == 1:
+            if len(tokens) == len(seen_tokens) and len(tokens) >= 2:
+                diffs = 0
+                for t1, t2 in zip(tokens, seen_tokens):
+                    if t1 != t2:
+                        if _levenshtein(t1, t2) == 1:
+                            diffs += 1
+                        else:
+                            diffs = 100
+                            break
+
+                if diffs == 1:
                     issues.append(
                         FidelityIssue(
+                            issue_id=_generate_issue_id(),
                             issue_type="entity_inconsistency",
                             detector="entity_consistency_checker",
                             page_number=page_number,
-                            fingerprint=f"{get_fingerprint(entity)}/{get_fingerprint(seen_entity)}",
+                            offset_start=start,
+                            offset_end=end,
+                            size=len(span),
+                            related_offsets=[seen_offset],
                             resolution="flagged",
                         )
                     )
 
-        if entity not in global_entities:
-            global_entities[entity] = page_number
+            elif (len(tokens) == 1 and len(seen_tokens) == 1 and
+                  4 <= len(tokens[0]) <= 5 and len(tokens[0]) == len(seen_tokens[0]) and
+                  _levenshtein(tokens[0], seen_tokens[0]) == 1):
+                issues.append(
+                    FidelityIssue(
+                        issue_id=_generate_issue_id(),
+                        issue_type="entity_inconsistency",
+                        detector="entity_consistency_checker",
+                        page_number=page_number,
+                        offset_start=start,
+                        offset_end=end,
+                        size=len(span),
+                        related_offsets=[seen_offset],
+                        resolution="flagged",
+                    )
+                )
+
+        if span not in global_entities:
+            global_entities[span] = (page_number, start, tokens)
 
     return issues
 
@@ -164,48 +229,75 @@ def detect_visual_uncertainty(text: str, page_number: int) -> list[FidelityIssue
     """Detect words with suspicious alphanumeric mixing or high noise."""
     issues = []
 
-    legitimate_prefix = r"^(?:Art|P[áa]g|Lei|fls|doc|n[º°ª]|ID|Ref|Mod|V)[0-9]"
+    tech_context_pattern = r"(?i)\b(?:código|CRC|verificador|chave|autenticação|id|matrícula)\b"
 
     words = re.finditer(r"\b[A-Za-z0-9]{6,}\b", text)
     for m in words:
         word = m.group(0)
-        if (
-            any(c.isdigit() for c in word)
-            and any(c.isalpha() for c in word)
-            and not re.match(legitimate_prefix, word, re.IGNORECASE)
-        ):
-            issues.append(
-                    FidelityIssue(
-                        issue_type="visual_uncertainty",
-                        detector="alphanumeric_mixing_detector",
-                        page_number=page_number,
-                        offset_start=m.start(),
-                        offset_end=m.end(),
-                        size=len(word),
-                        fingerprint=get_fingerprint(word),
-                        resolution="flagged",
+
+        if re.fullmatch(r"\d+", word):
+            continue
+
+        if any(c.isdigit() for c in word) and any(c.isalpha() for c in word):
+            if word in ["ESCRITURA4", "DESPADEC1"]:
+                continue
+            if re.fullmatch(r"\d{12}v\d", word):
+                continue
+            if re.fullmatch(r"[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}", word):
+                continue
+            if re.fullmatch(r"[0-9a-f]{8}", word):
+                continue
+
+            transitions = 0
+            for i in range(len(word) - 1):
+                if word[i].isalpha() != word[i + 1].isalpha():
+                    transitions += 1
+
+            is_hex = re.fullmatch(r"[0-9a-fA-F]+", word)
+            threshold = 6 if is_hex else 3
+
+            if transitions >= threshold:
+                context_start = max(0, m.start() - 50)
+                context_end = min(len(text), m.end() + 50)
+                context = text[context_start:context_end]
+
+                if not re.search(tech_context_pattern, context):
+                    issues.append(
+                        FidelityIssue(
+                            issue_id=_generate_issue_id(),
+                            issue_type="visual_uncertainty",
+                            detector="alphanumeric_mixing_detector",
+                            page_number=page_number,
+                            offset_start=m.start(),
+                            offset_end=m.end(),
+                            size=len(word),
+                            resolution="flagged",
+                        )
                     )
-                )
 
     lines = text.split("\n")
     offset = 0
     for line in lines:
         stripped = line.strip()
         if len(stripped) > 20:
-            special = len(re.findall(r"[^\w\s\.,;:\(\)\[\]\-]", stripped))
-            if special / len(stripped) > 0.3:
-                issues.append(
-                    FidelityIssue(
-                        issue_type="visual_uncertainty",
-                        detector="line_noise_detector",
-                        page_number=page_number,
-                        offset_start=offset,
-                        offset_end=offset + len(line),
-                        size=len(line),
-                        fingerprint=get_fingerprint(line),
-                        resolution="flagged",
+            # Strip ONLY structural markdown characters
+            clean_line = re.sub(r"[#*_`~>\\[\]\(\)]", "", stripped)
+
+            if len(clean_line) > 0:
+                special = len(re.findall(r"[^\w\s\.,;:\-\/]", clean_line))
+                if special / len(clean_line) > 0.3:
+                    issues.append(
+                        FidelityIssue(
+                            issue_id=_generate_issue_id(),
+                            issue_type="visual_uncertainty",
+                            detector="line_noise_detector",
+                            page_number=page_number,
+                            offset_start=offset,
+                            offset_end=offset + len(line),
+                            size=len(line),
+                            resolution="flagged",
+                        )
                     )
-                )
         offset += len(line) + 1
 
     return issues
@@ -215,7 +307,7 @@ class FidelityManager:
     """Manages fidelity auditing and uncertainty control."""
 
     def __init__(self):
-        self.entities: dict[str, int] = {}
+        self.entities: dict[str, tuple] = {}
 
     def apply_controls(
         self,

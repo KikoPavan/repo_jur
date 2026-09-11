@@ -656,29 +656,33 @@ O sistema SHALL NOT aplicar esta remoção a páginas roteadas como `texto_nativ
 
 ### Requirement: Controle de Fidelidade e Incerteza OCR
 
-O sistema SHALL implementar mecanismos de detecção e sinalização de anomalias de fidelidade em conversões OCR, priorizando a preservação da incerteza sobre a correção por inferência sem suporte documental.
+O sistema SHALL implementar mecanismos de detecção e sinalização de anomalias de fidelidade em conversões OCR, priorizando a preservação da incerteza sobre a correção por inferência sem suporte documental. A detecção deve ser conservadora e contextual.
 
-#### Scenario: Duplicação suspeita é sinalizada
-
-- **WHEN** o OCR produz repetição substancial interna (acima de 100 caracteres) na mesma página, inclusive inserida em blocos maiores
+#### Scenario: Duplicação suspeita é sinalizada conservadoramente
+- **WHEN** o OCR produz repetição substancial interna (acima de 100 caracteres) na mesma página
+- **AND** a repetição não corresponde a padrões de boilerplate legítimos (como descrições repetidas de imóveis ou identificação cartorária recorrente)
 - **THEN** o sistema registra a ocorrência no relatório JSON como `duplication`
 - **AND** preserva o conteúdo original sinalizado no Markdown
 
-#### Scenario: Variante inconsistente de entidade é sinalizada
+#### Scenario: Legitimate boilerplate is not flagged as duplication
+- **WHEN** a page contains repeated legal formulas, property descriptions (as in ESCRITURA4 page 5), or notary headers (as in ESCRITURA4 page 8) that are structurally legitimate
+- **THEN** the system does NOT record a `duplication` issue
 
-- **WHEN** identificadores repetidos aparecem com variações de exatamente 1 caractere entre ocorrências no mesmo documento, excluindo palavras jurídicas comuns
+#### Scenario: Variante inconsistente de entidade é sinalizada contextualmente
+- **WHEN** identificadores ou nomes próprios (em Title Case ou ALL CAPS) aparecem com variações de exatamente 1 caractere no mesmo documento
+- **AND** a variação não é uma variante lexical comum (ex: PESSOA/PESSOAS, TERCEIRA/TERCEIRO)
 - **THEN** o sistema registra o conflito como `entity_inconsistency` no relatório JSON
-- **AND** preserva as variantes exatamente como transcritas
+
+#### Scenario: Lexical variants are not flagged as entity inconsistencies
+- **WHEN** words like "PESSOA" and "PESSOAS" or "TERCEIRA" and "TERCEIRO" appear in the same document
+- **THEN** the system does NOT record an `entity_inconsistency` issue
+
+#### Scenario: Visual uncertainty ignores structured codes
+- **WHEN** a token follows a legitimate structured code pattern (e.g., "ESCRITURA4", "E032")
+- **THEN** it is NOT flagged as `visual_uncertainty` merely for being alphanumeric
 
 #### Scenario: Token sensível com baixa fidelidade é sinalizada
-
 - **WHEN** padrões determinísticos conhecidos como sensíveis ao OCR (ex: confusão entre § e 8) são detectados
 - **THEN** o sistema sinaliza como `sensitive_token_uncertainty` no relatório JSON
 - **AND** preserva o conteúdo original no Markdown
-
-#### Scenario: Uso de [[ilegível]] para incerteza insuperável
-
-- **WHEN** o processamento de uma região da página produz conteúdo com alta densidade de ruído (excesso de caracteres especiais) ou mistura alfanumérica suspeita
-- **THEN** o sistema sinaliza como `visual_uncertainty` no relatório JSON
-- **AND** mantém o texto original (não destrutivo) no Markdown, a menos que autorizado explicitamente por outros mecanismos (detect-first)
 
