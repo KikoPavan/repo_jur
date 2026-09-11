@@ -6,6 +6,7 @@ from pathlib import Path
 
 from .hashing import get_runtime_info, sha256_file
 from .models import (
+    FidelityAudit,
     Metodo,
     OcrInfo,
     Relatorio,
@@ -83,7 +84,9 @@ def validate_report_contract(data: dict) -> None:
     if data["input"]["byte_size"] < 0 or data["input"]["page_count"] < 1:
         raise ReportContractError("Valor inválido em input")
     _validate_object_fields(
-        data["phase1"], "phase1", (
+        data["phase1"],
+        "phase1",
+        (
             ("implementation", str),
             ("implementation_version", str),
             ("logical_processing_version", str),
@@ -105,9 +108,7 @@ def validate_report_contract(data: dict) -> None:
     )
     if data["result"]["quality_gate"] not in {"PASS", "PASS_WITH_WARNINGS", "FAIL"}:
         raise ReportContractError("Valor inválido em result.quality_gate")
-    _validate_object_fields(
-        data["artifacts"], "artifacts", (("markdown_sha256", str),)
-    )
+    _validate_object_fields(data["artifacts"], "artifacts", (("markdown_sha256", str),))
     _validate_sha256(
         data["artifacts"]["markdown_sha256"],
         "artifacts.markdown_sha256",
@@ -130,6 +131,10 @@ def validate_report_contract(data: dict) -> None:
             field_path = f"{page_path}.{field}"
             value = _require_field(page, field, field_path)
             _require_type(value, expected_type, field_path)
+
+        fidelity_audit = page.get("fidelity_audit")
+        if fidelity_audit is not None:
+            _require_type(fidelity_audit, dict, f"{page_path}.fidelity_audit")
 
         if page["method"] not in allowed_methods:
             raise ReportContractError(
@@ -172,6 +177,7 @@ def build_page_result(
     warnings: list[str] | None = None,
     errors: list[str] | None = None,
     truncated: bool = False,
+    fidelity_audit: FidelityAudit | None = None,
 ) -> ResultadoPagina:
     return ResultadoPagina(
         page_number=page_number,
@@ -180,6 +186,7 @@ def build_page_result(
         warnings=warnings or [],
         errors=errors or [],
         truncated=truncated,
+        fidelity_audit=fidelity_audit,
     )
 
 
@@ -195,9 +202,7 @@ def determine_final_status(
     pages: list[ResultadoPagina],
     allow_partial: bool,
 ) -> StatusExecucao:
-    has_failed_pages = any(
-        page.method == Metodo.erro for page in pages
-    )
+    has_failed_pages = any(page.method == Metodo.erro for page in pages)
     if not has_failed_pages:
         return StatusExecucao.sucesso
     if allow_partial:

@@ -31,7 +31,15 @@ def test_synchronized_report_model_is_available():
 def test_minimum_layout_and_page_wire_shape():
     data = _data()
     assert set(data) == {"schema_version", "execution_id", "input", "phase1", "result", "artifacts", "pages", "telemetry"}
-    assert data["pages"][0] == {"page_number": 1, "method": "texto_nativo", "char_count": 3, "warnings": [], "errors": [], "truncated": False}
+    assert data["pages"][0] == {
+        "page_number": 1,
+        "method": "texto_nativo",
+        "char_count": 3,
+        "warnings": [],
+        "errors": [],
+        "truncated": False,
+        "fidelity_audit": None,
+    }
     validate_report_contract(data)
 
 

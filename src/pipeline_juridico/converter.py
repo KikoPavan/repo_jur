@@ -1,14 +1,14 @@
+import re
 import time
 import uuid
-from dataclasses import asdict
 from collections import Counter
-from dataclasses import dataclass
-from datetime import datetime, timezone
+from dataclasses import asdict, dataclass
+from datetime import UTC, datetime
 from pathlib import Path
-import re
 
 import fitz
 
+from . import __version__
 from .cleaner import (
     ILLEGIBLE_TEXT_MARKER,
     build_legislative_headings,
@@ -32,11 +32,12 @@ from .engines import (
     render_pdf_page_to_png,
     verify_ocr_evidence,
 )
-from . import __version__
+from .fidelity import FidelityManager
 from .hashing import sha256_bytes
 from .inspector import inspect_source, isolated_page_workspace
 from .models import (
     ArtifactsInfo,
+    FidelityAudit,
     InputInfo,
     Metodo,
     Phase1Info,
@@ -94,13 +95,9 @@ def _deduplicated_text_blocks_with_line_x0s(
     tolerance: float = 2.0,
 ) -> list[tuple[tuple[float, float, float, float, str], list[float]]]:
     dict_blocks = [
-        block
-        for block in page.get_text("dict")["blocks"]
-        if block.get("type") == 0
+        block for block in page.get_text("dict")["blocks"] if block.get("type") == 0
     ]
-    seen_non_horizontal: list[
-        tuple[tuple[float, float, float, float], str]
-    ] = []
+    seen_non_horizontal: list[tuple[tuple[float, float, float, float], str]] = []
     deduplicated = []
     for block in dict_blocks:
         kept_line_texts: list[str] = []
@@ -158,9 +155,7 @@ def _has_duplicated_rotated_block(
     tolerance: float = 2.0,
 ) -> bool:
     dict_blocks = [
-        block
-        for block in page.get_text("dict")["blocks"]
-        if block.get("type") == 0
+        block for block in page.get_text("dict")["blocks"] if block.get("type") == 0
     ]
     seen: list[tuple[tuple[float, float, float, float], str]] = []
     for block in dict_blocks:
@@ -170,8 +165,7 @@ def _has_duplicated_rotated_block(
             text = _line_text(line)
             bbox = tuple(round(value, 1) for value in line["bbox"])
             if any(
-                text == seen_text
-                and _bbox_within_tolerance(bbox, seen_bbox, tolerance)
+                text == seen_text and _bbox_within_tolerance(bbox, seen_bbox, tolerance)
                 for seen_bbox, seen_text in seen
             ):
                 return True
@@ -216,10 +210,7 @@ def _page_has_large_text(
             continue
         for line in block.get("lines", []):
             for span in line.get("spans", []):
-                if (
-                    span.get("text", "").strip()
-                    and span.get("size", 0.0) >= threshold
-                ):
+                if span.get("text", "").strip() and span.get("size", 0.0) >= threshold:
                     return True
     return False
 
@@ -234,9 +225,7 @@ def _lexical_overlap(left: str, right: str) -> float:
     largest_token_count = max(len(left_tokens), len(right_tokens))
     if not largest_token_count:
         return 0.0
-    common_token_count = sum(
-        (Counter(left_tokens) & Counter(right_tokens)).values()
-    )
+    common_token_count = sum((Counter(left_tokens) & Counter(right_tokens)).values())
     return common_token_count / largest_token_count
 
 
@@ -258,9 +247,7 @@ def _markdown_table_cells(line: str) -> list[str]:
 
 
 def _is_markdown_separator(cells: list[str]) -> bool:
-    return bool(cells) and all(
-        re.fullmatch(r":?-{3,}:?", cell) for cell in cells
-    )
+    return bool(cells) and all(re.fullmatch(r":?-{3,}:?", cell) for cell in cells)
 
 
 def _has_fabricated_table_structure(content: str) -> bool:
@@ -280,16 +267,13 @@ def _has_fabricated_table_structure(content: str) -> bool:
         if len(rows) < 2 or not _is_markdown_separator(rows[1]):
             continue
         column_count = len(rows[0])
-        if column_count < 2 or any(
-            len(row) != column_count for row in rows
-        ):
+        if column_count < 2 or any(len(row) != column_count for row in rows):
             continue
 
         data_rows = rows[2:]
         single_row_table = not data_rows
         disguised_single_column = bool(data_rows) and all(
-            row[0] and all(not cell for cell in row[1:])
-            for row in data_rows
+            row[0] and all(not cell for cell in row[1:]) for row in data_rows
         )
         if single_row_table or disguised_single_column:
             return True
@@ -319,11 +303,7 @@ def _split_ocr_tail(
 
 
 def _tail_fragments(tail: str) -> list[str]:
-    return [
-        fragment.strip()
-        for fragment in tail.split("\n\n")
-        if fragment.strip()
-    ]
+    return [fragment.strip() for fragment in tail.split("\n\n") if fragment.strip()]
 
 
 def _is_degenerate_fragment_tail(
@@ -333,9 +313,7 @@ def _is_degenerate_fragment_tail(
 ) -> bool:
     if not fragments:
         return False
-    short = sum(
-        1 for fragment in fragments if len(fragment) <= max_fragment_chars
-    )
+    short = sum(1 for fragment in fragments if len(fragment) <= max_fragment_chars)
     return (short / len(fragments)) >= min_short_fraction
 
 
@@ -374,10 +352,7 @@ def _geometrically_corroborated_vertical_residual(
     ratio = len(tail_chars) / len(combined_vertical)
     if not (length_ratio_bounds[0] <= ratio <= length_ratio_bounds[1]):
         return False
-    return (
-        _char_multiset_overlap(tail_chars, combined_vertical)
-        >= min_char_overlap
-    )
+    return _char_multiset_overlap(tail_chars, combined_vertical) >= min_char_overlap
 
 
 def _replace_fragmented_vertical_residual(
@@ -499,7 +474,7 @@ def convert_document(
         validate_page_markers,
     )
 
-    started_at = datetime.now(timezone.utc)
+    started_at = datetime.now(UTC)
     source_info = inspect_source(pdf_path)
     native_engine = create_native_engine()
     ocr_engine = None
@@ -508,6 +483,7 @@ def convert_document(
     blocks: list[PageBlock] = []
     vertical_geometry_by_page: dict[int, list[str]] = {}
     page_durations_ms: list[int] = []
+    fidelity_manager = FidelityManager()
 
     with isolated_page_workspace(
         pdf_path,
@@ -537,12 +513,10 @@ def convert_document(
                     else []
                 )
                 native_blocks = [
-                    (y0, y1, text)
-                    for y0, y1, text, _ in native_blocks_with_x0
+                    (y0, y1, text) for y0, y1, text, _ in native_blocks_with_x0
                 ]
                 native_line_x0s = [
-                    line_x0s
-                    for _, _, _, line_x0s in native_blocks_with_x0
+                    line_x0s for _, _, _, line_x0s in native_blocks_with_x0
                 ]
                 page_has_large_text = (
                     _page_has_large_text(page)
@@ -628,9 +602,7 @@ def convert_document(
                     raise
                 except Exception:
                     method = Metodo.erro
-                    errors.append(
-                        "Falha técnica durante o processamento de OCR."
-                    )
+                    errors.append("Falha técnica durante o processamento de OCR.")
                 else:
                     method, evidence_warnings = verify_ocr_evidence(
                         raw_content,
@@ -645,9 +617,13 @@ def convert_document(
             if method is Metodo.erro:
                 content = ILLEGIBLE_TEXT_MARKER if allow_partial else ""
 
-            duration_ms = int(
-                (time.monotonic() - page_started_at) * 1000
-            )
+            fidelity_audit: FidelityAudit | None = None
+            if method in (Metodo.ocr_integral, Metodo.hibrido):
+                content, fidelity_audit = fidelity_manager.apply_controls(
+                    content, page_number
+                )
+
+            duration_ms = int((time.monotonic() - page_started_at) * 1000)
             page_durations_ms.append(duration_ms)
             page_results.append(
                 build_page_result(
@@ -657,6 +633,7 @@ def convert_document(
                     warnings=warnings,
                     errors=errors,
                     truncated=False,
+                    fidelity_audit=fidelity_audit,
                 )
             )
             blocks.append(
@@ -689,10 +666,8 @@ def convert_document(
     validate_markdown_matches_report(final_markdown, page_results)
     validate_encoding_and_line_endings(final_markdown)
 
-    finished_at = datetime.now(timezone.utc)
-    total_duration_ms = int(
-        (finished_at - started_at).total_seconds() * 1000
-    )
+    finished_at = datetime.now(UTC)
+    total_duration_ms = int((finished_at - started_at).total_seconds() * 1000)
     literal = strip_technical_routing_metadata(final_markdown)
     runtime_info = build_runtime_info()
     ocr_info = build_ocr_info(
@@ -723,9 +698,7 @@ def convert_document(
                 routing_config=routing_config,
             ),
         ),
-        artifacts=ArtifactsInfo(
-            markdown_sha256=sha256_bytes(literal.encode("utf-8"))
-        ),
+        artifacts=ArtifactsInfo(markdown_sha256=sha256_bytes(literal.encode("utf-8"))),
         pages=page_results,
         telemetry={
             "runtime": asdict(runtime_info),

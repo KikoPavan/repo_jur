@@ -30,7 +30,10 @@ def _page(
     warnings: list[object] | None = None,
     error: str | None = None,
     truncated: bool = False,
+    fidelity_audit: dict[str, object] | None = None,
 ) -> dict[str, object]:
+    if fidelity_audit is None and method in ("ocr_integral", "hibrido"):
+        fidelity_audit = {"issues": []}
     return {
         "page_number": number,
         "method": method,
@@ -38,6 +41,7 @@ def _page(
         "warnings": [] if warnings is None else warnings,
         "errors": ([] if error is None and status == "sucesso" else [error or status]),
         "truncated": truncated,
+        "fidelity_audit": fidelity_audit,
     }
 
 

@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import List, Optional
 
 
 class Metodo(str, Enum):
@@ -20,13 +19,31 @@ class StatusExecucao(str, Enum):
 
 
 @dataclass
+class FidelityIssue:
+    issue_type: str  # duplication, entity_inconsistency, sensitive_token_uncertainty, visual_uncertainty
+    detector: str
+    page_number: int
+    offset_start: int | None = None
+    offset_end: int | None = None
+    size: int | None = None
+    fingerprint: str | None = None
+    resolution: str = "flagged"  # accepted, flagged, illegible
+
+
+@dataclass
+class FidelityAudit:
+    issues: list[FidelityIssue] = field(default_factory=list)
+
+
+@dataclass
 class ResultadoPagina:
     page_number: int
     method: Metodo
     char_count: int
-    warnings: List[str] = field(default_factory=list)
-    errors: List[str] = field(default_factory=list)
+    warnings: list[str] = field(default_factory=list)
+    errors: list[str] = field(default_factory=list)
     truncated: bool = False
+    fidelity_audit: FidelityAudit | None = None
 
 
 @dataclass
@@ -55,8 +72,8 @@ class Phase1Info:
 @dataclass
 class ResultadoInfo:
     quality_gate: str = ""
-    warnings: List[str] = field(default_factory=list)
-    errors: List[str] = field(default_factory=list)
+    warnings: list[str] = field(default_factory=list)
+    errors: list[str] = field(default_factory=list)
 
 
 @dataclass
@@ -91,9 +108,9 @@ class TimingInfo:
 class Relatorio:
     schema_version: str = "1.0"
     execution_id: str = ""
-    input: Optional[InputInfo] = None
-    phase1: Optional[Phase1Info] = None
-    result: Optional[ResultadoInfo] = None
-    artifacts: Optional[ArtifactsInfo] = None
-    pages: List[ResultadoPagina] = field(default_factory=list)
+    input: InputInfo | None = None
+    phase1: Phase1Info | None = None
+    result: ResultadoInfo | None = None
+    artifacts: ArtifactsInfo | None = None
+    pages: list[ResultadoPagina] = field(default_factory=list)
     telemetry: dict = field(default_factory=dict)

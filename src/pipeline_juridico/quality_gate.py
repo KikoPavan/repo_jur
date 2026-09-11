@@ -10,10 +10,10 @@ from .contracts import GateState, Phase1Artifacts
 
 _MARKER_PATTERN = re.compile(r"\[\[Pág\. (\d+)\]\]")
 _METHOD_COMMENT_PATTERN = re.compile(r"<!--\s*método\s*:")
-_METHODS = frozenset(
-    {"texto_nativo", "ocr_integral", "hibrido", "vazia", "erro"}
+_METHODS = frozenset({"texto_nativo", "ocr_integral", "hibrido", "vazia", "erro"})
+_OCR_IMAGE_PATTERN = re.compile(
+    r"^[ 	]*\*[ 	]*\[Image OCR\][ 	]*", re.IGNORECASE | re.MULTILINE
 )
-_OCR_IMAGE_PATTERN = re.compile(r"^[ 	]*\*[ 	]*\[Image OCR\][ 	]*", re.IGNORECASE | re.MULTILINE)
 _NON_CANONICAL_PAGE_HEADER = re.compile(
     r"^##[ 	]+Page[ 	]+\d+[ 	]*$", re.IGNORECASE | re.MULTILINE
 )
@@ -65,11 +65,15 @@ def evaluate(phase1_artifacts: Phase1Artifacts) -> QualityGateResult:
 
                 source_pages = input_info.get("page_count")
                 if not _is_exact_type(source_pages, int):
-                    errors.append("Technical report input.page_count must be an integer")
+                    errors.append(
+                        "Technical report input.page_count must be an integer"
+                    )
                 else:
                     page_count = source_pages
                     if page_count < 1:
-                        errors.append("Technical report physical page count must be at least 1")
+                        errors.append(
+                            "Technical report physical page count must be at least 1"
+                        )
 
             inventory = parsed.get("pages")
             if not isinstance(inventory, list):
@@ -89,6 +93,7 @@ def evaluate(phase1_artifacts: Phase1Artifacts) -> QualityGateResult:
         characters = record.get("char_count")
         page_errors = record.get("errors")
         truncated = record.get("truncated")
+        fidelity_audit = record.get("fidelity_audit")
 
         valid_number = _is_exact_type(number, int)
         valid_method = _is_exact_type(method, str) and method in _METHODS
@@ -103,6 +108,26 @@ def evaluate(phase1_artifacts: Phase1Artifacts) -> QualityGateResult:
             errors.append(f"{label}.method must use the allowed method vocabulary")
         else:
             method_counts[method] = method_counts.get(method, 0) + 1
+            if method in ("ocr_integral", "hibrido"):
+                if fidelity_audit is None:
+                    errors.append(
+                        f"{label} missing required fidelity_audit for OCR method"
+                    )
+                elif not isinstance(fidelity_audit, dict):
+                    errors.append(f"{label}.fidelity_audit must be an object")
+                else:
+                    issues = fidelity_audit.get("issues", [])
+                    if not isinstance(issues, list):
+                        errors.append(f"{label}.fidelity_audit.issues must be a list")
+                    else:
+                        for issue in issues:
+                            if (
+                                isinstance(issue, dict)
+                                and issue.get("resolution") == "flagged"
+                            ):
+                                warnings.append(
+                                    f"Fidelity issue in {label}: {issue.get('issue_type')} detected by {issue.get('detector')}"
+                                )
 
         if not valid_characters:
             errors.append(f"{label}.char_count must be an integer")
@@ -123,12 +148,7 @@ def evaluate(phase1_artifacts: Phase1Artifacts) -> QualityGateResult:
         if valid_method and method == "erro":
             errors.append(f"{label}.method is erro")
 
-        if (
-            valid_method
-            and valid_characters
-            and characters == 0
-            and method != "vazia"
-        ):
+        if valid_method and valid_characters and characters == 0 and method != "vazia":
             errors.append(f"{label} has an empty return for a non-blank method")
 
         page_warnings = record.get("warnings")
