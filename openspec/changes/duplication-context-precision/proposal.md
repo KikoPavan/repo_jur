@@ -2,6 +2,16 @@
 
 ## Status: BLOCKED — no verified positive control (see Blocked / Evidence Gap)
 
+## Cross-reference note (added by `duplication-issue-semantic-neutrality`, documentation only)
+As of `duplication-issue-semantic-neutrality`, the persisted `issue_type` value emitted by
+`detect_duplications` for Schema 1.1 reports is `duplication` (legacy). Starting with Schema 1.2, the
+neutral persisted name is `internal_repetition`. This rename is purely semantic/naming — it does not
+change `min_len`, the sliding-window match/extension logic, the `gap <= 1.5 * match_len` acceptance
+window, or any other detection behavior, and it does NOT resolve or unblock this change. Every
+`duplication` reference below refers to the legacy (pre-rename) value name as of when this text was
+written. This change remains BLOCKED, exactly as stated above, for lack of a verified
+`source-once → output-twice` positive control (see "Blocked / Evidence Gap").
+
 ## Why
 The `internal_repetition_detector` (`src/pipeline_juridico/fidelity.py::detect_duplications`) has two known false positives, evidenced against the real corpus without any new OCR:
 

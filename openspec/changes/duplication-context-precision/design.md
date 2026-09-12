@@ -2,6 +2,16 @@
 
 ## Status: BLOCKED — see `proposal.md` § Blocked / Evidence Gap. No implementation authorized.
 
+## Cross-reference note (added by `duplication-issue-semantic-neutrality`, documentation only)
+As of `duplication-issue-semantic-neutrality`, the persisted `issue_type` value emitted by
+`detect_duplications` for Schema 1.1 reports is `duplication` (legacy). Starting with Schema 1.2, the
+neutral persisted name is `internal_repetition`. This rename is purely semantic/naming — it does not
+change `min_len`, the sliding-window match/extension logic, the `gap <= 1.5 * match_len` acceptance
+window, or any other detection behavior, and it does NOT resolve or unblock this change. Every
+`duplication` reference below (including the Structural Evidence table) refers to the legacy
+(pre-rename) value name as of when this text was written. This change remains BLOCKED for lack of a
+verified `source-once → output-twice` positive control.
+
 ## Architecture (Current)
 `detect_duplications` (`src/pipeline_juridico/fidelity.py:60-107`) uses a sliding-window match over whitespace-normalized text (`_get_norm_map`). On finding a repeated 120+ char window, it extends the match forward, maps back to source offsets, computes `gap = source_i - source_match_end`, and accepts the candidate as a `duplication` issue whenever `match_len >= 120` and `0 <= gap <= 1.5 * match_len`. It has no notion of what structurally lies inside the gap, and — critically — **it only ever sees the converted Markdown text; it has no access to the source PDF**. See "Conceptual limitation" in `proposal.md` for why this matters.
 

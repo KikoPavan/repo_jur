@@ -5,9 +5,13 @@
 Implementation was executed by Codex per orchestrator-authorized scope (two bounded delegations: initial
 scope + one narrow follow-up fix to `tests/test_models.py`, both explicitly authorized by the
 orchestrator, not a requirements change). The orchestrator independently re-reviewed the full diff and
-re-ran all verification commands before marking any item below `[x]`. Archive (Task 3's `openspec archive`
-step) and the cross-reference note (Task 4) remain intentionally NOT executed — both require this change
-to be approved/archived first, which has not happened; no commit/push/archive has been performed.
+re-ran all verification commands before marking any item below `[x]`. The cross-reference note (Task 4)
+has now been added directly to `duplication-context-precision`'s `proposal.md`/`design.md` as a
+documentation-only, pre-archive step (does not require this change's own archival). The published-spec
+delta application (formerly framed as Task 3) is NOT a pending implementation task — it is the standard,
+inherent effect of running `openspec archive` once this change is approved, and is tracked below as an
+operational post-approval step rather than as a checklist item that could ever be checked off before
+archive. No commit/push/archive has been performed.
 
 ## Task 1: Rename persisted `issue_type` value in the detector and bump schema_version — DONE (verified)
 - **Description**: In `src/pipeline_juridico/fidelity.py::detect_duplications`, change
@@ -63,27 +67,32 @@ to be approved/archived first, which has not happened; no commit/push/archive ha
   narrowly-scoped orchestrator follow-up authorization) was updated to expect the new `"1.2"` default —
   a direct, mechanical consequence of Task 1's approved bump, not a scope/requirements change.
 
-## Task 3: Correct causal language in specs — NOT executed (requires archive, not authorized yet)
-- **Description**: Apply the two spec deltas in this change
-  (`specs/juridical-pdf-conversion/spec.md`, `specs/phase1-quality-gate/spec.md`) to the corresponding
-  published specs (`openspec/specs/juridical-pdf-conversion/spec.md`,
-  `openspec/specs/phase1-quality-gate/spec.md`) via the standard `openspec archive` flow once this change
-  is approved and implemented — i.e. do not hand-edit the published specs directly; let the OpenSpec
-  archive step apply the delta as usual.
+## Operational step (post-approval/archive, not an implementation task): Apply spec deltas via `openspec archive`
+- **Description**: The two spec deltas in this change (`specs/juridical-pdf-conversion/spec.md`,
+  `specs/phase1-quality-gate/spec.md`) will be applied to the corresponding published specs
+  (`openspec/specs/juridical-pdf-conversion/spec.md`, `openspec/specs/phase1-quality-gate/spec.md`) by the
+  standard `openspec archive` command itself, once this change is approved. This is not an implementation
+  task that Codex or the orchestrator performs by hand-editing files, and it is intentionally excluded
+  from the Acceptance Criteria checklist below — it cannot be completed, partially completed, or checked
+  off before archive runs, and pretending otherwise would misrepresent pre-archive state. Do not hand-edit
+  the published specs directly.
 - **Constraint**: Only the two scenarios identified in `design.md` § Spec Language Correction change.
   No other scenario in either spec file is touched. The Requirement title "Controle de Fidelidade e
   Incerteza OCR" is NOT renamed.
 
-## Task 4: Cross-reference note in `duplication-context-precision` — NOT executed (blocked until archive)
-- **Description**: Once this change is implemented and approved (not before), add a short note near the
-  top of `openspec/changes/duplication-context-precision/proposal.md` and
+## Task 4: Cross-reference note in `duplication-context-precision` — DONE (verified)
+- **Description**: Added a short note near the top of
+  `openspec/changes/duplication-context-precision/proposal.md` and
   `openspec/changes/duplication-context-precision/design.md` stating that `issue_type` has been renamed
   from `duplication` to `internal_repetition` by `duplication-issue-semantic-neutrality`, and that all
   `duplication` references in that change's existing text refer to the legacy (pre-rename) value name as
   of when they were written — not to any change in the blocked detection heuristic.
 - **Constraint**: This task does NOT reopen, unblock, or modify the heuristic content of
-  `duplication-context-precision`. It adds a pointer only. Must not be executed until Task 1-3 are
-  implemented and this change itself is approved/archived.
+  `duplication-context-precision`. It adds a pointer only.
+- **Verification**: `git diff --stat` shows only additive "Cross-reference note" sections inserted
+  immediately after the existing `## Status:` line in both `proposal.md` and `design.md`; no other line in
+  either file changed. `duplication-context-precision/tasks.md` and its `Status: BLOCKED` line remain
+  untouched — the blocking Task 1 (verified positive control) is still NOT STARTED.
 
 ## Task 5: Verification — DONE (re-run by orchestrator, independent of Codex's own run)
 - **Description**: Run `uv run pytest`, `uv run ruff check`, `git diff --check`, `uv run openspec validate
@@ -101,8 +110,9 @@ to be approved/archived first, which has not happened; no commit/push/archive ha
 - [x] No normative scenario in `juridical-pdf-conversion/spec.md` or `phase1-quality-gate/spec.md`
       asserts that OCR caused the repetition based solely on the internal-repetition detector's output.
       (Verified in the change's own spec deltas, `specs/juridical-pdf-conversion/spec.md` and
-      `specs/phase1-quality-gate/spec.md`; the published specs are not yet updated because Task 3's
-      `openspec archive` step has not run — that is expected pre-archive state, not a defect.)
+      `specs/phase1-quality-gate/spec.md`; the published specs are not yet updated because the
+      `openspec archive` operational step (see above) has not run — that is expected pre-archive state,
+      not a defect.)
 - [x] The persisted `issue_type` value emitted by `detect_duplications` is `internal_repetition` (not
       `duplication`), and it is emitted under `schema_version: "1.2"` (default `Relatorio.schema_version`
       confirmed `"1.2"` in `models.py:138`).
