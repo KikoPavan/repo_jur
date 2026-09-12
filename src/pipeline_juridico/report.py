@@ -31,7 +31,8 @@ def _require_field(data: dict, field: str, path: str) -> object:
 
 
 def _require_type(value: object, expected_type: type, path: str) -> None:
-    if not isinstance(value, expected_type):
+    valid = type(value) is int if expected_type is int else isinstance(value, expected_type)
+    if not valid:
         raise ReportContractError(
             f"Tipo incorreto em {path}: esperado "
             f"{expected_type.__name__}, recebido {type(value).__name__}"
@@ -48,6 +49,73 @@ def _validate_object_fields(
         field_path = f"{path}.{field}"
         value = _require_field(data, field, field_path)
         _require_type(value, expected_type, field_path)
+
+
+def _require_exact_fields(data: dict, expected: set[str], path: str) -> None:
+    if set(data) != expected:
+        raise ReportContractError(f"Campos inválidos em {path}")
+
+
+def _validate_document_fidelity_audit(data: dict, pages: list[dict]) -> None:
+    _require_exact_fields(data, {"issues"}, "fidelity_audit")
+    issues = data["issues"]
+    page_lengths = {page["page_number"]: page["char_count"] for page in pages}
+    for issue_index, issue in enumerate(issues):
+        issue_path = f"fidelity_audit.issues[{issue_index}]"
+        _validate_object_fields(
+            issue,
+            issue_path,
+            (
+                ("issue_id", str),
+                ("detector", str),
+                ("issue_type", str),
+                ("resolution", str),
+                ("groups", list),
+            ),
+        )
+        _require_exact_fields(
+            issue,
+            {"issue_id", "detector", "issue_type", "resolution", "groups"},
+            issue_path,
+        )
+        if (
+            issue["detector"] != "entity_consistency_checker"
+            or issue["issue_type"] != "entity_inconsistency"
+        ):
+            raise ReportContractError(f"Valor inválido em {issue_path}")
+        for group_index, group in enumerate(issue["groups"]):
+            group_path = f"{issue_path}.groups[{group_index}]"
+            _validate_object_fields(
+                group, group_path, (("group", int), ("occurrences", list))
+            )
+            _require_exact_fields(group, {"group", "occurrences"}, group_path)
+            for occurrence_index, occurrence in enumerate(group["occurrences"]):
+                occurrence_path = (
+                    f"{group_path}.occurrences[{occurrence_index}]"
+                )
+                fields = {
+                    "page_number", "offset_start", "offset_end", "size"
+                }
+                _validate_object_fields(
+                    occurrence,
+                    occurrence_path,
+                    tuple((field, int) for field in fields),
+                )
+                _require_exact_fields(occurrence, fields, occurrence_path)
+                page_number = occurrence["page_number"]
+                start = occurrence["offset_start"]
+                end = occurrence["offset_end"]
+                size = occurrence["size"]
+                if (
+                    page_number not in page_lengths
+                    or start < 0
+                    or end <= start
+                    or end > page_lengths[page_number]
+                    or size != end - start
+                ):
+                    raise ReportContractError(
+                        f"Valor inválido em {occurrence_path}.offset_end"
+                    )
 
 
 def _validate_sha256(value: str, path: str) -> None:
@@ -71,6 +139,16 @@ def validate_report_contract(data: dict) -> None:
     for field, expected_type in top_level_types:
         value = _require_field(data, field, field)
         _require_type(value, expected_type, field)
+
+    if data["schema_version"] == "1.1":
+        fidelity_audit = _require_field(data, "fidelity_audit", "fidelity_audit")
+        _validate_object_fields(
+            fidelity_audit,
+            "fidelity_audit",
+            (("issues", list),),
+        )
+    elif data["schema_version"] != "1.0":
+        raise ReportContractError("Valor inválido em schema_version")
 
     if not data["execution_id"]:
         raise ReportContractError("Valor vazio em execution_id")
@@ -108,6 +186,9 @@ def validate_report_contract(data: dict) -> None:
     )
     if data["result"]["quality_gate"] not in {"PASS", "PASS_WITH_WARNINGS", "FAIL"}:
         raise ReportContractError("Valor inválido em result.quality_gate")
+    for field in ("warnings", "errors"):
+        for index, value in enumerate(data["result"][field]):
+            _require_type(value, str, f"result.{field}[{index}]")
     _validate_object_fields(data["artifacts"], "artifacts", (("markdown_sha256", str),))
     _validate_sha256(
         data["artifacts"]["markdown_sha256"],
@@ -155,6 +236,27 @@ def validate_report_contract(data: dict) -> None:
                 for opt_f, opt_t in [("offset_start", int), ("offset_end", int), ("size", int), ("related_offsets", list)]:
                     if opt_f in issue and issue[opt_f] is not None:
                         _require_type(issue[opt_f], opt_t, f"{issue_path}.{opt_f}")
+                start = issue.get("offset_start")
+                end = issue.get("offset_end")
+                size = issue.get("size")
+                if start is not None and not 0 <= start <= page["char_count"]:
+                    raise ReportContractError(f"Valor inválido em {issue_path}.offset_start")
+                if end is not None and not 0 <= end <= page["char_count"]:
+                    raise ReportContractError(f"Valor inválido em {issue_path}.offset_end")
+                if start is not None and end is not None and end < start:
+                    raise ReportContractError(f"Valor inválido em {issue_path}.offset_end")
+                if start is not None and end is not None and size is not None and size != end - start:
+                    raise ReportContractError(f"Valor inválido em {issue_path}.size")
+                for related_index, offset in enumerate(issue.get("related_offsets", [])):
+                    _require_type(
+                        offset,
+                        int,
+                        f"{issue_path}.related_offsets[{related_index}]",
+                    )
+                    if not 0 <= offset < page["char_count"]:
+                        raise ReportContractError(
+                            f"Valor inválido em {issue_path}.related_offsets[{related_index}]"
+                        )
 
         if page["method"] not in allowed_methods:
             raise ReportContractError(
@@ -170,6 +272,9 @@ def validate_report_contract(data: dict) -> None:
         or sorted(page_numbers) != expected_numbers
     ):
         raise ReportContractError("Inventário de páginas incompleto")
+
+    if data["schema_version"] == "1.1":
+        _validate_document_fidelity_audit(data["fidelity_audit"], data["pages"])
 
 
 def build_runtime_info() -> RuntimeInfo:

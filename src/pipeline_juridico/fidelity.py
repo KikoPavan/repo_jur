@@ -6,7 +6,20 @@ import re
 import unicodedata
 import uuid
 
-from .models import FidelityAudit, FidelityIssue
+from .models import (
+    DocumentFidelityAudit,
+    DocumentFidelityIssue,
+    FidelityAudit,
+    FidelityGroup,
+    FidelityIssue,
+    NumericOccurrence,
+)
+
+
+_EntityCoordinate = tuple[int, int, int, int]
+_EntityConflictGroups = dict[
+    frozenset[str], dict[str, set[_EntityCoordinate]]
+]
 
 
 def _generate_issue_id() -> str:
@@ -124,7 +137,10 @@ def monitor_sensitive_tokens(text: str, page_number: int) -> list[FidelityIssue]
 
 
 def check_entity_consistency(
-    text: str, page_number: int, global_entities: dict[str, tuple]
+    text: str,
+    page_number: int,
+    global_entities: dict[str, tuple],
+    conflict_groups: _EntityConflictGroups | None = None,
 ) -> list[FidelityIssue]:
     """Check for inconsistent variants of entities using structural comparison."""
     issues = []
@@ -147,17 +163,26 @@ def check_entity_consistency(
     for span, start, end in found_spans:
         norm_span = _normalize_entity(span)
         tokens = norm_span.split()
+        current_coordinate = (page_number, start, end, end - start)
 
         for seen_span, data in global_entities.items():
             if len(data) == 2:
-                _seen_page, seen_offset = data
+                seen_page, seen_offset = data
                 seen_tokens = _normalize_entity(seen_span).split()
             else:
-                _seen_page, seen_offset, seen_tokens = data
+                seen_page, seen_offset, seen_tokens = data
+
+            related_offsets = [seen_offset] if seen_page == page_number else []
 
             norm_seen = _normalize_entity(seen_span)
 
             if norm_span == norm_seen:
+                if conflict_groups is not None:
+                    for variants, occurrences_by_variant in conflict_groups.items():
+                        if norm_span in variants:
+                            occurrences_by_variant.setdefault(norm_span, set()).add(
+                                current_coordinate
+                            )
                 continue
 
             if len(tokens) == len(seen_tokens) and len(tokens) >= 2:
@@ -171,6 +196,17 @@ def check_entity_consistency(
                             break
 
                 if diffs == 1:
+                    if conflict_groups is not None:
+                        variants = frozenset((norm_seen, norm_span))
+                        occurrences_by_variant = conflict_groups.setdefault(
+                            variants, {}
+                        )
+                        occurrences_by_variant.setdefault(norm_seen, set()).add(
+                            (seen_page, seen_offset, seen_offset + len(seen_span), len(seen_span))
+                        )
+                        occurrences_by_variant.setdefault(norm_span, set()).add(
+                            current_coordinate
+                        )
                     issues.append(
                         FidelityIssue(
                             issue_id=_generate_issue_id(),
@@ -180,7 +216,7 @@ def check_entity_consistency(
                             offset_start=start,
                             offset_end=end,
                             size=len(span),
-                            related_offsets=[seen_offset],
+                            related_offsets=related_offsets,
                             resolution="flagged",
                         )
                     )
@@ -188,6 +224,15 @@ def check_entity_consistency(
             elif (len(tokens) == 1 and len(seen_tokens) == 1 and
                   4 <= len(tokens[0]) <= 5 and len(tokens[0]) == len(seen_tokens[0]) and
                   _levenshtein(tokens[0], seen_tokens[0]) == 1):
+                if conflict_groups is not None:
+                    variants = frozenset((norm_seen, norm_span))
+                    occurrences_by_variant = conflict_groups.setdefault(variants, {})
+                    occurrences_by_variant.setdefault(norm_seen, set()).add(
+                        (seen_page, seen_offset, seen_offset + len(seen_span), len(seen_span))
+                    )
+                    occurrences_by_variant.setdefault(norm_span, set()).add(
+                        current_coordinate
+                    )
                 issues.append(
                     FidelityIssue(
                         issue_id=_generate_issue_id(),
@@ -197,7 +242,7 @@ def check_entity_consistency(
                         offset_start=start,
                         offset_end=end,
                         size=len(span),
-                        related_offsets=[seen_offset],
+                        related_offsets=related_offsets,
                         resolution="flagged",
                     )
                 )
@@ -308,6 +353,7 @@ class FidelityManager:
 
     def __init__(self):
         self.entities: dict[str, tuple] = {}
+        self._entity_conflict_groups: _EntityConflictGroups = {}
 
     def apply_controls(
         self,
@@ -321,7 +367,80 @@ class FidelityManager:
         audit.issues.extend(detect_duplications(markdown, page_number))
         audit.issues.extend(monitor_sensitive_tokens(markdown, page_number))
         audit.issues.extend(
-            check_entity_consistency(markdown, page_number, self.entities)
+            check_entity_consistency(
+                markdown,
+                page_number,
+                self.entities,
+                self._entity_conflict_groups,
+            )
         )
 
         return markdown, audit
+
+    def consolidate_document_audit(
+        self, page_audits: list[FidelityAudit]
+    ) -> DocumentFidelityAudit:
+        """Move cross-page entity conflicts into a privacy-safe root audit."""
+        document_audit = DocumentFidelityAudit()
+        consolidated_coordinates: set[_EntityCoordinate] = set()
+
+        for occurrences_by_variant in self._entity_conflict_groups.values():
+            coordinates = {
+                coordinate
+                for occurrences in occurrences_by_variant.values()
+                for coordinate in occurrences
+            }
+            if len({coordinate[0] for coordinate in coordinates}) < 2:
+                continue
+
+            groups = []
+            for group_number, occurrences in enumerate(
+                occurrences_by_variant.values()
+            ):
+                numeric_occurrences = [
+                    NumericOccurrence(
+                        page_number=page_number,
+                        offset_start=offset_start,
+                        offset_end=offset_end,
+                        size=size,
+                    )
+                    for page_number, offset_start, offset_end, size in sorted(occurrences)
+                ]
+                groups.append(
+                    FidelityGroup(
+                        group=group_number,
+                        occurrences=numeric_occurrences,
+                    )
+                )
+
+            document_audit.issues.append(
+                DocumentFidelityIssue(
+                    issue_id=_generate_issue_id(),
+                    detector="entity_consistency_checker",
+                    issue_type="entity_inconsistency",
+                    resolution="flagged",
+                    groups=groups,
+                )
+            )
+            consolidated_coordinates.update(coordinates)
+
+        for audit in page_audits:
+            audit.issues = [
+                issue
+                for issue in audit.issues
+                if not (
+                    issue.issue_type == "entity_inconsistency"
+                    and issue.offset_start is not None
+                    and issue.offset_end is not None
+                    and issue.size is not None
+                    and (
+                        issue.page_number,
+                        issue.offset_start,
+                        issue.offset_end,
+                        issue.size,
+                    )
+                    in consolidated_coordinates
+                )
+            ]
+
+        return document_audit

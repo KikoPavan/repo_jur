@@ -5,8 +5,10 @@ from dataclasses import asdict
 import pytest
 
 from pipeline_juridico.hashing import sha256_file
-from pipeline_juridico.models import (ArtifactsInfo, InputInfo, Metodo, OcrInfo,
-    Phase1Info, Relatorio, ResultadoInfo, ResultadoPagina, RuntimeInfo, StatusExecucao)
+from pipeline_juridico.models import (ArtifactsInfo, DocumentFidelityAudit,
+    DocumentFidelityIssue, FidelityGroup, InputInfo, Metodo, NumericOccurrence,
+    OcrInfo, Phase1Info, Relatorio, ResultadoInfo, ResultadoPagina, RuntimeInfo,
+    StatusExecucao)
 from pipeline_juridico.report import (ReportContractError, attach_gate_result,
     build_candidate_report_json, build_ocr_info, build_page_result,
     build_report_json, build_runtime_info, compute_relevant_config_fingerprint,
@@ -30,7 +32,9 @@ def test_synchronized_report_model_is_available():
 
 def test_minimum_layout_and_page_wire_shape():
     data = _data()
-    assert set(data) == {"schema_version", "execution_id", "input", "phase1", "result", "artifacts", "pages", "telemetry"}
+    assert set(data) == {"schema_version", "execution_id", "input", "phase1", "result", "artifacts", "fidelity_audit", "pages", "telemetry"}
+    assert data["schema_version"] == "1.1"
+    assert data["fidelity_audit"] == {"issues": []}
     assert data["pages"][0] == {
         "page_number": 1,
         "method": "texto_nativo",
@@ -67,7 +71,7 @@ def test_sha256_fields_accept_lowercase_64_hex(input_sha256, markdown_sha256):
     validate_report_contract(data)
 
 
-@pytest.mark.parametrize("field", ["schema_version", "execution_id", "input", "phase1", "result", "artifacts", "pages", "telemetry"])
+@pytest.mark.parametrize("field", ["schema_version", "execution_id", "input", "phase1", "result", "artifacts", "fidelity_audit", "pages", "telemetry"])
 def test_required_top_level_fields(field):
     data = _data(); del data[field]
     with pytest.raises(ReportContractError, match=field): validate_report_contract(data)
@@ -204,6 +208,57 @@ def test_wrong_nested_field_types_name_offending_path(path, value):
         block, field = path.split(".")
         data[block][field] = value
     with pytest.raises(ReportContractError, match=re.escape(path)):
+        validate_report_contract(data)
+
+
+def test_schema_1_1_requires_document_fidelity_audit():
+    data = _data()
+    del data["fidelity_audit"]
+    with pytest.raises(ReportContractError, match="fidelity_audit"):
+        validate_report_contract(data)
+
+
+def test_result_warnings_remains_strictly_list_of_strings():
+    data = _data()
+    data["result"]["warnings"] = ["texto", {"issue_type": "entity_inconsistency"}]
+    with pytest.raises(ReportContractError, match=r"result\.warnings\[1\]"):
+        validate_report_contract(data)
+
+
+def test_document_fidelity_contract_accepts_only_numeric_occurrences():
+    report = _candidate()
+    report.fidelity_audit = DocumentFidelityAudit(issues=[
+        DocumentFidelityIssue(
+            issue_id="123e4567-e89b-42d3-a456-426614174000",
+            detector="entity_consistency_checker",
+            issue_type="entity_inconsistency",
+            resolution="flagged",
+            groups=[FidelityGroup(group=0, occurrences=[
+                NumericOccurrence(page_number=1, offset_start=0, offset_end=3, size=3)
+            ])],
+        )
+    ])
+    data = json.loads(build_report_json(attach_gate_result(report, quality_gate="PASS")))
+
+    validate_report_contract(data)
+
+    data["fidelity_audit"]["issues"][0]["groups"][0]["occurrences"][0]["text"] = "segredo"
+    with pytest.raises(ReportContractError, match="occurrences"):
+        validate_report_contract(data)
+
+
+def test_document_fidelity_coordinate_must_fit_its_page():
+    data = _data()
+    data["fidelity_audit"]["issues"] = [{
+        "issue_id": "123e4567-e89b-42d3-a456-426614174000",
+        "detector": "entity_consistency_checker",
+        "issue_type": "entity_inconsistency",
+        "resolution": "flagged",
+        "groups": [{"group": 0, "occurrences": [{
+            "page_number": 1, "offset_start": 0, "offset_end": 4, "size": 4,
+        }]}],
+    }]
+    with pytest.raises(ReportContractError, match="offset_end"):
         validate_report_contract(data)
 
 

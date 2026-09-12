@@ -1,5 +1,8 @@
 """Tests for the Fidelity and Uncertainty Control module."""
 
+from dataclasses import asdict
+import uuid
+
 import pytest
 from pipeline_juridico.fidelity import (
     FidelityManager,
@@ -83,6 +86,15 @@ def test_check_entity_consistency_names():
     check_entity_consistency("Águas de Santa Bárbara", 1, global_entities)
     issues_neg = check_entity_consistency("AGUAS DE SANTA BARBARA", 2, global_entities)
     assert len(issues_neg) == 0
+
+
+def test_entity_consistency_ignores_equivalent_line_breaks():
+    entities = {}
+    check_entity_consistency("Águas de Santa Bárbara", 1, entities)
+
+    issues = check_entity_consistency("AGUAS DE\nSANTA BARBARA", 2, entities)
+
+    assert issues == []
 
 
 def test_check_entity_consistency_siglas():
@@ -319,4 +331,101 @@ def test_check_entity_consistency_offset_precision_with_repeated_tokens_restored
     issues = check_entity_consistency(text_v2, 2, global_entities_v2)
     inconsistencies = [iss for iss in issues if iss.offset_start == 6]
     assert len(inconsistencies) == 1
-    assert inconsistencies[0].related_offsets == [6]
+    # Cross-page coordinates are not represented as page-local related offsets.
+    assert inconsistencies[0].related_offsets == []
+
+
+def test_entity_coordinates_resolve_exact_candidate_span():
+    previous = "FRANCISCO CARLOS PAVAN"
+    current = "Prefixo\n  FRANCICO CARLOS PAVAN no fim."
+    entities = {previous: (1, 900, ["francisco", "carlos", "pavan"])}
+
+    issues = check_entity_consistency(current, 2, entities)
+
+    assert len(issues) == 1
+    issue = issues[0]
+    assert current[issue.offset_start:issue.offset_end] == "FRANCICO CARLOS PAVAN"
+    assert issue.size == issue.offset_end - issue.offset_start
+    assert 0 <= issue.offset_start < issue.offset_end <= len(current)
+
+
+def test_entity_related_offsets_never_reinterpret_another_page_coordinate():
+    current = "FRANCICO CARLOS PAVAN"
+    entities = {
+        "FRANCISCO CARLOS PAVAN": (
+            1,
+            900,
+            ["francisco", "carlos", "pavan"],
+        )
+    }
+
+    issue = check_entity_consistency(current, 2, entities)[0]
+
+    assert issue.related_offsets == []
+    assert all(0 <= offset < len(current) for offset in issue.related_offsets)
+
+
+def test_entity_related_offset_resolves_compared_span_on_same_page():
+    text = "FRANCISCO CARLOS PAVAN e FRANCICO CARLOS PAVAN"
+    entities = {}
+
+    issues = check_entity_consistency(text, 1, entities)
+
+    assert len(issues) == 1
+    issue = issues[0]
+    related_start = issue.related_offsets[0]
+    assert text[related_start:related_start + len("FRANCISCO CARLOS PAVAN")] == (
+        "FRANCISCO CARLOS PAVAN"
+    )
+    assert text[issue.offset_start:issue.offset_end] == "FRANCICO CARLOS PAVAN"
+
+
+def test_cross_page_entity_conflict_is_one_private_document_issue():
+    manager = FidelityManager()
+    page_audits = []
+    texts = [
+        "FRANCISCO CARLOS PAVAN",
+        "FRANCICO CARLOS PAVAN",
+        "FRANCICO CARLOS PAVAN",
+    ]
+    for page_number, text in enumerate(texts, start=1):
+        _, audit = manager.apply_controls(text, page_number)
+        page_audits.append(audit)
+
+    document_audit = manager.consolidate_document_audit(page_audits)
+
+    assert len(document_audit.issues) == 1
+    issue = document_audit.issues[0]
+    assert uuid.UUID(issue.issue_id).version == 4
+    assert issue.detector == "entity_consistency_checker"
+    assert issue.issue_type == "entity_inconsistency"
+    occurrences = [
+        occurrence
+        for group in issue.groups
+        for occurrence in group.occurrences
+    ]
+    assert len(occurrences) == len(texts)
+    assert {occurrence.page_number for occurrence in occurrences} == {1, 2, 3}
+    assert all(
+        all(type(value) is int for value in asdict(occurrence).values())
+        for occurrence in occurrences
+    )
+    assert all(
+        local.issue_type != "entity_inconsistency"
+        for audit in page_audits
+        for local in audit.issues
+    )
+
+    serialized = asdict(document_audit)
+    forbidden = {"fingerprint", "hash", "token", "snippet", "content", "text"}
+
+    def assert_private(value):
+        if isinstance(value, dict):
+            assert forbidden.isdisjoint(value)
+            for nested in value.values():
+                assert_private(nested)
+        elif isinstance(value, list):
+            for nested in value:
+                assert_private(nested)
+
+    assert_private(serialized)

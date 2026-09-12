@@ -37,6 +37,34 @@ class FidelityAudit:
 
 
 @dataclass
+class NumericOccurrence:
+    page_number: int
+    offset_start: int
+    offset_end: int
+    size: int
+
+
+@dataclass
+class FidelityGroup:
+    group: int
+    occurrences: list[NumericOccurrence] = field(default_factory=list)
+
+
+@dataclass
+class DocumentFidelityIssue:
+    issue_id: str
+    detector: str
+    issue_type: str
+    resolution: str
+    groups: list[FidelityGroup] = field(default_factory=list)
+
+
+@dataclass
+class DocumentFidelityAudit:
+    issues: list[DocumentFidelityIssue] = field(default_factory=list)
+
+
+@dataclass
 class ResultadoPagina:
     page_number: int
     method: Metodo
@@ -107,11 +135,12 @@ class TimingInfo:
 
 @dataclass
 class Relatorio:
-    schema_version: str = "1.0"
+    schema_version: str = "1.1"
     execution_id: str = ""
     input: InputInfo | None = None
     phase1: Phase1Info | None = None
     result: ResultadoInfo | None = None
     artifacts: ArtifactsInfo | None = None
+    fidelity_audit: DocumentFidelityAudit = field(default_factory=DocumentFidelityAudit)
     pages: list[ResultadoPagina] = field(default_factory=list)
     telemetry: dict = field(default_factory=dict)

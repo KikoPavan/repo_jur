@@ -681,6 +681,13 @@ def convert_document(
         finished_at=finished_at.isoformat(),
         duration_ms=total_duration_ms,
     )
+    document_fidelity_audit = fidelity_manager.consolidate_document_audit(
+        [
+            page.fidelity_audit
+            for page in page_results
+            if page.fidelity_audit is not None
+        ]
+    )
     relatorio = Relatorio(
         execution_id=str(uuid.uuid4()),
         input=InputInfo(
@@ -699,6 +706,7 @@ def convert_document(
             ),
         ),
         artifacts=ArtifactsInfo(markdown_sha256=sha256_bytes(literal.encode("utf-8"))),
+        fidelity_audit=document_fidelity_audit,
         pages=page_results,
         telemetry={
             "runtime": asdict(runtime_info),
