@@ -1,16 +1,16 @@
 # Tasks: Entity Consistency Reporting Precision
 
 ## Acceptance Criteria
-- [ ] No offset or `related_offsets` falls out-of-bounds relative to its page `char_count`.
-- [ ] Every coordinate resolves exactly to the candidate span that the checker compared.
-- [ ] Case, accentuation, and line break variations that are considered equivalent do not generate noise.
-- [ ] A logical conflict repeated across multiple pages generates a single consolidated documental issue.
-- [ ] The `groups`/`occurrences` structure in the consolidated issue contains exclusively numeric coordinates (page, offset, size).
-- [ ] No legal content, token, or derived hash is present in the `fidelity_audit` JSON.
-- [ ] `result.warnings` remains exclusively `list[str]`.
-- [ ] Schema 1.1 is implemented for the new structure to satisfy strict key consumers.
-- [ ] Regressions for previous bugs (E032 and ESCRITURA4) continue passing.
-- [ ] Complete test suite, conformance suite, and `openspec validate --all --strict` pass.
+- [x] No offset or `related_offsets` falls out-of-bounds relative to its page `char_count`.
+- [x] Every coordinate resolves exactly to the candidate span that the checker compared.
+- [x] Case, accentuation, and line break variations that are considered equivalent do not generate noise.
+- [x] A logical conflict repeated across multiple pages generates a single consolidated documental issue.
+- [x] The `groups`/`occurrences` structure in the consolidated issue contains exclusively numeric coordinates (page, offset, size).
+- [x] No legal content, token, or derived hash is present in the `fidelity_audit` JSON.
+- [x] `result.warnings` remains exclusively `list[str]`.
+- [x] Schema 1.1 is implemented for the new structure to satisfy strict key consumers.
+- [x] Regressions for previous bugs (E032 and ESCRITURA4) continue passing.
+- [x] Complete test suite, conformance suite, and `openspec validate --all --strict` pass.
 
 ## Task 1: Offset Calculation Correctness
 - **Description**: Fix `entity_consistency_checker` indexation mapping. Ensure `offset_start`, `offset_end`, and `related_offsets` accurately point to the exact string spans being compared, respecting the boundaries of the string segment given to the checker.
