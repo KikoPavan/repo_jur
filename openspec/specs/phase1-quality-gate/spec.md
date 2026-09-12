@@ -39,12 +39,20 @@ The system SHALL NOT mutate, rename, or reorder any serialized field of the tech
 
 ### Requirement: Privacy-safe Fidelity Audit Contract
 
-The system SHALL ensure the `fidelity_audit` section of the technical report is strictly privacy-safe. It SHALL NOT store any plaintext content, names, words, snippets, or fingerprints derived from the source document (such as content hashes).
+The system SHALL ensure the `fidelity_audit` section of the technical report is strictly privacy-safe.
+It SHALL NOT store any plaintext content, names, words, snippets, or fingerprints derived from the source
+document (such as content hashes).
 
 #### Scenario: Fidelity issue contains only structural metadata
-- **WHEN** an OCR fidelity issue is detected (duplication, entity inconsistency, or uncertainty)
-- **THEN** the recorded issue contains only: `issue_id` (non-content-derived), `detector`, `issue_type`, `resolution`, `groups` (which must be strictly numeric coordinates), `page_number` (if page-local), `offset_start`, `offset_end`, `size`, and optionally `related_offsets`
+- **WHEN** a fidelity issue is detected (internal repetition, entity inconsistency, or uncertainty)
+- **THEN** the recorded issue contains only: `issue_id` (non-content-derived), `detector`, `issue_type`,
+  `resolution`, `groups` (which must be strictly numeric coordinates), `page_number` (if page-local),
+  `offset_start`, `offset_end`, `size`, and optionally `related_offsets`
 - **AND** it contains zero bytes of content-derived data
+- **AND** for the internal-repetition detector specifically, `issue_type` is recorded, under
+  `schema_version` `1.2`, as `internal_repetition` (under the legacy `schema_version` `1.1`, it is
+  recorded as `duplication`) — a neutral label describing repetition observed in the converted Markdown;
+  it does not assert that OCR or conversion caused the repetition
 
 ### Requirement: Quality Gate result contains only state, warnings, and errors
 
