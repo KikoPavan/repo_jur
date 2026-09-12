@@ -4,7 +4,8 @@
 
 - **Orquestrador — Claude Code:** lê `tasks.md` e `LOOPS.md`, seleciona a próxima subtarefa, prepara a instrução de execução, e é o **verificador final**: revisa o diff produzido pelo Codex, executa os testes novamente e valida o OpenSpec antes de aprovar. Não implementa código.
 - **Implementador — Codex:** cria os testes e implementa somente o código necessário para a subtarefa atual, dentro do escopo definido pelo orquestrador. Não marca tarefas como concluídas nem decide aprovação — isso é exclusivo do orquestrador.
-- **Gemini API:** serviço utilizado pelo pipeline para OCR e processamento multimodal. Não participa como agente do fluxo de desenvolvimento.
+- **Fallback do Orquestrador — Gemini:** somente assume as funções do Claude quando o provedor principal estiver indisponível, atingir limite de uso, rate-limit ou falhar. Deve continuar exatamente do ponto em que o Claude parou, preservando o mesmo papel de planejamento, documentação/OpenSpec e verificação final. Não implementa código; a implementação continua sendo responsabilidade exclusiva do Codex.
+- **Gemini API do pipeline:** serviço utilizado pelo pipeline para OCR e processamento multimodal. É independente do fallback de desenvolvimento e não participa como agente do fluxo de desenvolvimento.
 
 > Histórico: o OpenCode foi o implementador original e o Codex era o verificador. O OpenCode foi removido do fluxo em 2026-07-26 por instabilidade recorrente (travamentos sem progresso em chamadas headless), e o Codex passou a acumular o papel de implementador. Como o mesmo agente não deve implementar e aprovar sozinho, o Claude (orquestrador) assumiu a verificação final.
 
