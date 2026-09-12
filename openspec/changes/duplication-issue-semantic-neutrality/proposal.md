@@ -4,33 +4,18 @@
 
 ## Why
 `internal_repetition_detector` (`src/pipeline_juridico/fidelity.py::detect_duplications`) receives only
-the already-converted Markdown text and the page number. It has no access to the source PDF at
-detection/runtime. It can therefore only ever measure `repetition observed in the converted Markdown
-output` — a structural, purely textual fact. It cannot, by construction, determine whether that
-repetition was introduced by the OCR/conversion pipeline (a genuine defect) or already present in the
-source document (correct fidelity to a pre-existing defect).
+the converted Markdown and page number, with no source PDF access at runtime. It can only measure
+repetition observed in the output — it cannot tell whether that repetition was introduced by conversion
+or already present in the source.
 
-Despite this, the current contract uses causal language that asserts the former:
-- `openspec/specs/juridical-pdf-conversion/spec.md`, Requirement "Controle de Fidelidade e Incerteza
-  OCR" (line 657) and its scenario "Duplicação suspeita é sinalizada conservadoramente" (line 662):
-  `**WHEN** o OCR produz repetição substancial interna...` — asserts OCR as the cause of the repetition,
-  which the detector cannot verify.
-- The persisted `issue_type` value `"duplication"` itself asserts that something was duplicated (a
-  causal/procedural claim), rather than describing what was actually measured (a repeated span observed
-  in the output).
-- `tests/test_ocr_fidelity_precision.py::test_duplication_precision_real_values`, comment on line 22:
-  `# Positive: True substantial duplication (ESCRITURA4 Page 2 equivalent)` — this framing is stale.
-  The blocked change `duplication-context-precision` (see `../duplication-context-precision/proposal.md`
-  § "ESCRITURA4 p2 — reclassified, no longer a positive fixture") directly re-verified against the
-  rendered source PDF that this exact case is `source-count == output-count == 2`: a faithful
-  transcription of a duplication that already existed in the notarial instrument, not one introduced by
-  conversion. The test's own synthetic data doesn't reference a real document, but its comment
-  perpetuates the same causal confusion that the blocked change identified as the root conceptual issue.
+Despite this, the contract uses causal language: the spec scenario "Duplicação suspeita é sinalizada
+conservadoramente" says `**WHEN** o OCR produz repetição substancial interna...`, and the persisted
+`issue_type` value `"duplication"` implies the pipeline duplicated something. A test comment repeats the
+same stale framing. The blocked change `duplication-context-precision` found a case labeled "true
+duplication" was actually a faithful transcription of a source repetition, reinforcing that this
+detector cannot support causal attribution.
 
-This is purely a semantic/contract precision problem: what the system *claims* about what it detected
-does not match what the detector can actually prove. It is independent of, and does not require
-resolving, the evidence gap blocking `duplication-context-precision` (no positive control is needed to
-fix mislabeled causality — only to change detection *heuristics*, which this change does not touch).
+This is a semantic/contract precision problem, independent of `duplication-context-precision`.
 
 ## What Changes
 - Rename the persisted `issue_type` value from `"duplication"` to `internal_repetition` everywhere it is
