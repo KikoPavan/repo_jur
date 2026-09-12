@@ -33,7 +33,7 @@ o valor persistido é `duplication`) — o sistema SHALL NÃO afirmar, no relat�
 normativa, que o OCR ou a conversão causou a repetição — essa é uma afirmação causal que exigiria
 comparação explícita fonte-vs-saída, não realizada por este detector em tempo de execução.
 
-#### Scenario: Repetição interna substancial é sinalizada conservadoramente
+#### Scenario: Duplicação suspeita é sinalizada conservadoramente
 
 - **WHEN** o sistema detecta repetição substancial interna (acima de 100 caracteres) no Markdown
   convertido, na mesma página
