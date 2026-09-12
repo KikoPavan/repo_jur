@@ -140,7 +140,7 @@ def validate_report_contract(data: dict) -> None:
         value = _require_field(data, field, field)
         _require_type(value, expected_type, field)
 
-    if data["schema_version"] == "1.1":
+    if data["schema_version"] in {"1.1", "1.2"}:
         fidelity_audit = _require_field(data, "fidelity_audit", "fidelity_audit")
         _validate_object_fields(
             fidelity_audit,
@@ -273,7 +273,7 @@ def validate_report_contract(data: dict) -> None:
     ):
         raise ReportContractError("Inventário de páginas incompleto")
 
-    if data["schema_version"] == "1.1":
+    if data["schema_version"] in {"1.1", "1.2"}:
         _validate_document_fidelity_audit(data["fidelity_audit"], data["pages"])
 
 

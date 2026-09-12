@@ -90,7 +90,7 @@ def detect_duplications(text: str, page_number: int) -> list[FidelityIssue]:
                 issues.append(
                     FidelityIssue(
                         issue_id=_generate_issue_id(),
-                        issue_type="duplication",
+                        issue_type="internal_repetition",
                         detector="internal_repetition_detector",
                         page_number=page_number,
                         size=match_len,

@@ -23,6 +23,6 @@ def test_relatorio_wire_keys():
 
 def test_relatorio_defaults():
     report = Relatorio()
-    assert report.schema_version == "1.1"
+    assert report.schema_version == "1.2"
     assert report.fidelity_audit == DocumentFidelityAudit()
     assert report.telemetry == {}

@@ -32,7 +32,7 @@ def test_detect_duplications_basic():
     text = block + " " + block
     issues = detect_duplications(text, 1)
     assert len(issues) == 1
-    assert issues[0].issue_type == "duplication"
+    assert issues[0].issue_type == "internal_repetition"
 
     # Minimal distance/stutter (overlap) - should not flag as substantial duplication
     stutter = "A" * 240
@@ -150,7 +150,7 @@ def test_detect_duplications_internal():
     text = f"Início do documento. {snippet} {padding} {snippet} Fim."
     issues = detect_duplications(text, page_number=1)
     assert len(issues) >= 1
-    assert issues[0].issue_type == "duplication"
+    assert issues[0].issue_type == "internal_repetition"
     assert issues[0].detector == "internal_repetition_detector"
     assert issues[0].issue_id is not None
 

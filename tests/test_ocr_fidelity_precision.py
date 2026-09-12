@@ -19,14 +19,14 @@ from pipeline_juridico.report import validate_report_contract
 def test_duplication_precision_real_values():
     manager = FidelityManager()
 
-    # Positive: True substantial duplication (ESCRITURA4 Page 2 equivalent)
+    # Positive: synthetic text with one substantial nearby repeated span
     # match_len=201, distance=406, gap=205.
     # 205 <= 1.5 * 201 (301.5) -> POSITIVE
     block = "".join(chr(65 + (i % 26)) for i in range(201))
     padding = " " * (406 - 201)
     text_p2 = block + padding + block
     _, audit = manager.apply_controls(text_p2, 2)
-    dups = [i for i in audit.issues if i.issue_type == "duplication"]
+    dups = [i for i in audit.issues if i.issue_type == "internal_repetition"]
     assert len(dups) == 1
     off1, off2 = dups[0].related_offsets
     assert abs(off1 - 0) < 120
@@ -38,7 +38,7 @@ def test_duplication_precision_real_values():
     padding_h = " " * (1286 - 230)
     text_p8 = block_h + padding_h + block_h
     _, audit = manager_p8.apply_controls(text_p8, 8)
-    dups = [i for i in audit.issues if i.issue_type == "duplication"]
+    dups = [i for i in audit.issues if i.issue_type == "internal_repetition"]
     assert len(dups) == 0
 
 
@@ -138,7 +138,7 @@ def test_duplication_precision_restored():
     block = "O imóvel localizado na Rua das Palmeiras, nº 100, bairro Centro, possui área total de 500m2 e está registrado sob a matrícula 99.887 no Cartório de Registro de Imóveis da Capital. "
     text_tp = block + "\n\n" + block
     _, audit = manager.apply_controls(text_tp, 2)
-    dups = [i for i in audit.issues if i.issue_type == "duplication"]
+    dups = [i for i in audit.issues if i.issue_type == "internal_repetition"]
     assert len(dups) >= 1
 
     text_fp_varied = (
@@ -149,7 +149,7 @@ def test_duplication_precision_restored():
         "Matrícula nº 123.457 do Cartório de Registro de Imóveis. "
     )
     _, audit = manager.apply_controls(text_fp_varied, 5)
-    dups = [i for i in audit.issues if i.issue_type == "duplication"]
+    dups = [i for i in audit.issues if i.issue_type == "internal_repetition"]
     assert len(dups) == 0
 
 

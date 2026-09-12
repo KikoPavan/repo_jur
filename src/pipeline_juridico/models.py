@@ -21,7 +21,7 @@ class StatusExecucao(str, Enum):
 @dataclass
 class FidelityIssue:
     issue_id: str
-    issue_type: str  # duplication, entity_inconsistency, sensitive_token_uncertainty, visual_uncertainty
+    issue_type: str  # internal_repetition, entity_inconsistency, sensitive_token_uncertainty, visual_uncertainty
     detector: str
     page_number: int
     offset_start: int | None = None
@@ -135,7 +135,7 @@ class TimingInfo:
 
 @dataclass
 class Relatorio:
-    schema_version: str = "1.1"
+    schema_version: str = "1.2"
     execution_id: str = ""
     input: InputInfo | None = None
     phase1: Phase1Info | None = None

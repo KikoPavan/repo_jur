@@ -33,7 +33,7 @@ def test_synchronized_report_model_is_available():
 def test_minimum_layout_and_page_wire_shape():
     data = _data()
     assert set(data) == {"schema_version", "execution_id", "input", "phase1", "result", "artifacts", "fidelity_audit", "pages", "telemetry"}
-    assert data["schema_version"] == "1.1"
+    assert data["schema_version"] == "1.2"
     assert data["fidelity_audit"] == {"issues": []}
     assert data["pages"][0] == {
         "page_number": 1,
@@ -216,6 +216,39 @@ def test_schema_1_1_requires_document_fidelity_audit():
     del data["fidelity_audit"]
     with pytest.raises(ReportContractError, match="fidelity_audit"):
         validate_report_contract(data)
+
+
+def test_schema_1_2_with_document_fidelity_audit_is_valid():
+    data = _data()
+    data["schema_version"] = "1.2"
+
+    validate_report_contract(data)
+
+
+def test_legacy_schema_versions_remain_valid():
+    schema_1_0 = _data()
+    schema_1_0["schema_version"] = "1.0"
+    del schema_1_0["fidelity_audit"]
+    validate_report_contract(schema_1_0)
+
+    schema_1_1 = _data()
+    schema_1_1["schema_version"] = "1.1"
+    schema_1_1["pages"][0]["fidelity_audit"] = {
+        "issues": [
+            {
+                "issue_id": "123e4567-e89b-42d3-a456-426614174000",
+                "detector": "internal_repetition_detector",
+                "issue_type": "duplication",
+                "page_number": 1,
+                "resolution": "flagged",
+                "offset_start": 0,
+                "offset_end": 3,
+                "size": 3,
+                "related_offsets": [0],
+            }
+        ]
+    }
+    validate_report_contract(schema_1_1)
 
 
 def test_result_warnings_remains_strictly_list_of_strings():
