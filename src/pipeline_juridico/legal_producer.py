@@ -22,7 +22,11 @@ from .contracts import (
 )
 from .domain_router import RoutingDecision
 from .hashing import sha256_file
-from .legal_semantic_review import ReviewResult, ReviewState
+from .legal_semantic_review import (
+    ReviewResult,
+    ReviewState,
+    _has_numbered_act_pattern,
+)
 from .report import ReportContractError, validate_report_contract
 from .validator import write_atomic
 
@@ -477,6 +481,8 @@ def validate_candidate(candidate: ConceptCandidate) -> None:
         has_num = "repo_jur_lei_numero" in frontmatter
         has_ano = "repo_jur_lei_ano" in frontmatter
         if (has_num and not has_ano) or (has_ano and not has_num):
+            raise LegalProducerBlockedError("missing conditional mandatory field repo_jur_lei_numero or repo_jur_lei_ano", reason="review_required")
+        if _has_numbered_act_pattern(candidate.body) and (not has_num or not has_ano):
             raise LegalProducerBlockedError("missing conditional mandatory field repo_jur_lei_numero or repo_jur_lei_ano", reason="review_required")
 
     elif candidate.type is LegalConceptType.Jurisprudencia:

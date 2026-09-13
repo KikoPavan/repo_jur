@@ -90,6 +90,16 @@ _GATE_VOCABULARY = frozenset(state.value for state in GateState)
 _ELIGIBLE_GATES = frozenset(
     {GateState.PASS, GateState.PASS_WITH_WARNINGS}
 )
+_NUMBERED_ACT_PATTERN = re.compile(
+    r"\b(?:LEI|DECRETO|MEDIDA\s+PROVIS[ÓO]RIA)\s*"
+    r"(?:COMPLEMENTAR\s*)?(?:N[º°\.]?|No|NUMERO)\b",
+    re.IGNORECASE,
+)
+
+
+def _has_numbered_act_pattern(markdown: str) -> bool:
+    """Return whether the Markdown contains the existing numbered-act signal."""
+    return _NUMBERED_ACT_PATTERN.search(markdown) is not None
 
 
 def _recorded_gate_outcome(report_json: str) -> GateState:
@@ -422,19 +432,16 @@ def _deterministic_extract(markdown: str) -> list[ExtractedField]:
     # Tema:
     # Extract TemaJuridico fields:
     # Look for "Tema <numero>" or "Tema Repetitivo <numero>" or "Tema de Repercussão Geral <numero>"
-    tema_num = None
-    tema_page = None
+    tema_occurrences: dict[str, str] = {}
     for page_num, page_text in pages:
-        match = re.search(r"\bTema\s*(?:Repetitivo|de\s+Repercussão\s+Geral)?\s*(?:n[º°\.]?)?\s*(\d+)\b", page_text, re.IGNORECASE)
-        if match:
-            tema_num = match.group(1)
-            tema_page = page_num
-            break
+        for match in re.finditer(r"\bTema\s*(?:Repetitivo|de\s+Repercussão\s+Geral)?\s*(?:n[º°\.]?)?\s*(\d+)\b", page_text, re.IGNORECASE):
+            tema_occurrences.setdefault(match.group(1), page_num)
 
-    if tema_num:
-        extracted.append(ExtractedField("repo_jur_tema_numero", tema_num, (tema_page,) if tema_page is not None else ()))
+    if len(tema_occurrences) == 1:
+        tema_num, tema_page = next(iter(tema_occurrences.items()))
+        extracted.append(ExtractedField("repo_jur_tema_numero", tema_num, (tema_page,)))
         if tribunal:
-            extracted.append(ExtractedField("repo_jur_tribunal", tribunal, (tema_page,) if tema_page is not None else ()))
+            extracted.append(ExtractedField("repo_jur_tribunal", tribunal, (tema_page,)))
 
     # Precedente:
     # If there are precedents mentioned, extract them strictly from the text
@@ -592,29 +599,6 @@ class LegalSemanticReviewEngine:
             state = ReviewState.OK
 
         extracted_fields = _deterministic_extract(phase1_artifacts.markdown)
-        extracted_names = {f.name for f in extracted_fields}
-
-        # Check if there's a numbered act pattern in the text but we are missing number or year
-        has_numbered_act_pattern = False
-        # Split markdown into pages to scan for numbered act patterns
-        matches_pages = list(re.finditer(r"\[\[Pág\.\s*(\d+)\]\]", phase1_artifacts.markdown))
-        pages_list = []
-        if not matches_pages:
-            pages_list.append(phase1_artifacts.markdown)
-        else:
-            for idx, match_p in enumerate(matches_pages):
-                start_p = match_p.end()
-                end_p = matches_pages[idx+1].start() if idx + 1 < len(matches_pages) else len(phase1_artifacts.markdown)
-                pages_list.append(phase1_artifacts.markdown[start_p:end_p])
-
-        for page_text in pages_list:
-            if re.search(r"\b(?:LEI|DECRETO|MEDIDA\s+PROVIS[ÓO]RIA)\s*(?:COMPLEMENTAR\s*)?(?:N[º°\.]?|No|NUMERO)\b", page_text, re.IGNORECASE):
-                has_numbered_act_pattern = True
-                break
-
-        if has_numbered_act_pattern:
-            if "repo_jur_lei_numero" not in extracted_names or "repo_jur_lei_ano" not in extracted_names:
-                state = ReviewState.REVIEW_REQUIRED
 
         return ReviewResult(
             state=state,

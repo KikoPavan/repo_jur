@@ -22,6 +22,7 @@ from pipeline_juridico.legal_semantic_review import (
     LegalSemanticReviewEngine,
     ReviewResult,
     ReviewState,
+    _deterministic_extract,
 )
 
 
@@ -341,16 +342,31 @@ def test_semantic_review_extracts_beyond_page_3() -> None:
     assert num_field.page_refs == ("5",)
 
 
-def test_semantic_review_incomplete_numbered_act_review_required() -> None:
-    from pipeline_juridico.legal_semantic_review import LegalSemanticReviewEngine, LegalReviewProfile, ReviewState
-    from pipeline_juridico.contracts import Phase1Artifacts
-    import json
-
-    # Text recognized as numbered act ("LEI COMPLEMENTAR Nº ...") but missing year desu~!
+def test_semantic_review_does_not_enforce_numbered_act_completeness() -> None:
     markdown = "[[Pág. 1]]\nLEI COMPLEMENTAR Nº 123"
-    artifacts = Phase1Artifacts(markdown, json.dumps({"result": {"quality_gate": "PASS"}}))
-    profile = LegalReviewProfile("default", "1.0", ())
+    result = LegalSemanticReviewEngine().review(
+        _artifacts(markdown=markdown), _profile()
+    )
 
-    result = LegalSemanticReviewEngine().review(artifacts, profile)
-    # Must result in REVIEW_REQUIRED desu~!
-    assert result.state == ReviewState.REVIEW_REQUIRED
+    assert result.state is ReviewState.OK
+
+
+def test_deterministic_extract_omits_ambiguous_tema_identity() -> None:
+    markdown = (
+        "[[Pág. 1]]\nTema n. 434\n"
+        "[[Pág. 2]]\nTema n. 988 e Tema n. 1089\n"
+    )
+
+    extracted = _deterministic_extract(markdown)
+
+    assert not any(field.name == "repo_jur_tema_numero" for field in extracted)
+
+
+def test_deterministic_extract_keeps_single_tema_identity() -> None:
+    markdown = "[[Pág. 7]]\nSTJ - Tema n. 988\n"
+
+    extracted = _deterministic_extract(markdown)
+    tema = next(field for field in extracted if field.name == "repo_jur_tema_numero")
+
+    assert tema.value == "988"
+    assert tema.page_refs == ("7",)

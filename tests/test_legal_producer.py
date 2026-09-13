@@ -835,18 +835,123 @@ def test_audit_non_numbered_not_rejected() -> None:
 
 
 def test_audit_incomplete_numbered_act_blocks() -> None:
-    from pipeline_juridico.legal_semantic_review import LegalSemanticReviewEngine, LegalReviewProfile, ReviewState
-    from pipeline_juridico.contracts import Phase1Artifacts
-    import json
+    from pipeline_juridico.legal_producer import (
+        ConceptCandidate,
+        LegalConceptType,
+        LegalProducerBlockedError,
+        validate_candidate,
+    )
 
-    # Act recognized as numbered ("LEI COMPLEMENTAR Nº ...") but missing year desu~!
-    markdown = "[[Pág. 1]]\nLEI COMPLEMENTAR Nº 123"
-    artifacts = Phase1Artifacts(markdown, json.dumps({"result": {"quality_gate": "PASS"}}))
-    profile = LegalReviewProfile("default", "1.0", ())
+    candidate = ConceptCandidate(
+        LegalConceptType.Legislacao,
+        {
+            "type": "Legislacao",
+            "generated": {"by": "repo_jur_producer/1.0"},
+            "repo_jur_lei_esfera": "federal",
+            "repo_jur_lei_tipo": "complementar",
+        },
+        "[[Pág. 1]]\nLEI COMPLEMENTAR Nº 123",
+        Path("test.md"),
+    )
 
-    result = LegalSemanticReviewEngine().review(artifacts, profile)
-    # Must set REVIEW_REQUIRED state desu~!
-    assert result.state == ReviewState.REVIEW_REQUIRED
+    with pytest.raises(LegalProducerBlockedError) as exc_info:
+        validate_candidate(candidate)
+
+    assert exc_info.value.reason == "review_required"
+    assert str(exc_info.value) == (
+        "missing conditional mandatory field "
+        "repo_jur_lei_numero or repo_jur_lei_ano"
+    )
+
+
+@pytest.mark.parametrize(
+    ("concept_type", "citation", "required_fields"),
+    [
+        ("TemaJuridico", "Lei n. 11.636/2007", ()),
+        (
+            "Jurisprudencia",
+            "Lei n. 7.347/1985",
+            (
+                ExtractedField("repo_jur_processo_numero", "REsp 123/SP", ("1",)),
+                ExtractedField("repo_jur_tribunal", "STJ", ("1",)),
+                ExtractedField("repo_jur_relator", "MARIA SILVA", ("1",)),
+                ExtractedField("repo_jur_data_julgamento", "2026-09-13", ("1",)),
+            ),
+        ),
+        (
+            "PrecedenteVinculante",
+            "Lei n. 8.429/92",
+            (
+                ExtractedField("repo_jur_precedente_numero", "42", ("1",)),
+                ExtractedField("repo_jur_precedente_status", "ativo", ("1",)),
+                ExtractedField("repo_jur_tribunal", "STF", ("1",)),
+            ),
+        ),
+    ],
+)
+def test_non_legislacao_citation_does_not_block_production(
+    evidence: Path,
+    tmp_path: Path,
+    concept_type: str,
+    citation: str,
+    required_fields: tuple[ExtractedField, ...],
+) -> None:
+    from pipeline_juridico.legal_producer import produce
+    from pipeline_juridico.legal_semantic_review import (
+        LegalReviewProfile,
+        LegalSemanticReviewEngine,
+    )
+
+    markdown = f"[[Pág. 1]]\n<!-- método: texto_nativo -->\nReferência: {citation}.\n"
+    artifacts = _artifacts(evidence, markdown=markdown)
+    semantic_review = LegalSemanticReviewEngine().review(
+        artifacts, LegalReviewProfile("test", "1.0", ())
+    )
+    review = replace(
+        semantic_review,
+        extracted_fields=semantic_review.extracted_fields + required_fields,
+    )
+
+    result = produce(
+        artifacts,
+        _decision(),
+        review,
+        _context(evidence, concept_type),
+        bundle_root=tmp_path / "bundle",
+    )
+
+    assert result.candidate is not None
+    assert result.candidate.type.value == concept_type
+
+
+def test_ambiguous_tema_citations_do_not_become_candidate_identity(
+    evidence: Path, tmp_path: Path
+) -> None:
+    from pipeline_juridico.legal_producer import produce
+    from pipeline_juridico.legal_semantic_review import (
+        LegalReviewProfile,
+        LegalSemanticReviewEngine,
+    )
+
+    markdown = (
+        "[[Pág. 1]]\n<!-- método: texto_nativo -->\nTema n. 434\n"
+        "[[Pág. 2]]\n<!-- método: texto_nativo -->\nTema n. 988 e Tema n. 1089\n"
+    )
+    artifacts = _artifacts(evidence, markdown=markdown)
+    review = LegalSemanticReviewEngine().review(
+        artifacts, LegalReviewProfile("test", "1.0", ())
+    )
+
+    result = produce(
+        artifacts,
+        _decision(),
+        review,
+        _context(evidence, "TemaJuridico"),
+        bundle_root=tmp_path / "bundle",
+    )
+
+    assert result.candidate is not None
+    assert "repo_jur_tema_numero" not in result.candidate.frontmatter
 
 
 def test_audit_extension_unknown_keys_preserved() -> None:
