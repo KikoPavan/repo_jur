@@ -32,5 +32,5 @@
 
 ## 6. Orchestrator-only follow-up (not part of Codex's implementation scope)
 
-- [ ] 6.1 Claude reviews the full diff, independently re-runs all verification commands, and confirms the Legislacao true-positive block (Requirement scenario "Legislacao with an incomplete numbered act still blocks") still functions correctly.
-- [ ] 6.2 Claude prepares the final report (root cause, before/after, test counts, reproduction result, residual risks, `git status --short`, READY/NOT READY decision) for human review. No commit, archive, or push without explicit human authorization.
+- [x] 6.1 Claude reviews the full diff, independently re-runs all verification commands, and confirms the Legislacao true-positive block (Requirement scenario "Legislacao with an incomplete numbered act still blocks") still functions correctly.
+- [x] 6.2 Claude prepares the final report (root cause, before/after, test counts, reproduction result, residual risks, `git status --short`, READY/NOT READY decision) for human review. No commit, archive, or push without explicit human authorization.
