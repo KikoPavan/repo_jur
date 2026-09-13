@@ -1,6 +1,6 @@
 # Design: Duplication Context Precision
 
-## Status: BLOCKED — see `proposal.md` § Blocked / Evidence Gap. No implementation authorized.
+## Status: CLOSED WITHOUT IMPLEMENTATION — see `proposal.md` § Status. No implementation authorized, and none will be pursued under this change (see `tasks.md`).
 
 ## Cross-reference note (added by `duplication-issue-semantic-neutrality`, documentation only)
 As of `duplication-issue-semantic-neutrality`, the persisted `issue_type` value emitted by

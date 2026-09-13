@@ -1,6 +1,15 @@
 # Proposal: Duplication Context Precision
 
-## Status: BLOCKED — no verified positive control (see Blocked / Evidence Gap)
+## Status: CLOSED WITHOUT IMPLEMENTATION — Task 1 exit condition (b) met (re-verified 2026-09-13; see `tasks.md`)
+
+Independent re-verification (2026-09-13, orchestrator/Claude): a fresh sweep of the full current
+corpus (105 `*.report.json` files across `logs/`, `logs/processos_auditoria_corrigidos/`,
+`logs/processos_auditoria_final/`) for `issue_type` `duplication`/`internal_repetition` reproduced
+exactly the same two files and three issues documented below — no new candidate. No code or test
+was changed as part of this closure (documentation-only, as authorized by "Scope" below). This
+change requires no further action other than human review for archive; CONTRSOCIAL8 p4/p19 remain
+documented, unresolved false positives that a *future* change may revisit if a genuine
+`source-once → output-twice` case is ever obtained.
 
 ## Cross-reference note (added by `duplication-issue-semantic-neutrality`, documentation only)
 As of `duplication-issue-semantic-neutrality`, the persisted `issue_type` value emitted by
