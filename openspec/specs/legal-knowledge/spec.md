@@ -60,7 +60,7 @@ The system SHALL NOT modify, rewrite, autocorrect, complete, paraphrase, transla
 
 ### Requirement: Legal Semantic Review is bounded-context-specific and engine-neutral
 
-The system SHALL expose the Legal Semantic Review as a seam with an engine interface, consuming the Phase 1 artifacts read-only plus a review profile, and returning a review result. The review SHALL be specific to the Legal Knowledge bounded context: it SHALL NOT import, construct, or reference Judicial-Process schemas, classifiers, or enrichment models, and SHALL NOT depend on any specific conversion engine, OCR provider, OCR model, LLM model, LLM provider, or LLM prompt.
+The system SHALL expose the Legal Semantic Review as a seam with an engine interface, consuming the Phase 1 artifacts read-only plus a review profile, and returning a review result. The review SHALL be specific to the Legal Knowledge bounded context: it SHALL NOT import, construct, or reference Judicial-Process schemas, classifiers, or enrichment models, and SHALL NOT depend on any specific conversion engine, OCR provider, OCR model, LLM model, LLM provider, or LLM prompt. The Legal Semantic Review SHALL NOT receive or depend on the operator's explicit `ProducerContext`/concept `type`, and SHALL NOT enforce any type-specific mandatory-field completeness rule (such as Legislacao numbered-act completeness) purely from generic content signals found anywhere in the document; such type-specific enforcement belongs exclusively to the Legal Producer, which alone knows the explicit `type`.
 
 #### Scenario: Review executes through the engine seam
 
@@ -72,6 +72,12 @@ The system SHALL expose the Legal Semantic Review as a seam with an engine inter
 
 - **WHEN** the Legal Semantic Review implementation source is inspected
 - **THEN** it references no Judicial-Process schema, no LLM or semantic-model client, no OCR provider, and no conversion engine
+
+#### Scenario: Review does not force REVIEW_REQUIRED from a generic legislative citation
+
+- **WHEN** the Legal Semantic Review executes against Phase 1 artifacts whose body cites one or more numbered legislative acts, regardless of the eventual concept `type`
+- **THEN** the review state is not forced to `REVIEW_REQUIRED` merely because a numbered-act citation pattern is present and `repo_jur_lei_numero`/`repo_jur_lei_ano` were not extracted
+- **AND** any Legislacao-specific completeness enforcement is left to the Legal Producer
 
 ### Requirement: Legal Semantic Review result carries structured review output only
 
@@ -252,7 +258,7 @@ The system SHALL strictly enforce and validate the domain-specific fields for ea
    - `repo_jur_data_julgamento` (String YYYY-MM-DD, Mandatory): The date of judgment.
    - `repo_jur_ramo_direito` (String, Recommended): The branch of law.
 3. **TemaJuridico**
-   - `repo_jur_tema_numero` (String, Conditional Mandatory): Mandatory if representing an official numbered theme.
+   - `repo_jur_tema_numero` (String, Conditional Mandatory): Mandatory if representing an official numbered theme. This field SHALL be extracted only when the source document presents exactly one distinct, unambiguous Tema-number citation across its entire content; when two or more distinct Tema numbers are cited (e.g. a thematic compilation citing multiple theses, each referencing its own Tema), the system SHALL NOT extract `repo_jur_tema_numero` and SHALL treat the field as safely absent rather than silently selecting any one citation.
    - `repo_jur_tribunal` (String, Conditional Mandatory): Mandatory if representing an official court theme.
 4. **PrecedenteVinculante**
    - `repo_jur_precedente_numero` (String, Mandatory): The precedent/sumula number.
@@ -262,6 +268,8 @@ The system SHALL strictly enforce and validate the domain-specific fields for ea
 The system SHALL reject any legacy, un-prefixed, or inappropriate fields including `jurisdicao`, `ambito`, `tipo_norma`, `ementa`, `tema`, `subtema`, `tese_fixada`, `tribunal` (without prefix), and `relator` (without prefix). Under the FROZEN profile, both `title` and `description` are recommended but not mandatory. `title` is permitted/recommended but not guaranteed to have deterministic initial population, and `description` is optional with no initial automation required. Neither field is required to appear in the real-corpus acceptance assertion.
 
 Every automatically extracted metadata field MUST carry physical page references mapped via page_refs matching the [[Pág. N]] markers from which the text was deterministic-extracted. These page references are transient and persisted only in operational logs/JSON reports, never written to the canonical YAML frontmatter. Any cognitive/LLM classification or metadata inference is strictly prohibited. If a mandatory field cannot be deterministic-extracted, the Producer run MUST be aborted with exit code 5 (blocked) and NO publication SHALL occur.
+
+The Legislacao-specific numbered-act completeness check (detecting a numbered-act citation pattern in the candidate body and requiring `repo_jur_lei_numero`/`repo_jur_lei_ano` to have been extracted) SHALL be enforced exclusively by the Legal Producer's candidate validation, gated strictly on the candidate's explicit `type` being `Legislacao`. This check SHALL NOT be enforced by the Legal Semantic Review, and SHALL NOT be applied to `Jurisprudencia`, `TemaJuridico`, or `PrecedenteVinculante` candidates merely because their body cites legislation.
 
 #### Scenario: Candidate carries valid frontmatter and preserved body
 
@@ -293,6 +301,37 @@ Every automatically extracted metadata field MUST carry physical page references
 - **WHEN** the pipeline processes the real-corpus document `L10.406_CC_2002.pdf` as `Legislacao`
 - **THEN** the deterministic extractor successfully populates `repo_jur_lei_numero` with `"10406"`, `repo_jur_lei_ano` with `2002`, `repo_jur_lei_esfera` with `"federal"`, and `repo_jur_lei_tipo` with `"ordinaria"`
 - **AND** the resulting concept frontmatter contains exactly these canonical fields, with any optional fields like `title` and `description` or `generated.at` being omitted or formatted strictly per profile rules, and contains no legacy fields
+
+#### Scenario: TemaJuridico citing legislation does not falsely require review
+
+- **WHEN** a `TemaJuridico` candidate body cites a numbered law (e.g. `Lei n. 11.636/2007`) purely as a reference within a thesis, and the candidate's other `TemaJuridico` mandatory-field rules are satisfied
+- **THEN** the Producer does not block on the Legislacao-specific numbered-act completeness check
+- **AND** the candidate builds successfully
+
+#### Scenario: Jurisprudencia and PrecedenteVinculante citing legislation do not falsely require review
+
+- **WHEN** a `Jurisprudencia` or `PrecedenteVinculante` candidate body cites one or more numbered laws as legal grounding
+- **THEN** the Producer does not block on the Legislacao-specific numbered-act completeness check
+- **AND** the candidate builds successfully provided its own type-specific mandatory fields are satisfied
+
+#### Scenario: Legislacao with an incomplete numbered act still blocks
+
+- **WHEN** the producer context explicitly selects `type: Legislacao` and the candidate body contains a numbered-act citation pattern (e.g. `LEI COMPLEMENTAR Nº 123`) but `repo_jur_lei_numero` or `repo_jur_lei_ano` could not be deterministic-extracted
+- **THEN** the Producer blocks the run with the human-review-required outcome
+- **AND** no concept candidate is published
+
+#### Scenario: Ambiguous internal Tema citations do not produce a silent identity
+
+- **WHEN** a `TemaJuridico` candidate body cites two or more distinct `Tema n. N` numbers as internal cross-references (e.g. `Tema n. 434`, `Tema n. 988`, `Tema n. 1089`) without unambiguous structural evidence that the document itself represents exactly one of those themes
+- **THEN** `repo_jur_tema_numero` is not extracted and is absent from the candidate frontmatter
+- **AND** the Producer does not silently select any one of the cited numbers as positional identity
+- **AND** the run does not fail solely because of this omission when `repo_jur_tema_numero` is not otherwise required
+
+#### Scenario: Unambiguous single-Tema document still extracts its Tema number
+
+- **WHEN** a `TemaJuridico` candidate body contains exactly one distinct `Tema n. N` citation across its entire content
+- **THEN** `repo_jur_tema_numero` is extracted deterministically with that single value
+- **AND** the associated `repo_jur_tribunal` field is populated as today when available
 
 ### Requirement: Producer never mutates lifecycle fields it does not own
 
