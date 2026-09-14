@@ -167,7 +167,11 @@ def _detect_publication_ramo_principal(pages: list[tuple[str, str]]) -> tuple[st
     return ramo, page_num
 
 
-def _deterministic_extract(markdown: str) -> list[ExtractedField]:
+def _deterministic_extract(
+    markdown: str,
+    *,
+    leading_page: str | int | None = None,
+) -> list[ExtractedField]:
     MONTHS = {
         "janeiro": "01", "fevereiro": "02", "março": "03", "marco": "03",
         "abril": "04", "maio": "05", "junho": "06", "julho": "07",
@@ -181,6 +185,9 @@ def _deterministic_extract(markdown: str) -> list[ExtractedField]:
     if not matches:
         pages.append(("1", markdown))
     else:
+        if matches[0].start() > 0:
+            page_num = str(leading_page) if leading_page is not None else matches[0].group(1)
+            pages.append((page_num, markdown[:matches[0].start()]))
         for i, match in enumerate(matches):
             page_num = match.group(1)
             start_pos = match.end()

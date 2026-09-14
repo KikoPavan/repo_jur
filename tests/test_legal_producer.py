@@ -133,6 +133,63 @@ def _valid_legislacao_fields() -> tuple[ExtractedField, ...]:
     )
 
 
+def _precedent_segment(number: int, page: int = 1):
+    from pipeline_juridico.legal_source_segmentation import Segment
+
+    body = (
+        f"Tema Repetitivo {number}  Situação Afetado  Órgão Primeira Seção\n"
+        f"[[Pág. {page}]]\nRegistro relativo ao Tema {number}/STJ.\n"
+    )
+    return Segment(
+        f"segment-{number:04d}", f"rótulo operacional {number}", body, page, page,
+        "precedentes-qualificados-tema-repetitivo-v1",
+    )
+
+
+def test_base_candidate_segment_none_is_exact_legacy_behavior(evidence: Path, tmp_path: Path) -> None:
+    from pipeline_juridico.legal_producer import _base_candidate, _report
+
+    artifacts = _artifacts(evidence)
+    review = _review(extracted=_valid_legislacao_fields())
+    args = (artifacts, _report(artifacts), review, _context(evidence), tmp_path / "bundle")
+    assert _base_candidate(*args, segment=None) == _base_candidate(*args)
+
+
+def test_base_candidate_uses_resolved_segment_body_identity_and_shared_hash(
+    evidence: Path, tmp_path: Path,
+) -> None:
+    from pipeline_juridico.legal_producer import _base_candidate, _report
+
+    artifacts = _artifacts(evidence, markdown="[[Pág. 1]]\nwhole document must not leak\n")
+    context = _context(evidence, "PrecedenteVinculante")
+    report = _report(artifacts)
+    first = _base_candidate(artifacts, report, _review(), context, tmp_path / "bundle", segment=_precedent_segment(692))
+    second = _base_candidate(artifacts, report, _review(), context, tmp_path / "bundle", segment=_precedent_segment(1016, 2))
+    assert first.body == _precedent_segment(692).body
+    assert "whole document" not in first.body
+    assert first.frontmatter["repo_jur_precedente_numero"] == "692"
+    assert first.frontmatter["repo_jur_pdf_hash"] == second.frontmatter["repo_jur_pdf_hash"]
+    assert first.path != second.path
+
+
+def test_unresolved_segment_blocks_before_slug_fallback(evidence: Path, tmp_path: Path, monkeypatch) -> None:
+    import pipeline_juridico.legal_producer as producer
+    from pipeline_juridico.legal_source_segmentation import Segment
+
+    artifacts = _artifacts(evidence)
+    segment = Segment(
+        "segment-0001", "Edição n. 171", "[[Pág. 1]]\nsem identidade\n", 1, 1,
+        "jurisprudencia-em-teses-edicao-v1",
+    )
+    monkeypatch.setattr(producer, "_slug", lambda *args: (_ for _ in ()).throw(AssertionError("slug called")))
+    with pytest.raises(producer.LegalProducerBlockedError) as error:
+        producer._base_candidate(
+            artifacts, producer._report(artifacts), _review(),
+            _context(evidence, "TemaJuridico"), tmp_path / "bundle", segment=segment,
+        )
+    assert error.value.reason == "identity_unresolved"
+
+
 # 3.1 / 3.2 — fixed boundary and validated context.
 def test_input_contract_gate_route_and_context(evidence: Path, tmp_path: Path) -> None:
     from pipeline_juridico.legal_producer import (

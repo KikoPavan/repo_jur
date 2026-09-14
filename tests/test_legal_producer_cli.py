@@ -54,6 +54,117 @@ def _build(tmp_path: Path, *, extra: list[str] | None = None) -> tuple[int, Path
     return result, bundle, state, markdown
 
 
+def _write_multi_artifacts(tmp_path: Path, markdown_text: str) -> tuple[Path, Path, Path]:
+    markdown, report, evidence = _write_artifacts(tmp_path)
+    markdown.write_text(markdown_text, encoding="utf-8")
+    return markdown, report, evidence
+
+
+def _precedent_unit(
+    number: int, page: int, *, tribunal: bool = True, page_marker: bool = True
+) -> str:
+    court = f"Registro relativo ao Tema {number}/STJ.\n" if tribunal else ""
+    marker = f"[[Pág. {page}]]\n" if page_marker else ""
+    return marker + (
+        f"Tema Repetitivo {number}  Situação Afetado  Órgão Primeira Seção\n"
+        f"{court}conteúdo {number}\n"
+    )
+
+
+def test_analyze_single_is_read_only_and_requires_type(tmp_path: Path, capsys) -> None:
+    markdown, report, _ = _write_artifacts(tmp_path)
+    bundle, state = tmp_path / "bundle", tmp_path / "state"
+    assert main(["producer", "analyze", str(markdown), str(report), "--type", "Legislacao",
+                 "--bundle-root", str(bundle), "--json"]) == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["outcome"] == "single" and payload["segment_count"] == 1
+    assert not bundle.exists() and not state.exists()
+    assert main(["producer", "analyze", str(markdown), str(report)]) == 3
+
+
+def test_analyze_segments_reports_identity_and_ambiguous_has_no_list(tmp_path: Path, capsys) -> None:
+    body = _precedent_unit(692, 1) + _precedent_unit(
+        1016, 1, tribunal=False, page_marker=False
+    )
+    markdown, report, _ = _write_multi_artifacts(tmp_path, body)
+    assert main(["producer", "analyze", str(markdown), str(report), "--type",
+                 "PrecedenteVinculante", "--json"]) == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["outcome"] == "segments" and payload["segment_count"] == 2
+    assert payload["segments"][0]["identity_status"] == "resolved"
+    assert payload["segments"][0]["identity_fields"]["repo_jur_precedente_numero"] == "692"
+    assert payload["segments"][1]["identity_status"] == "requires_operator_metadata"
+    assert "identity_reason" in payload["segments"][1]
+    for item in payload["segments"]:
+        assert {"segment_id", "source_unit_label", "page_start", "page_end", "boundary_rule_id"} <= item.keys()
+
+    markdown.write_text(
+        "Edição n. 171 Brasília, 1 de junho de 2021\n[[Pág. 1]]\nx\n"
+        + _precedent_unit(692, 2), encoding="utf-8",
+    )
+    assert main(["producer", "analyze", str(markdown), str(report), "--type", "TemaJuridico", "--json"]) == 0
+    ambiguous = json.loads(capsys.readouterr().out)
+    assert ambiguous["outcome"] == "ambiguous"
+    assert "ambiguity_reason" in ambiguous and "segments" not in ambiguous
+
+
+def test_segmented_build_selection_all_and_fail_closed(tmp_path: Path, capsys) -> None:
+    body = _precedent_unit(692, 1) + _precedent_unit(
+        1016, 1, tribunal=False, page_marker=False
+    )
+    markdown, report, evidence = _write_multi_artifacts(tmp_path, body)
+    base = ["producer", "build", str(markdown), str(report), "--type", "PrecedenteVinculante",
+            "--evidence-resource", str(evidence), "--bundle-root", str(tmp_path / "bundle"),
+            "--state-dir", str(tmp_path / "state"), "--json"]
+    assert main(base) == 5
+    assert json.loads(capsys.readouterr().out) == {"blocked": True, "reason": "segmentation_multi_concept"}
+    assert main(base + ["--segment", "segment-0001"]) == 0
+    selected = json.loads(capsys.readouterr().out)
+    assert "conteúdo 692" in selected["candidate"] and "conteúdo 1016" not in selected["candidate"]
+    assert main(base + ["--segment", "segment-0002"]) == 5
+    blocked = json.loads(capsys.readouterr().out)
+    assert blocked == {"blocked": True, "reason": "identity_unresolved"}
+    assert main(base + ["--all-segments"]) == 0
+    all_payload = json.loads(capsys.readouterr().out)
+    assert len(all_payload["candidates"]) == 1
+    assert all_payload["blocked_segments"] == [{"segment_id": "segment-0002", "reason": "identity_unresolved"}]
+    assert not (tmp_path / "bundle").exists()
+
+
+def test_segment_flags_rejected_for_single_and_ambiguous_blocks(tmp_path: Path) -> None:
+    markdown, report, evidence = _write_artifacts(tmp_path)
+    base = ["producer", "build", str(markdown), str(report), "--type", "Legislacao",
+            "--evidence-resource", str(evidence), "--bundle-root", str(tmp_path / "bundle")]
+    assert main(base + ["--segment", "segment-0001"]) == 3
+    assert main(base + ["--all-segments"]) == 3
+    markdown.write_text(
+        "Edição n. 171 Brasília, 1 de junho de 2021\n[[Pág. 1]]\nx\n"
+        + _precedent_unit(692, 2), encoding="utf-8",
+    )
+    assert main(base + ["--all-segments"]) == 5
+
+
+def test_single_build_keeps_exact_legacy_json_keys(tmp_path: Path, capsys) -> None:
+    code, _, _, _ = _build(tmp_path)
+    assert code == 0
+    assert set(json.loads(capsys.readouterr().out)) == {"candidate", "concept_path", "record_path"}
+
+
+def test_candidate_gate_accepts_multiple_segment_records_for_same_hash(tmp_path: Path) -> None:
+    from pipeline_juridico.legal_producer_cli import _candidate_gate
+
+    state = tmp_path / "state"
+    state.mkdir()
+    provenance = "a" * 64
+    for index, gate in enumerate(("FAIL", "PASS_WITH_WARNINGS"), 1):
+        (state / f"segment-{index}.json").write_text(json.dumps({
+            "record_type": "producer.build",
+            "provenance_sha256": provenance,
+            "gate": gate,
+        }))
+    assert _candidate_gate(state, provenance) == "PASS_WITH_WARNINGS"
+
+
 def test_build_surface_context_merge_json_record_and_no_bundle_write(tmp_path: Path, capsys) -> None:
     markdown, report, evidence = _write_artifacts(tmp_path)
     context = tmp_path / "context.json"

@@ -34,6 +34,13 @@ from .legal_semantic_review import (
     LegalSemanticReviewEngine,
     ReviewState,
 )
+from .legal_segment_identity import IdentityStatus, resolve_segment_identity
+from .legal_source_segmentation import (
+    DEFAULT_SEGMENTATION_REGISTRY,
+    Segment,
+    SegmentationOutcome,
+    segment_markdown,
+)
 from .report import ReportContractError, validate_report_contract
 from .validator import OutputAlreadyExistsError, write_atomic
 
@@ -69,7 +76,15 @@ def build_producer_parser(subparsers: argparse._SubParsersAction) -> None:
     build.add_argument("--type", dest="concept_type", metavar="TIPO")
     build.add_argument("--evidence-resource", metavar="URI")
     build.add_argument("--context", metavar="CONTEXT_JSON")
+    selection = build.add_mutually_exclusive_group()
+    selection.add_argument("--segment", metavar="SEGMENT_ID")
+    selection.add_argument("--all-segments", action="store_true")
     _common(build, state=True)
+    analyze = commands.add_parser("analyze")
+    analyze.add_argument("markdown")
+    analyze.add_argument("report")
+    analyze.add_argument("--type", dest="concept_type", metavar="TIPO")
+    _common(analyze, state=False)
     validate = commands.add_parser("validate")
     validate.add_argument("candidate")
     _common(validate, state=False)
@@ -175,6 +190,50 @@ def _emit(payload: Mapping[str, object], json_output: bool) -> None:
             print(f"{key}: {value}")
 
 
+def _run_analyze(args: argparse.Namespace, logger: logging.Logger) -> int:
+    try:
+        markdown = _read(args.markdown, "Markdown da Fase 1")
+        report_json = _read(args.report, "relatório técnico")
+        _load_report(report_json)
+        if args.concept_type is None:
+            raise LegalProducerConfigurationError("--type é obrigatório para analyze")
+        try:
+            concept_type = LegalConceptType(args.concept_type)
+        except ValueError as error:
+            raise LegalProducerConfigurationError("tipo jurídico inválido") from error
+        result = segment_markdown(markdown, DEFAULT_SEGMENTATION_REGISTRY)
+        payload: dict[str, object] = {"outcome": result.outcome.value}
+        if result.outcome is SegmentationOutcome.AMBIGUOUS:
+            payload["ambiguity_reason"] = result.ambiguity_reason
+        else:
+            payload["segment_count"] = len(result.segments)
+            items: list[dict[str, object]] = []
+            for segment in result.segments:
+                identity = resolve_segment_identity(concept_type, segment)
+                item: dict[str, object] = {
+                    "segment_id": segment.segment_id,
+                    "source_unit_label": segment.source_unit_label,
+                    "page_start": segment.page_start,
+                    "page_end": segment.page_end,
+                    "boundary_rule_id": segment.boundary_rule_id,
+                    "identity_status": identity.status.value,
+                }
+                if identity.status is IdentityStatus.RESOLVED:
+                    item["identity_fields"] = dict(identity.fields)
+                else:
+                    item["identity_reason"] = identity.reason
+                items.append(item)
+            payload["segments"] = items
+        _emit(payload, args.json)
+        return EXIT_OK
+    except (OSError, UnicodeError, FileNotFoundError) as error:
+        logger.error("Falha de entrada: %s", error)
+        return EXIT_INPUT
+    except LegalProducerConfigurationError as error:
+        logger.error("Erro de configuração do Producer: %s", error)
+        return EXIT_CONFIG
+
+
 def _run_build(args: argparse.Namespace, logger: logging.Logger) -> int:
     try:
         state_dir = _state_dir(args.state_dir)
@@ -190,15 +249,60 @@ def _run_build(args: argparse.Namespace, logger: logging.Logger) -> int:
         report = _load_report(report_json)
         context = _context(args)
         artifacts = Phase1Artifacts(markdown, report_json)
+        segmentation = segment_markdown(markdown, DEFAULT_SEGMENTATION_REGISTRY)
+        if segmentation.outcome is SegmentationOutcome.AMBIGUOUS:
+            raise LegalProducerBlockedError(
+                segmentation.ambiguity_reason or "segmentation is ambiguous",
+                reason="segmentation_ambiguous",
+            )
+        selected_segment = getattr(args, "segment", None)
+        all_segments = bool(getattr(args, "all_segments", False))
+        if segmentation.outcome is SegmentationOutcome.SINGLE and (selected_segment or all_segments):
+            raise LegalProducerConfigurationError("segment flags require a multi-segment source")
+        if segmentation.outcome is SegmentationOutcome.SEGMENTS and not (selected_segment or all_segments):
+            raise LegalProducerBlockedError(
+                "multi-concept source requires explicit segment selection",
+                reason="segmentation_multi_concept",
+            )
         try:
             review = LegalSemanticReviewEngine().review(
                 artifacts, LegalReviewProfile("default", "1.0", ())
             )
             if review.state is ReviewState.REVIEW_REQUIRED:
                 raise LegalSemanticReviewBlockedError("review is required for this candidate", reason="review_required")
-            candidate = _base_candidate(artifacts, _report(artifacts), review, context, args.bundle_root)
-            validate_candidate(candidate)
+            targets: tuple[Segment | None, ...]
+            if segmentation.outcome is SegmentationOutcome.SINGLE:
+                targets = (None,)
+            elif all_segments:
+                targets = segmentation.segments
+            else:
+                matches = tuple(item for item in segmentation.segments if item.segment_id == selected_segment)
+                if not matches:
+                    raise LegalProducerConfigurationError("segment_id não encontrado")
+                targets = matches
+
+            built: list[tuple[Segment | None, ConceptCandidate]] = []
+            blocked_segments: list[dict[str, object]] = []
+            for segment in targets:
+                if segment is not None:
+                    identity = resolve_segment_identity(context.type, segment)
+                    if identity.status is not IdentityStatus.RESOLVED:
+                        if all_segments:
+                            blocked_segments.append({"segment_id": segment.segment_id, "reason": "identity_unresolved"})
+                            continue
+                        raise LegalProducerBlockedError(
+                            identity.reason or "segment identity is unresolved",
+                            reason="identity_unresolved",
+                        )
+                candidate = _base_candidate(
+                    artifacts, _report(artifacts), review, context, args.bundle_root,
+                    segment=segment,
+                )
+                validate_candidate(candidate)
+                built.append((segment, candidate))
         except (LegalSemanticReviewBlockedError, LegalProducerBlockedError):
+            if segmentation.outcome is not SegmentationOutcome.SINGLE:
+                raise
             concept_path = resolve_concept_path(
                 context.type, context.evidence_resource, args.bundle_root
             )
@@ -218,23 +322,35 @@ def _run_build(args: argparse.Namespace, logger: logging.Logger) -> int:
             {"name": f.name, "value": f.value, "page_refs": list(f.page_refs)}
             for f in review.extracted_fields
         ]
-        record = _record(
-            record_type="producer.build", provenance=report["input"]["sha256"],  # type: ignore[index]
-            gate=report["result"]["quality_gate"], concept_path=candidate.path,  # type: ignore[index]
-            resolution=DuplicateResolution.NEW_CONCEPT, materiality=None,
-            patch_count=len(review.patches), review_required=False,
-            publication_result="blocked",
-            extracted_fields=extracted_fields_data,
-        )
-        record_path = _write_record(record, state_dir, _filename(report))
+        rendered: list[dict[str, object]] = []
+        for segment, candidate in built:
+            record = _record(
+                record_type="producer.build", provenance=report["input"]["sha256"],  # type: ignore[index]
+                gate=report["result"]["quality_gate"], concept_path=candidate.path,  # type: ignore[index]
+                resolution=DuplicateResolution.NEW_CONCEPT, materiality=None,
+                patch_count=len(review.patches), review_required=False,
+                publication_result="blocked",
+                extracted_fields=extracted_fields_data,
+            )
+            filename = _filename(report)
+            if all_segments and segment is not None:
+                filename = f"{Path(filename).stem}-{segment.segment_id}.json"
+            record_path = _write_record(record, state_dir, filename)
+            rendered.append({"candidate": candidate.render_text(), "concept_path": str(candidate.path),
+                             "record_path": str(record_path)})
     except (LegalProducerConfigurationError, LegalSemanticReviewConfigurationError) as error:
         logger.error("Erro de configuração do Producer: %s", error)
         return EXIT_CONFIG
     except (LegalProducerBlockedError, LegalSemanticReviewBlockedError) as error:
         logger.error("Producer bloqueado: %s", error)
+        reason = getattr(error, "reason", None)
+        if reason in {"segmentation_multi_concept", "segmentation_ambiguous", "identity_unresolved"}:
+            _emit({"blocked": True, "reason": reason}, args.json)
         return EXIT_BLOCKED
-    _emit({"candidate": candidate.render_text(), "concept_path": str(candidate.path),
-           "record_path": str(record_path)}, args.json)
+    if all_segments:
+        _emit({"candidates": rendered, "blocked_segments": blocked_segments}, args.json)
+    else:
+        _emit(rendered[0], args.json)
     return EXIT_OK
 
 
@@ -384,6 +500,8 @@ def run(args: argparse.Namespace, logger: logging.Logger) -> int:
     try:
         if args.producer_command == "build":
             return _run_build(args, logger)
+        if args.producer_command == "analyze":
+            return _run_analyze(args, logger)
         if args.producer_command == "validate":
             return _run_validate(args, logger)
         if args.producer_command == "publish":

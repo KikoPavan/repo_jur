@@ -370,3 +370,36 @@ def test_deterministic_extract_keeps_single_tema_identity() -> None:
 
     assert tema.value == "988"
     assert tema.page_refs == ("7",)
+
+
+def test_deterministic_extract_prefix_is_included_once_before_following_page(monkeypatch) -> None:
+    markdown = "STJ no prefixo\n[[Pág. 5]]\nSTF apenas na página seguinte\n"
+    observed_pages = []
+
+    def capture_pages(pages):
+        observed_pages.extend(pages)
+        return None
+
+    monkeypatch.setattr(
+        "pipeline_juridico.legal_semantic_review._detect_publication_ramo_principal",
+        capture_pages,
+    )
+
+    extracted = _deterministic_extract(markdown, leading_page=4)
+    tribunal = next(field for field in extracted if field.name == "repo_jur_tribunal")
+
+    assert observed_pages == [
+        ("4", "STJ no prefixo\n"),
+        ("5", "\nSTF apenas na página seguinte\n"),
+    ]
+    assert tribunal.value == "STJ"
+    assert tribunal.page_refs == ("4",)
+
+
+def test_whole_document_starting_at_page_one_keeps_existing_extraction() -> None:
+    markdown = "[[Pág. 1]]\nSTJ - Tema n. 988\n"
+
+    default = _deterministic_extract(markdown)
+    explicit_none = _deterministic_extract(markdown, leading_page=None)
+
+    assert explicit_none == default

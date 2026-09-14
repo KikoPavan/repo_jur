@@ -25,8 +25,11 @@ from .hashing import sha256_file
 from .legal_semantic_review import (
     ReviewResult,
     ReviewState,
+    _deterministic_extract,
     _has_numbered_act_pattern,
 )
+from .legal_segment_identity import IdentityStatus, resolve_segment_identity
+from .legal_source_segmentation import Segment
 from .report import ReportContractError, validate_report_contract
 from .validator import write_atomic
 
@@ -611,7 +614,26 @@ def _base_candidate(
     review_result: ReviewResult,
     context: ProducerContext,
     bundle_root: str | Path,
+    segment: Segment | None = None,
 ) -> ConceptCandidate:
+    body = artifacts.markdown
+    segment_identity: Mapping[str, object] | None = None
+    if segment is not None:
+        identity = resolve_segment_identity(context.type, segment)
+        if identity.status is not IdentityStatus.RESOLVED:
+            raise LegalProducerBlockedError(
+                identity.reason or "segment identity is unresolved",
+                reason="identity_unresolved",
+            )
+        body = segment.body
+        segment_identity = identity.fields
+        review_result = ReviewResult(
+            review_result.state,
+            review_result.patches,
+            tuple(_deterministic_extract(body)),
+            review_result.classification_suggestions,
+            review_result.warnings,
+        )
     if context.evidence_resource is None:
         raise LegalProducerConfigurationError("PDF evidence resource is required")
     input_data = report["input"]
@@ -655,6 +677,9 @@ def _base_candidate(
                 raise LegalProducerBlockedError("ambiguous publication_ramo_principal", reason="review_required")
             publication_ramo = normalized
 
+    if segment_identity is not None:
+        metadata.update(segment_identity)
+
     if context.type is LegalConceptType.Legislacao:
         if not publication_ramo:
             raise LegalProducerBlockedError(
@@ -677,7 +702,7 @@ def _base_candidate(
     for name, val in metadata.items():
         if name != "publication_ramo_principal" and name not in frontmatter:
             frontmatter[name] = val
-    return ConceptCandidate(context.type, frontmatter, artifacts.markdown, path)
+    return ConceptCandidate(context.type, frontmatter, body, path)
 
 
 def _identity_signature(candidate: ConceptCandidate) -> tuple[object, ...] | None:
