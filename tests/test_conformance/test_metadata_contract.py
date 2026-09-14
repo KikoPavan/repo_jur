@@ -114,14 +114,11 @@ def test_ci_safe_golden_jurisprudencia_resp_conformance(tmp_path: Path) -> None:
     )
 
     extracted_names = {f.name for f in review.extracted_fields}
-    assert "repo_jur_processo_numero" in extracted_names
+    # Conflicting CNJs: 00134589020148260100 and 22019934120158260000.
+    assert "repo_jur_processo_numero" not in extracted_names
     assert "repo_jur_tribunal" in extracted_names
     assert "repo_jur_relator" in extracted_names
     assert "repo_jur_data_julgamento" in extracted_names
-
-    # Check extracted values
-    proc_field = next(f for f in review.extracted_fields if f.name == "repo_jur_processo_numero")
-    assert "1.704.551" in proc_field.value
 
     trib_field = next(f for f in review.extracted_fields if f.name == "repo_jur_tribunal")
     assert trib_field.value == "STJ"
@@ -146,13 +143,11 @@ def test_ci_safe_golden_jurisprudencia_aint_conformance(tmp_path: Path) -> None:
     )
 
     extracted_names = {f.name for f in review.extracted_fields}
-    assert "repo_jur_processo_numero" in extracted_names
+    # Conflicting CNJs: 00277367120134010000 and 00386267720114013900.
+    assert "repo_jur_processo_numero" not in extracted_names
     assert "repo_jur_tribunal" in extracted_names
     assert "repo_jur_relator" in extracted_names
     assert "repo_jur_data_julgamento" in extracted_names
-
-    proc_field = next(f for f in review.extracted_fields if f.name == "repo_jur_processo_numero")
-    assert "1462304" in proc_field.value
 
     rel_field = next(f for f in review.extracted_fields if f.name == "repo_jur_relator")
     assert rel_field.value == "GURGEL DE FARIA"

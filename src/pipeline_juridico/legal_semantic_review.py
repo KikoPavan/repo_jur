@@ -102,6 +102,20 @@ def _has_numbered_act_pattern(markdown: str) -> bool:
     return _NUMBERED_ACT_PATTERN.search(markdown) is not None
 
 
+def _cnj_checksum_valid(digits20: str) -> bool:
+    if len(digits20) != 20 or not digits20.isdigit():
+        return False
+    seq = digits20[0:7]
+    dv = digits20[7:9]
+    year = digits20[9:13]
+    segment = digits20[13:14]
+    court = digits20[14:16]
+    origin = digits20[16:20]
+    base = int(seq + year + segment + court + origin + "00")
+    expected_dv = 98 - (base % 97)
+    return f"{expected_dv:02d}" == dv
+
+
 def _recorded_gate_outcome(report_json: str) -> GateState:
     if not isinstance(report_json, str):
         raise LegalSemanticReviewBlockedError(
@@ -297,41 +311,33 @@ def _deterministic_extract(
             break
 
     # Jurisprudência / Processo fields:
-    # Prefer CNJ pattern first on the pages
-    processo_num = None
-    processo_page: str | None = None
+    cnj_candidates: dict[str, str] = {}
     for page_num, page_text in pages:
-        cnj_match = re.search(r"\b\d{7}-\d{2}\.\d{4}\.\d\.\d{2}\.\d{4}\b", page_text)
-        if cnj_match:
-            processo_num = cnj_match.group(0)
-            processo_page = page_num
-            break
+        for match in re.finditer(
+            r"\b\d{7}-\d{2}\.\d{4}\.\d\.\d{2}\.\d{4}\b",
+            page_text,
+        ):
+            canonical = match.group(0)
+            if _cnj_checksum_valid(re.sub(r"\D", "", canonical)):
+                cnj_candidates.setdefault(canonical, page_num)
+        for match in re.finditer(r"(?<!\d)\d{20}(?!\d)", page_text):
+            digits = match.group(0)
+            if _cnj_checksum_valid(digits):
+                canonical = (
+                    f"{digits[0:7]}-{digits[7:9]}.{digits[9:13]}."
+                    f"{digits[13]}.{digits[14:16]}.{digits[16:20]}"
+                )
+                cnj_candidates.setdefault(canonical, page_num)
 
-    if not processo_num:
-        # If no CNJ found, look for STJ/STF appellate case identifiers:
-        # e.g., REsp 1.704.551 - SP or AgInt no AGRAVO EM RECURSO ESPECIAL Nº 1462304 - PA
-        for page_num, page_text in pages:
-            # Regex covering REsp, AREsp, AgInt, and register numbers
-            appellate_match = re.search(
-                r"(?i)\b(?:AgInt\s+no\s+)?(?:AREsp|REsp|AgInt|RE|ADI|ADC|ADPF|HC|MS|RMS|AgInt\s+no\s+AREsp|AgInt\s+no\s+REsp|AgInt\s+no\s+AGRAVO\s+EM\s+RECURSO\s+ESPECIAL|AGRAVO\s+EM\s+RECURSO\s+ESPECIAL|RECURSO\s+ESPECIAL)\s*(?:N[º°\.]?|No)?\s*[\d\.\-]+(?:\s*[-/]\s*[A-Z]{2})?\b",
-                page_text
+    if len(cnj_candidates) == 1:
+        processo_num, processo_page = next(iter(cnj_candidates.items()))
+        extracted.append(
+            ExtractedField(
+                "repo_jur_processo_numero",
+                processo_num,
+                (processo_page,),
             )
-            if appellate_match:
-                processo_num = re.sub(r"\s+", " ", appellate_match.group(0)).strip()
-                processo_page = page_num
-                break
-
-    if not processo_num:
-        # Fallback to register number: 2017/0091244-2
-        for page_num, page_text in pages:
-            reg_match = re.search(r"\b\d{4}/\d{7}-\d\b", page_text)
-            if reg_match:
-                processo_num = reg_match.group(0)
-                processo_page = page_num
-                break
-
-    if processo_num:
-        extracted.append(ExtractedField("repo_jur_processo_numero", processo_num, (processo_page,) if processo_page is not None else ()))
+        )
 
     # Tribunal:
     tribunal = None
