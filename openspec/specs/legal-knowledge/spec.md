@@ -252,7 +252,7 @@ The system SHALL strictly enforce and validate the domain-specific fields for ea
    - `repo_jur_lei_esfera` (String, Mandatory): The governmental sphere (`federal`, `estadual`, `distrital`, `municipal`).
    - `repo_jur_lei_tipo` (String, Recommended): The type of normative act (e.g., `constituicao`, `complementar`, `ordinaria`, `decreto`, `portaria`, `medida_provisoria`).
 2. **Jurisprudencia**
-   - `repo_jur_processo_numero` (String, Mandatory): The process identifier (CNJ format is preferentially preferred, but STJ/STF appellate case identifiers like REsp/AREsp/AgInt or register numbers are also valid fallbacks when CNJ is not available; no separate field for court-class identifiers exists in the FROZEN profile).
+   - `repo_jur_processo_numero` (String, Mandatory): The unique CNJ (Conselho Nacional de Justiça) national-standard process number, canonical format `NNNNNNN-DD.AAAA.J.TR.OOOO`. The system SHALL accept only a value that is either found verbatim in this canonical punctuated form, or deterministically normalized from a standalone 20-digit unpunctuated source token, in both cases only after the CNJ mod-97 check digits validate. The system SHALL NEVER accept, as this field's value or as a fallback when no valid CNJ exists, an appellate/recursal case identifier (court-class label plus recourse number, e.g. `AgInt no RECURSO ESPECIAL Nº 1833684 - SC`, `REsp 1.833.684/SC`), an internal court register/autuação number (e.g. `2019/0251395-0`), or any other non-CNJ representation of the case — the superior-recourse identifier and the court's internal register number are distinct concepts from the CNJ process number and are never conflated with it. If the source document contains two or more structurally distinct, checksum-valid CNJ candidates with no deterministic basis for selecting the record's own base process, or if no checksum-valid CNJ is recoverable at all, the system SHALL NOT extract `repo_jur_processo_numero` (fail-closed) and SHALL NOT substitute any appellate or register identifier in its place.
    - `repo_jur_tribunal` (String, Mandatory): The court acronym in uppercase.
    - `repo_jur_relator` (String, Mandatory): The magistrate relator name.
    - `repo_jur_data_julgamento` (String YYYY-MM-DD, Mandatory): The date of judgment.
@@ -332,6 +332,44 @@ The Legislacao-specific numbered-act completeness check (detecting a numbered-ac
 - **WHEN** a `TemaJuridico` candidate body contains exactly one distinct `Tema n. N` citation across its entire content
 - **THEN** `repo_jur_tema_numero` is extracted deterministically with that single value
 - **AND** the associated `repo_jur_tribunal` field is populated as today when available
+
+#### Scenario: Canonical punctuated CNJ is preserved verbatim
+
+- **WHEN** a `Jurisprudencia` candidate body contains the canonical punctuated CNJ `0311049-09.2016.8.24.0018`
+- **THEN** `repo_jur_processo_numero` is extracted as `0311049-09.2016.8.24.0018` unchanged
+
+#### Scenario: Unpunctuated 20-digit CNJ is normalized only when checksum-valid
+
+- **WHEN** a `Jurisprudencia` candidate body contains only the unpunctuated digit run `03110490920168240018` as a standalone 20-digit token, and its CNJ mod-97 check digits validate
+- **THEN** `repo_jur_processo_numero` is extracted as the normalized canonical form `0311049-09.2016.8.24.0018`
+
+#### Scenario: A checksum-valid CNJ is chosen over a co-present appellate header
+
+- **WHEN** a `Jurisprudencia` candidate body contains both an appellate/recursal header (e.g. `AgInt no RECURSO ESPECIAL Nº 1833684 - SC`) and a checksum-valid CNJ candidate elsewhere in the document (e.g. under `Número de Origem`)
+- **THEN** `repo_jur_processo_numero` is extracted as the checksum-valid CNJ
+- **AND** the appellate header value is never written to `repo_jur_processo_numero`
+
+#### Scenario: Appellate header alone never populates the process number
+
+- **WHEN** a `Jurisprudencia` candidate body contains only an appellate/recursal case identifier such as `AgInt no REsp 1.833.684/SC` and no checksum-valid CNJ anywhere in the document
+- **THEN** `repo_jur_processo_numero` is not extracted and is absent from the candidate frontmatter
+
+#### Scenario: Internal court register number alone never populates the process number
+
+- **WHEN** a `Jurisprudencia` candidate body contains only an internal court register/autuação number such as `2019/0251395-0` and no checksum-valid CNJ anywhere in the document
+- **THEN** `repo_jur_processo_numero` is not extracted and is absent from the candidate frontmatter
+
+#### Scenario: Conflicting distinct CNJ candidates block automatic selection
+
+- **WHEN** a `Jurisprudencia` candidate body contains two or more structurally distinct, checksum-valid CNJ candidates with no deterministic basis for selecting the record's own base process
+- **THEN** `repo_jur_processo_numero` is not extracted and is absent from the candidate frontmatter
+- **AND** the Producer does not silently select any one of the candidates
+
+#### Scenario: A CNJ-shaped value with an invalid check digit is rejected
+
+- **WHEN** a `Jurisprudencia` candidate body contains a CNJ-shaped value (canonical punctuation or standalone 20-digit token) whose mod-97 check digits do not validate
+- **THEN** the value is not treated as a valid CNJ candidate
+- **AND** it does not populate `repo_jur_processo_numero`
 
 ### Requirement: Producer never mutates lifecycle fields it does not own
 
