@@ -139,6 +139,49 @@ class IntakeConfig:
 
 
 @dataclass(frozen=True)
+class IngestConfig:
+    """Paths used by non-publishing legal-knowledge ingestion."""
+
+    input_dir: Path = Path("input/leis_jurisprudencia")
+    bundle_root: Path = Path("bundle")
+    state_dir: Path = Path("var/producer/state")
+    candidates_dir: Path = Path("var/producer/candidates")
+    reports_dir: Path = Path("var/ingest/reports")
+
+    def __post_init__(self) -> None:
+        object.__setattr__(
+            self,
+            "input_dir",
+            ensure_outside_canonical_bundle(self.input_dir),
+        )
+        object.__setattr__(self, "bundle_root", Path(self.bundle_root).resolve())
+        for field_name in ("state_dir", "candidates_dir", "reports_dir"):
+            object.__setattr__(
+                self,
+                field_name,
+                ensure_outside_canonical_bundle(getattr(self, field_name)),
+            )
+
+    @classmethod
+    def from_env(cls) -> IngestConfig:
+        return cls(
+            input_dir=Path(os.environ.get(
+                "INGEST_INPUT_DIR", "input/leis_jurisprudencia"
+            )),
+            bundle_root=Path(os.environ.get("INGEST_BUNDLE_ROOT", "bundle")),
+            state_dir=Path(os.environ.get(
+                "INGEST_STATE_DIR", "var/producer/state"
+            )),
+            candidates_dir=Path(os.environ.get(
+                "INGEST_CANDIDATES_DIR", "var/producer/candidates"
+            )),
+            reports_dir=Path(os.environ.get(
+                "INGEST_REPORTS_DIR", "var/ingest/reports"
+            )),
+        )
+
+
+@dataclass(frozen=True)
 class PreflightLimits:
     """Configurable archive bounds; defaults are implementation choices."""
 

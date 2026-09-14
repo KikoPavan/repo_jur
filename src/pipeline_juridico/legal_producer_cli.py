@@ -19,8 +19,7 @@ from .legal_producer import (
     LegalProducerBlockedError,
     LegalProducerConfigurationError,
     MaterialityCategory,
-    _base_candidate,
-    _report,
+    build_candidates,
     classify_materiality,
     parse_candidate_text,
     resolve_concept_path,
@@ -28,16 +27,12 @@ from .legal_producer import (
     validate_producer_context,
 )
 from .legal_semantic_review import (
-    LegalReviewProfile,
     LegalSemanticReviewBlockedError,
     LegalSemanticReviewConfigurationError,
-    LegalSemanticReviewEngine,
-    ReviewState,
 )
 from .legal_segment_identity import IdentityStatus, resolve_segment_identity
 from .legal_source_segmentation import (
     DEFAULT_SEGMENTATION_REGISTRY,
-    Segment,
     SegmentationOutcome,
     segment_markdown,
 )
@@ -249,58 +244,24 @@ def _run_build(args: argparse.Namespace, logger: logging.Logger) -> int:
         report = _load_report(report_json)
         context = _context(args)
         artifacts = Phase1Artifacts(markdown, report_json)
-        segmentation = segment_markdown(markdown, DEFAULT_SEGMENTATION_REGISTRY)
-        if segmentation.outcome is SegmentationOutcome.AMBIGUOUS:
-            raise LegalProducerBlockedError(
-                segmentation.ambiguity_reason or "segmentation is ambiguous",
-                reason="segmentation_ambiguous",
-            )
         selected_segment = getattr(args, "segment", None)
         all_segments = bool(getattr(args, "all_segments", False))
-        if segmentation.outcome is SegmentationOutcome.SINGLE and (selected_segment or all_segments):
-            raise LegalProducerConfigurationError("segment flags require a multi-segment source")
-        if segmentation.outcome is SegmentationOutcome.SEGMENTS and not (selected_segment or all_segments):
-            raise LegalProducerBlockedError(
-                "multi-concept source requires explicit segment selection",
-                reason="segmentation_multi_concept",
-            )
         try:
-            review = LegalSemanticReviewEngine().review(
-                artifacts, LegalReviewProfile("default", "1.0", ())
+            outcome = build_candidates(
+                artifacts,
+                context,
+                args.bundle_root,
+                all_segments=all_segments,
+                segment_id=selected_segment,
             )
-            if review.state is ReviewState.REVIEW_REQUIRED:
-                raise LegalSemanticReviewBlockedError("review is required for this candidate", reason="review_required")
-            targets: tuple[Segment | None, ...]
-            if segmentation.outcome is SegmentationOutcome.SINGLE:
-                targets = (None,)
-            elif all_segments:
-                targets = segmentation.segments
-            else:
-                matches = tuple(item for item in segmentation.segments if item.segment_id == selected_segment)
-                if not matches:
-                    raise LegalProducerConfigurationError("segment_id não encontrado")
-                targets = matches
-
-            built: list[tuple[Segment | None, ConceptCandidate]] = []
-            blocked_segments: list[dict[str, object]] = []
-            for segment in targets:
-                if segment is not None:
-                    identity = resolve_segment_identity(context.type, segment)
-                    if identity.status is not IdentityStatus.RESOLVED:
-                        if all_segments:
-                            blocked_segments.append({"segment_id": segment.segment_id, "reason": "identity_unresolved"})
-                            continue
-                        raise LegalProducerBlockedError(
-                            identity.reason or "segment identity is unresolved",
-                            reason="identity_unresolved",
-                        )
-                candidate = _base_candidate(
-                    artifacts, _report(artifacts), review, context, args.bundle_root,
-                    segment=segment,
-                )
-                validate_candidate(candidate)
-                built.append((segment, candidate))
+            segmentation = outcome.segmentation
+            review = outcome.review
+            built = outcome.built
+            blocked_segments = outcome.blocked_segments
         except (LegalSemanticReviewBlockedError, LegalProducerBlockedError):
+            segmentation = segment_markdown(
+                markdown, DEFAULT_SEGMENTATION_REGISTRY
+            )
             if segmentation.outcome is not SegmentationOutcome.SINGLE:
                 raise
             concept_path = resolve_concept_path(

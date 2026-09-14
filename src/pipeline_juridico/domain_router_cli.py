@@ -89,6 +89,8 @@ def _build_parser() -> argparse.ArgumentParser:
     build_retrieval_parsers(subparsers)
     from .intake_cli import build_intake_parser
     build_intake_parser(subparsers)
+    from .ingest_cli import build_ingest_parser
+    build_ingest_parser(subparsers)
     test_parser = subparsers.add_parser(
         "test",
         help="Executa verificações operacionais locais.",
@@ -555,6 +557,9 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "intake":
         from .intake_cli import run_intake
         return run_intake(args, logger)
+    if args.command == "ingest":
+        from .ingest_cli import run
+        return run(args, logger)
     return EXIT_UNEXPECTED
 
 

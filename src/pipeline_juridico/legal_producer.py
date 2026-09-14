@@ -23,13 +23,22 @@ from .contracts import (
 from .domain_router import RoutingDecision
 from .hashing import sha256_file
 from .legal_semantic_review import (
+    LegalReviewProfile,
+    LegalSemanticReviewBlockedError,
+    LegalSemanticReviewEngine,
     ReviewResult,
     ReviewState,
     _deterministic_extract,
     _has_numbered_act_pattern,
 )
 from .legal_segment_identity import IdentityStatus, resolve_segment_identity
-from .legal_source_segmentation import Segment
+from .legal_source_segmentation import (
+    DEFAULT_SEGMENTATION_REGISTRY,
+    Segment,
+    SegmentationOutcome,
+    SegmentationResult,
+    segment_markdown,
+)
 from .report import ReportContractError, validate_report_contract
 from .validator import write_atomic
 
@@ -108,6 +117,16 @@ class ProducerRunResult:
     materiality: MaterialityCategory | None
     written: bool
     concept_path: Path | None
+
+
+@dataclass(frozen=True)
+class BuildOutcome:
+    """Shared candidate-build result for interactive and batch callers."""
+
+    built: list[tuple[Segment | None, ConceptCandidate]]
+    blocked_segments: list[dict[str, object]]
+    segmentation: SegmentationResult
+    review: ReviewResult
 
 
 LEGACY_KEYS = frozenset({
@@ -703,6 +722,88 @@ def _base_candidate(
         if name != "publication_ramo_principal" and name not in frontmatter:
             frontmatter[name] = val
     return ConceptCandidate(context.type, frontmatter, body, path)
+
+
+def build_candidates(
+    artifacts: Phase1Artifacts,
+    context: ProducerContext,
+    bundle_root: str | Path,
+    *,
+    all_segments: bool,
+    segment_id: str | None,
+) -> BuildOutcome:
+    """Apply producer-build segmentation, review, and identity semantics."""
+    segmentation = segment_markdown(
+        artifacts.markdown, DEFAULT_SEGMENTATION_REGISTRY
+    )
+    if segmentation.outcome is SegmentationOutcome.AMBIGUOUS:
+        raise LegalProducerBlockedError(
+            segmentation.ambiguity_reason or "segmentation is ambiguous",
+            reason="segmentation_ambiguous",
+        )
+    if segmentation.outcome is SegmentationOutcome.SINGLE and (
+        segment_id or all_segments
+    ):
+        raise LegalProducerConfigurationError(
+            "segment flags require a multi-segment source"
+        )
+    if segmentation.outcome is SegmentationOutcome.SEGMENTS and not (
+        segment_id or all_segments
+    ):
+        raise LegalProducerBlockedError(
+            "multi-concept source requires explicit segment selection",
+            reason="segmentation_multi_concept",
+        )
+    review = LegalSemanticReviewEngine().review(
+        artifacts, LegalReviewProfile("default", "1.0", ())
+    )
+    if review.state is ReviewState.REVIEW_REQUIRED:
+        raise LegalSemanticReviewBlockedError(
+            "review is required for this candidate", reason="review_required"
+        )
+    if segmentation.outcome is SegmentationOutcome.SINGLE:
+        targets: tuple[Segment | None, ...] = (None,)
+    elif all_segments:
+        targets = segmentation.segments
+    else:
+        targets = tuple(
+            item
+            for item in segmentation.segments
+            if item.segment_id == segment_id
+        )
+        if not targets:
+            raise LegalProducerConfigurationError("segment_id não encontrado")
+
+    report = _report(artifacts)
+    built: list[tuple[Segment | None, ConceptCandidate]] = []
+    blocked_segments: list[dict[str, object]] = []
+    for segment in targets:
+        if segment is not None:
+            identity = resolve_segment_identity(context.type, segment)
+            if identity.status is not IdentityStatus.RESOLVED:
+                if all_segments:
+                    blocked_segments.append(
+                        {
+                            "segment_id": segment.segment_id,
+                            "reason": "identity_unresolved",
+                        }
+                    )
+                    continue
+                raise LegalProducerBlockedError(
+                    identity.reason or "segment identity is unresolved",
+                    reason="identity_unresolved",
+                )
+        candidate = _base_candidate(
+            artifacts,
+            report,
+            review,
+            context,
+            bundle_root,
+            segment=segment,
+        )
+        validate_candidate(candidate)
+        built.append((segment, candidate))
+    return BuildOutcome(built, blocked_segments, segmentation, review)
 
 
 def _identity_signature(candidate: ConceptCandidate) -> tuple[object, ...] | None:

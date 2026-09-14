@@ -41,13 +41,19 @@ input/*
 !input/jurisprudencia/
 !input/temas/
 !input/precedentes/
+!input/leis_jurisprudencia/
+!input/processo/
 input/legislacao/*
 input/jurisprudencia/*
 input/temas/*
 input/precedentes/*
+input/leis_jurisprudencia/*
+input/processo/*
 !input/legislacao/.gitkeep
 !input/jurisprudencia/.gitkeep
 !input/temas/.gitkeep
+!input/leis_jurisprudencia/.gitkeep
+!input/processo/.gitkeep
 !input/precedentes/.gitkeep
 
 # Sistema e editor
@@ -63,3 +69,5 @@ input/precedentes/*
 
 # Gemini CLI não utilizado neste projeto
 .gemini/
+
+var/ingest/*

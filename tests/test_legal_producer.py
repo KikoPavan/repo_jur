@@ -146,6 +146,100 @@ def _precedent_segment(number: int, page: int = 1):
     )
 
 
+def test_build_candidates_single_uses_whole_document(
+    evidence: Path, tmp_path: Path, monkeypatch
+) -> None:
+    import pipeline_juridico.legal_producer as producer
+    from pipeline_juridico.legal_source_segmentation import (
+        SegmentationOutcome,
+        SegmentationResult,
+    )
+
+    artifacts = _artifacts(evidence)
+    candidate = producer.ConceptCandidate(
+        producer.LegalConceptType.Legislacao, {}, MARKDOWN, tmp_path / "x.md"
+    )
+    monkeypatch.setattr(producer, "segment_markdown", lambda *_: SegmentationResult(SegmentationOutcome.SINGLE, (), None))
+    monkeypatch.setattr(producer.LegalSemanticReviewEngine, "review", lambda *_: _review())
+    monkeypatch.setattr(producer, "_base_candidate", lambda *a, **k: candidate)
+    monkeypatch.setattr(producer, "validate_candidate", lambda *_: None)
+    outcome = producer.build_candidates(
+        artifacts, _context(evidence), tmp_path / "bundle",
+        all_segments=False, segment_id=None,
+    )
+    assert outcome.built == [(None, candidate)]
+
+
+def test_build_candidates_all_segments_builds_each_resolved(
+    evidence: Path, tmp_path: Path, monkeypatch
+) -> None:
+    import pipeline_juridico.legal_producer as producer
+    from pipeline_juridico.legal_source_segmentation import SegmentationOutcome, SegmentationResult
+
+    segments = (_precedent_segment(692), _precedent_segment(1016))
+    monkeypatch.setattr(producer, "segment_markdown", lambda *_: SegmentationResult(SegmentationOutcome.SEGMENTS, segments, None))
+    monkeypatch.setattr(producer.LegalSemanticReviewEngine, "review", lambda *_: _review())
+    monkeypatch.setattr(producer, "_base_candidate", lambda *a, segment=None, **k: producer.ConceptCandidate(producer.LegalConceptType.PrecedenteVinculante, {}, segment.body, tmp_path / f"{segment.segment_id}.md"))
+    monkeypatch.setattr(producer, "validate_candidate", lambda *_: None)
+    outcome = producer.build_candidates(
+        _artifacts(evidence), _context(evidence, "PrecedenteVinculante"),
+        tmp_path / "bundle", all_segments=True, segment_id=None,
+    )
+    assert [segment for segment, _ in outcome.built] == list(segments)
+
+
+def test_build_candidates_explicit_segment_selects_one(
+    evidence: Path, tmp_path: Path, monkeypatch
+) -> None:
+    import pipeline_juridico.legal_producer as producer
+    from pipeline_juridico.legal_source_segmentation import SegmentationOutcome, SegmentationResult
+
+    segments = (_precedent_segment(692), _precedent_segment(1016))
+    monkeypatch.setattr(producer, "segment_markdown", lambda *_: SegmentationResult(SegmentationOutcome.SEGMENTS, segments, None))
+    monkeypatch.setattr(producer.LegalSemanticReviewEngine, "review", lambda *_: _review())
+    monkeypatch.setattr(producer, "_base_candidate", lambda *a, segment=None, **k: producer.ConceptCandidate(producer.LegalConceptType.PrecedenteVinculante, {}, segment.body, tmp_path / "x.md"))
+    monkeypatch.setattr(producer, "validate_candidate", lambda *_: None)
+    outcome = producer.build_candidates(
+        _artifacts(evidence), _context(evidence, "PrecedenteVinculante"),
+        tmp_path / "bundle", all_segments=False, segment_id="segment-1016",
+    )
+    assert outcome.built[0][0] == segments[1]
+
+
+def test_build_candidates_ambiguous_is_blocked(
+    evidence: Path, tmp_path: Path, monkeypatch
+) -> None:
+    import pipeline_juridico.legal_producer as producer
+    from pipeline_juridico.legal_source_segmentation import SegmentationOutcome, SegmentationResult
+
+    monkeypatch.setattr(producer, "segment_markdown", lambda *_: SegmentationResult(SegmentationOutcome.AMBIGUOUS, (), "overlap"))
+    with pytest.raises(producer.LegalProducerBlockedError) as raised:
+        producer.build_candidates(
+            _artifacts(evidence), _context(evidence), tmp_path,
+            all_segments=False, segment_id=None,
+        )
+    assert raised.value.reason == "segmentation_ambiguous"
+
+
+def test_build_candidates_all_segments_reports_unresolved_identity(
+    evidence: Path, tmp_path: Path, monkeypatch
+) -> None:
+    import pipeline_juridico.legal_producer as producer
+    from pipeline_juridico.legal_segment_identity import IdentityResolution, IdentityStatus
+    from pipeline_juridico.legal_source_segmentation import SegmentationOutcome, SegmentationResult
+
+    segment = _precedent_segment(692)
+    monkeypatch.setattr(producer, "segment_markdown", lambda *_: SegmentationResult(SegmentationOutcome.SEGMENTS, (segment,), None))
+    monkeypatch.setattr(producer.LegalSemanticReviewEngine, "review", lambda *_: _review())
+    monkeypatch.setattr(producer, "resolve_segment_identity", lambda *_: IdentityResolution(IdentityStatus.AMBIGUOUS, {}, "missing"))
+    outcome = producer.build_candidates(
+        _artifacts(evidence), _context(evidence, "PrecedenteVinculante"), tmp_path,
+        all_segments=True, segment_id=None,
+    )
+    assert outcome.built == []
+    assert outcome.blocked_segments == [{"segment_id": "segment-0692", "reason": "identity_unresolved"}]
+
+
 def test_base_candidate_segment_none_is_exact_legacy_behavior(evidence: Path, tmp_path: Path) -> None:
     from pipeline_juridico.legal_producer import _base_candidate, _report
 
