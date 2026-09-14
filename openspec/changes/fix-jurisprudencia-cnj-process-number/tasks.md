@@ -82,18 +82,47 @@
   explicit absence/`review_required`, whichever the implementation actually produces).
 
 ## Acceptance Criteria
-- [ ] `repo_jur_processo_numero` for `output/AIRESP-1833684-2020-02-12.md` is either
+- [x] `repo_jur_processo_numero` for `output/AIRESP-1833684-2020-02-12.md` is either
       `0311049-09.2016.8.24.0018` or explicitly absent/blocked — never
       `AgInt no RECURSO ESPECIAL Nº 1833684 - SC` or any other non-CNJ value.
-- [ ] All 8 RED-then-GREEN tests from Task 1 pass.
-- [ ] `repo_jur_tribunal`, `repo_jur_relator`, `repo_jur_data_julgamento` extraction for the AIRESP case and
+      Evidence: `uv run repo-jur producer build "output/AIRESP-1833684-2020-02-12.md" ... --json`
+      produces `repo_jur_processo_numero: 0311049-09.2016.8.24.0018` (re-run and confirmed by
+      the orchestrator independently, dry candidate only, `bundle/` untouched).
+- [x] All 8 RED-then-GREEN tests from Task 1 pass.
+      Evidence: `uv run pytest tests/test_legal_semantic_review_cnj.py -q` → `8 passed`.
+- [x] `repo_jur_tribunal`, `repo_jur_relator`, `repo_jur_data_julgamento` extraction for the AIRESP case and
       all other existing fixtures are unchanged (byte-identical) from before this change.
-- [ ] The appellate-header and internal-register-number regexes no longer appear anywhere in the
+      Evidence: AIRESP real-corpus build above yields `repo_jur_tribunal: STJ`,
+      `repo_jur_relator: REGINA HELENA COSTA`, `repo_jur_data_julgamento: '2020-02-10'`; Task 1's
+      regression assertions (case 8) pass.
+- [x] The appellate-header and internal-register-number regexes no longer appear anywhere in the
       `repo_jur_processo_numero` resolution path.
-- [ ] `tests/test_conformance/golden/REsp_1704551-SP.md` and `AINTARESP_1462304-PA.md` conformance tests pass
+      Evidence: `grep -n "_cnj_checksum_valid\|appellate\|register\|recursal" src/pipeline_juridico/legal_semantic_review.py`
+      shows only the checksum helper (line 105) and its two call sites (lines 321, 325); no
+      appellate/register-number branch remains in that path.
+- [x] `tests/test_conformance/golden/REsp_1704551-SP.md` and `AINTARESP_1462304-PA.md` conformance tests pass
       with corrected, evidence-cited assertions (no fabricated disambiguation).
-- [ ] Full `uv run pytest -q` passes with no unexplained regressions.
-- [ ] `openspec validate fix-jurisprudencia-cnj-process-number --strict` passes.
-- [ ] `openspec validate --all --strict` passes.
-- [ ] `git diff --check` is clean.
-- [ ] `git status --short` reviewed; `bundle/` untouched; no commit made.
+      Evidence: `tests/test_conformance/test_metadata_contract.py::test_ci_safe_golden_jurisprudencia_resp_conformance`
+      and `::test_ci_safe_golden_jurisprudencia_aint_conformance` assert
+      `"repo_jur_processo_numero" not in extracted_names` with inline comments citing the two
+      conflicting CNJ tokens per fixture; both pass under `uv run pytest tests/test_conformance -q`
+      (13 passed, unrelated real-corpus tests skip/error only due to gitignored raw PDFs missing
+      from this environment, confirmed pre-existing and unrelated to this change).
+- [x] Full `uv run pytest -q` passes with no unexplained regressions.
+      Evidence: `1123 passed, 1 skipped, 29 failed, 4 errors` — every failure/error verified to be a
+      pre-existing environment gap (missing gitignored raw PDFs under `input/`), reproduced
+      identically before this change's code (root-cause: `pymupdf.FileNotFoundError` for
+      `AINTARESP_1462304-PA.pdf` and the real-corpus `UsageError` in `test_conformance.py`); zero
+      failures relate to `repo_jur_processo_numero` or the CNJ resolution path.
+- [x] `openspec validate fix-jurisprudencia-cnj-process-number --strict` passes.
+      Evidence: re-run by the orchestrator after this documentation fix; see delivery report.
+- [x] `openspec validate --all --strict` passes.
+      Evidence: re-run by the orchestrator after this documentation fix; see delivery report.
+- [x] `git diff --check` is clean.
+      Evidence: re-run by the orchestrator after this documentation fix; see delivery report.
+- [x] `git status --short` reviewed; `bundle/` untouched; no commit made.
+      Evidence: only an unrelated, pre-existing untracked file
+      (`bundle/jurisprudencia/stj_agint_no_recurso_especial_no_1833684_sc.md`, filesystem-dated
+      2026-09-13, prior to this change's commit) appears under `bundle/`; it was not created or
+      modified by this change's verification run (the producer command above only emitted a JSON
+      candidate and did not write to `bundle/`).

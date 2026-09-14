@@ -1,6 +1,6 @@
 # Proposal: Fix Jurisprudencia CNJ Process Number
 
-## Context
+## Why
 
 Real-corpus regression (`output/AIRESP-1833684-2020-02-12.md`, produced from
 `input/AIRESP-1833684-2020-02-12.pdf`) shows the Producer writing:
@@ -52,6 +52,18 @@ yields **exactly one** structurally valid 20-digit CNJ candidate:
 confirming the canonical form `0311049-09.2016.8.24.0018`. No other 20-digit
 substring on that line passes the checksum. This is not assumed — it is
 verified by the same deterministic checksum rule this change implements.
+
+## What Changes
+
+Replace the current 3-tier fallback (CNJ punctuated → appellate header →
+internal register number) with a checksum-validated, fail-closed CNJ
+resolution: scan the whole document for punctuated and standalone 20-digit
+CNJ candidates, validate each against the CNJ mod-97 check-digit algorithm,
+and populate `repo_jur_processo_numero` only when exactly one distinct
+checksum-valid CNJ is found — never falling back to an appellate/recursal
+header or an internal STJ/STF register number. See `## Proposed Behavior`
+below for the full resolution algorithm and `## Objectives` for the
+normative constraints this change enforces.
 
 ## Objectives
 
